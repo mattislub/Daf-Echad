@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { Book } from '../types/catalog';
@@ -9,11 +8,7 @@ import ImageGallery from '../components/ImageGallery';
 import ItemFacts from '../components/ItemFacts';
 import ProductCard from '../components/ProductCard';
 import { Loader2, ShoppingCart, Check, Package } from 'lucide-react';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { getBookById, getPopularBooks, getRelatedBooks } from '../services/api';
 
 interface ItemPageProps {
   bookId: string;
@@ -38,50 +33,18 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
     try {
       setLoading(true);
 
-      const { data: bookData, error: bookError } = await supabase
-        .from('books')
-        .select(`
-          *,
-          author:authors(*),
-          publisher:publishers(*),
-          category:categories(*),
-          images:book_images(*)
-        `)
-        .eq('id', bookId)
-        .maybeSingle();
-
-      if (bookError) throw bookError;
+      const bookData = await getBookById(bookId);
 
       if (bookData) {
         setBook(bookData);
 
-        const { data: relatedData } = await supabase
-          .from('books')
-          .select(`
-            *,
-            author:authors(*),
-            publisher:publishers(*),
-            category:categories(*)
-          `)
-          .eq('category_id', bookData.category_id)
-          .neq('id', bookId)
-          .limit(4);
+        const [relatedData, popularData] = await Promise.all([
+          getRelatedBooks(bookData.category_id, bookId),
+          getPopularBooks(bookId),
+        ]);
 
-        setRelatedBooks(relatedData || []);
-
-        const { data: popularData } = await supabase
-          .from('books')
-          .select(`
-            *,
-            author:authors(*),
-            publisher:publishers(*),
-            category:categories(*)
-          `)
-          .eq('featured', true)
-          .neq('id', bookId)
-          .limit(4);
-
-        setPopularBooks(popularData || []);
+        setRelatedBooks(relatedData ?? []);
+        setPopularBooks(popularData ?? []);
       }
     } catch (error) {
       console.error('Error fetching book data:', error);
