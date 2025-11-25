@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useLanguage } from '../context/LanguageContext';
 import { Book, Category, Publisher, Author, FilterOptions } from '../types/catalog';
 import FilterSidebar from '../components/FilterSidebar';
@@ -7,11 +6,7 @@ import ProductCard from '../components/ProductCard';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Loader2, SlidersHorizontal } from 'lucide-react';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { getAuthors, getBooks, getCategories, getPublishers } from '../services/api';
 
 interface CatalogProps {
   onNavigate?: (page: string, bookId?: string) => void;
@@ -51,45 +46,18 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const [booksData, categoriesData, publishersData, authorsData] = await Promise.all([
+        getBooks(),
+        getCategories(),
+        getPublishers(),
+        getAuthors(),
+      ]);
 
-      // Fetch books with related data
-      const { data: booksData, error: booksError } = await supabase
-        .from('books')
-        .select(`
-          *,
-          author:authors(*),
-          publisher:publishers(*),
-          category:categories(*)
-        `);
-
-      if (booksError) throw booksError;
-
-      // Fetch categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*');
-
-      if (categoriesError) throw categoriesError;
-
-      // Fetch publishers
-      const { data: publishersData, error: publishersError } = await supabase
-        .from('publishers')
-        .select('*');
-
-      if (publishersError) throw publishersError;
-
-      // Fetch authors
-      const { data: authorsData, error: authorsError } = await supabase
-        .from('authors')
-        .select('*');
-
-      if (authorsError) throw authorsError;
-
-      setBooks(booksData || []);
-      setFilteredBooks(booksData || []);
-      setCategories(categoriesData || []);
-      setPublishers(publishersData || []);
-      setAuthors(authorsData || []);
+      setBooks(booksData ?? []);
+      setFilteredBooks(booksData ?? []);
+      setCategories(categoriesData ?? []);
+      setPublishers(publishersData ?? []);
+      setAuthors(authorsData ?? []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
