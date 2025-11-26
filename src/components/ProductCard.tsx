@@ -58,12 +58,12 @@ export default function ProductCard(props: ProductCardProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group border border-yellow-600/20 hover:border-yellow-600/40" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden border-b border-yellow-600/20">
+      <div className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden border-b border-yellow-600/20 p-6">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <Book className="w-16 h-16 text-gray-400 stroke-[1.5]" />
