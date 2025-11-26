@@ -6,9 +6,11 @@ import { Product } from '../types';
 interface ProductSectionProps {
   title: string;
   products: Product[];
+  onViewAll?: () => void;
+  onViewDetails?: (product: Product) => void;
 }
 
-export default function ProductSection({ title, products }: ProductSectionProps) {
+export default function ProductSection({ title, products, onViewAll, onViewDetails }: ProductSectionProps) {
   const { language } = useLanguage();
   const { addToCart } = useCart();
   const isRTL = language === 'he';
@@ -21,7 +23,10 @@ export default function ProductSection({ title, products }: ProductSectionProps)
     <section className="mb-12" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-3xl font-bold text-gray-900">{title}</h2>
-        <button className="text-blue-600 hover:text-blue-700 font-medium transition-colors">
+        <button
+          onClick={onViewAll}
+          className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+        >
           {isRTL ? 'צפה בהכל ←' : 'View All →'}
         </button>
       </div>
@@ -32,6 +37,7 @@ export default function ProductSection({ title, products }: ProductSectionProps)
             key={product.id}
             product={product}
             onAddToCart={() => handleAddToCart(product)}
+            onViewDetails={() => onViewDetails?.(product)}
           />
         ))}
       </div>
