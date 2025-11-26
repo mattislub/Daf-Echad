@@ -14,7 +14,7 @@ interface LanguageContextType {
 const translations: Record<Language, Record<string, string>> = {
   he: {
     'site.title': 'ספרי ברסלב',
-    'site.tagline': 'ספרי קודש ומוצרי ברסלב מקוריים',
+    'site.tagline': 'כל ספרי ברסלב במקום אחד',
     'nav.home': 'בית',
     'nav.books': 'ספרים',
     'nav.children': 'ערוץ ילדים',
