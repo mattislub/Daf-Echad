@@ -127,9 +127,19 @@ function HomePage({ onNavigate }: { onNavigate: (page: string, bookId?: string) 
           <CategoryCards />
         </div>
 
-        <ProductSection title={t('featured')} products={featuredProducts} />
+        <ProductSection
+          title={t('featured')}
+          products={featuredProducts}
+          onViewAll={() => onNavigate('catalog')}
+          onViewDetails={(product) => onNavigate('item', product.id)}
+        />
 
-        <ProductSection title={t('new.arrivals')} products={newArrivals} />
+        <ProductSection
+          title={t('new.arrivals')}
+          products={newArrivals}
+          onViewAll={() => onNavigate('catalog')}
+          onViewDetails={(product) => onNavigate('item', product.id)}
+        />
       </main>
 
       <Footer />
@@ -143,9 +153,7 @@ function App() {
 
   const handleNavigate = (page: string, bookId?: string) => {
     setCurrentPage(page);
-    if (bookId) {
-      setSelectedBookId(bookId);
-    }
+    setSelectedBookId(bookId ?? null);
   };
 
   return (

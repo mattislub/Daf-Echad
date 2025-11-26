@@ -108,13 +108,13 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
             {t('nav.books')}
           </button>
           <button
-            onClick={() => onNavigate?.('children')}
+            onClick={() => onNavigate?.('catalog')}
             className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
             {t('nav.children')}
           </button>
           <button
-            onClick={() => onNavigate?.('women')}
+            onClick={() => onNavigate?.('catalog')}
             className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
             {t('nav.women')}
