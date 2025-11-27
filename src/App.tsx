@@ -8,17 +8,24 @@ import ProductSection from './components/ProductSection';
 import Footer from './components/Footer';
 import Catalog from './pages/Catalog';
 import ItemPage from './pages/ItemPage';
-import { Product } from './types';
-import mockProducts from './data/mockProducts.json';
+import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
+import { getBooks } from './services/api';
+import { Loader2 } from 'lucide-react';
 
-const products: Product[] = mockProducts as Product[];
-
-function HomePage({ onNavigate }: { onNavigate: (page: string, bookId?: string) => void }) {
+function HomePage({
+  books,
+  loading,
+  onNavigate,
+}: {
+  books: Book[];
+  loading: boolean;
+  onNavigate: (page: string, bookId?: string) => void;
+}) {
   const { t } = useLanguage();
 
-  const featuredProducts = products.filter((p) => p.is_featured);
-  const newArrivals = products.filter((p) => p.is_new);
+  const featuredProducts = books.filter((p) => p.featured);
+  const newArrivals = books.filter((p) => !p.featured).slice(0, 8);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -31,19 +38,27 @@ function HomePage({ onNavigate }: { onNavigate: (page: string, bookId?: string) 
           <CategoryCards />
         </div>
 
-        <ProductSection
-          title={t('featured')}
-          products={featuredProducts}
-          onViewAll={() => onNavigate('catalog')}
-          onViewDetails={(product) => onNavigate('item', product.id)}
-        />
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-yellow-600" />
+          </div>
+        ) : (
+          <>
+            <ProductSection
+              title={t('featured')}
+              products={featuredProducts}
+              onViewAll={() => onNavigate('catalog')}
+              onViewDetails={(product) => onNavigate('item', product.id)}
+            />
 
-        <ProductSection
-          title={t('new.arrivals')}
-          products={newArrivals}
-          onViewAll={() => onNavigate('catalog')}
-          onViewDetails={(product) => onNavigate('item', product.id)}
-        />
+            <ProductSection
+              title={t('new.arrivals')}
+              products={newArrivals}
+              onViewAll={() => onNavigate('catalog')}
+              onViewDetails={(product) => onNavigate('item', product.id)}
+            />
+          </>
+        )}
       </main>
 
       <Footer />
@@ -54,11 +69,30 @@ function HomePage({ onNavigate }: { onNavigate: (page: string, bookId?: string) 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loadingBooks, setLoadingBooks] = useState(true);
 
   const handleNavigate = (page: string, bookId?: string) => {
     setCurrentPage(page);
     setSelectedBookId(bookId ?? null);
   };
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        setLoadingBooks(true);
+        const data = await getBooks();
+        setBooks(data ?? []);
+      } catch (error) {
+        console.error('Failed to load books:', error);
+        setBooks([]);
+      } finally {
+        setLoadingBooks(false);
+      }
+    };
+
+    loadBooks();
+  }, []);
 
   return (
     <LanguageProvider>
@@ -67,6 +101,8 @@ function App() {
           currentPage={currentPage}
           selectedBookId={selectedBookId}
           onNavigate={handleNavigate}
+          books={books}
+          loadingBooks={loadingBooks}
         />
       </CartProvider>
     </LanguageProvider>
@@ -77,14 +113,16 @@ interface AppContentProps {
   currentPage: string;
   selectedBookId: string | null;
   onNavigate: (page: string, bookId?: string) => void;
+  books: Book[];
+  loadingBooks: boolean;
 }
 
-function AppContent({ currentPage, selectedBookId, onNavigate }: AppContentProps) {
+function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBooks }: AppContentProps) {
   const { language, t } = useLanguage();
 
-  const selectedProduct = useMemo<Product | undefined>(
-    () => products.find((product) => product.id === selectedBookId),
-    [selectedBookId],
+  const selectedProduct = useMemo<Book | undefined>(
+    () => books.find((product) => product.id === selectedBookId),
+    [books, selectedBookId],
   );
 
   useEffect(() => {
@@ -97,7 +135,9 @@ function AppContent({ currentPage, selectedBookId, onNavigate }: AppContentProps
 
   return (
     <>
-      {currentPage === 'home' && <HomePage onNavigate={onNavigate} />}
+      {currentPage === 'home' && (
+        <HomePage books={books} loading={loadingBooks} onNavigate={onNavigate} />
+      )}
       {currentPage === 'catalog' && <Catalog onNavigate={onNavigate} />}
       {currentPage === 'item' && selectedBookId && (
         <ItemPage bookId={selectedBookId} onNavigate={onNavigate} />

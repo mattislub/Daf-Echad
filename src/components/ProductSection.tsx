@@ -1,43 +1,55 @@
 import ProductCard from './ProductCard';
+import { Book } from '../types/catalog';
 import { useLanguage } from '../context/LanguageContext';
-import { useCart } from '../context/CartContext';
-import { Product } from '../types';
 
 interface ProductSectionProps {
   title: string;
-  products: Product[];
+  products: Book[];
   onViewAll?: () => void;
-  onViewDetails?: (product: Product) => void;
+  onViewDetails?: (product: Book) => void;
 }
 
-export default function ProductSection({ title, products, onViewAll, onViewDetails }: ProductSectionProps) {
-  const { language } = useLanguage();
-  const { addToCart } = useCart();
+export default function ProductSection({
+  title,
+  products,
+  onViewAll,
+  onViewDetails,
+}: ProductSectionProps) {
+  const { language, currency } = useLanguage();
   const isRTL = language === 'he';
-
-  const handleAddToCart = (product: Product) => {
-    addToCart({ ...product, quantity: 1 });
-  };
 
   return (
     <section className="mb-12" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">{title}</h2>
-        <button
-          onClick={onViewAll}
-          className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
-        >
-          {isRTL ? 'צפה בהכל ←' : 'View All →'}
-        </button>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+        {onViewAll && (
+          <button
+            onClick={onViewAll}
+            className="text-yellow-700 hover:text-yellow-800 font-semibold flex items-center gap-2"
+          >
+            {language === 'he' ? 'הצג הכל' : 'View All'}
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {products.map((product) => (
           <ProductCard
             key={product.id}
-            product={product}
-            onAddToCart={() => handleAddToCart(product)}
-            onViewDetails={() => onViewDetails?.(product)}
+            id={product.id}
+            title={language === 'he' ? product.title_he : product.title_en}
+            price={currency === 'ILS' ? product.price_ils : product.price_usd}
+            image={product.image_url}
+            category={
+              product.category
+                ? language === 'he'
+                  ? product.category.name_he
+                  : product.category.name_en
+                : ''
+            }
+            onViewDetails={onViewDetails ? () => onViewDetails(product) : undefined}
+            isFeatured={product.featured}
+            inStock={product.in_stock}
           />
         ))}
       </div>

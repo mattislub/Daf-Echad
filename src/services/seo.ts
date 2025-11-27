@@ -1,11 +1,12 @@
-import { Product, Language } from '../types';
+import { Language } from '../types';
+import { Book } from '../types/catalog';
 
 export type SeoPage = 'home' | 'catalog' | 'item';
 
 interface SeoOptions {
   language: Language;
   t: (key: string) => string;
-  product?: Product;
+  product?: Book;
 }
 
 interface SeoMetadata {
@@ -52,7 +53,7 @@ const setHtmlDirection = (language: Language) => {
 
 const buildCanonical = (path: string) => `${baseUrl}${path}`;
 
-const buildItemDescription = (language: Language, product: Product) => {
+const buildItemDescription = (language: Language, product: Book) => {
   if (language === 'he') {
     return product.description_he || `${product.title_he} - ספר מקור מברסלב עם כריכה איכותית.`;
   }
@@ -95,16 +96,24 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
   }
 
   if (page === 'item' && product) {
+    const categoryName = product.category
+      ? language === 'he'
+        ? product.category.name_he
+        : product.category.name_en
+      : '';
+
     metadata = {
       title: language === 'he' ? product.title_he : product.title_en,
       description: buildItemDescription(language, product),
       path: `/item/${product.id}`,
       type: 'article',
       keywords: [
-        product.category,
+        categoryName,
         language === 'he' ? 'ספר ברסלב' : 'Breslov sefer',
         language === 'he' ? 'רבי נחמן' : 'Rabbi Nachman',
-      ].join(', '),
+      ]
+        .filter(Boolean)
+        .join(', '),
       image: product.image_url,
     };
   }

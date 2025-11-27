@@ -41,7 +41,7 @@ export default function FilterSidebar({
   availablePublishers,
   availableAuthors,
 }: FilterSidebarProps) {
-  const { t, language, currency } = useLanguage();
+  const { language, currency } = useLanguage();
 
   const handleCategoryToggle = (categoryId: string) => {
     const newCategories = filters.categories.includes(categoryId)
