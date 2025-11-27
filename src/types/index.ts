@@ -1,19 +1,12 @@
-export interface Product {
-  id: string;
-  title_he: string;
-  title_en: string;
-  description_he?: string;
-  description_en?: string;
-  price_ils: number;
-  price_usd: number;
-  image_url?: string;
-  category: string;
-  is_featured: boolean;
-  is_new: boolean;
-  stock: number;
-}
+import { Book } from './catalog';
 
-export interface CartItem extends Product {
+export interface CartItem {
+  id: Book['id'];
+  title_he: Book['title_he'];
+  title_en: Book['title_en'];
+  price_ils: Book['price_ils'];
+  price_usd: Book['price_usd'];
+  image_url?: Book['image_url'];
   quantity: number;
 }
 

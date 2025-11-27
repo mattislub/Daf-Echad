@@ -9,6 +9,7 @@ import ItemFacts from '../components/ItemFacts';
 import ProductCard from '../components/ProductCard';
 import { Loader2, ShoppingCart, Check, Package } from 'lucide-react';
 import { getBookById, getPopularBooks, getRelatedBooks } from '../services/api';
+import { CartItem } from '../types';
 
 interface ItemPageProps {
   bookId: string;
@@ -56,17 +57,17 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const handleAddToCart = () => {
     if (!book) return;
 
-    const cartItem = {
+    const cartItem: CartItem = {
       id: book.id,
-      title: language === 'he' ? book.title_he : book.title_en,
+      title_he: book.title_he,
+      title_en: book.title_en,
       price_ils: book.price_ils,
       price_usd: book.price_usd,
       image_url: book.image_url,
+      quantity,
     };
 
-    for (let i = 0; i < quantity; i++) {
-      addToCart(cartItem);
-    }
+    addToCart(cartItem);
 
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
