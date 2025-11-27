@@ -30,18 +30,32 @@ export const pool = mysql.createPool({
   ssl: MYSQL_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
+pool.on('error', (error) => {
+  console.error('Unexpected database pool error:', error);
+});
+
 export async function testConnection() {
-  const connection = await pool.getConnection();
+  let connection;
 
   try {
+    connection = await pool.getConnection();
     await connection.ping();
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    throw error;
   } finally {
-    connection.release();
+    if (connection) {
+      connection.release();
+    }
   }
 }
 
 export async function getServerTime() {
-  const [rows] = await pool.query('SELECT NOW() as serverTime');
-
-  return rows[0].serverTime;
+  try {
+    const [rows] = await pool.query('SELECT NOW() as serverTime');
+    return rows[0].serverTime;
+  } catch (error) {
+    console.error('Database query failed while retrieving server time:', error);
+    throw error;
+  }
 }
