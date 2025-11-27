@@ -27,11 +27,11 @@ export default function ImageGallery({ images, alt }: ImageGalleryProps) {
 
   return (
     <div className="space-y-4">
-      <div className="relative aspect-square bg-white rounded-lg overflow-hidden border-2 border-gray-200 group">
+      <div className="relative aspect-square bg-white rounded-2xl overflow-hidden border-2 border-gray-200 shadow-xl shadow-yellow-600/5 group">
         <img
           src={images[selectedImage]}
           alt={`${alt} - ${selectedImage + 1}`}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover rounded-2xl transition-transform duration-500 ease-out"
         />
 
         {images.length > 1 && (
@@ -75,7 +75,7 @@ export default function ImageGallery({ images, alt }: ImageGalleryProps) {
             <button
               key={index}
               onClick={() => setSelectedImage(index)}
-              className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+              className={`aspect-square rounded-xl overflow-hidden border-2 shadow-sm transition-all ${
                 index === selectedImage
                   ? 'border-yellow-600 ring-2 ring-yellow-600/20'
                   : 'border-gray-200 hover:border-gray-300'
@@ -84,7 +84,7 @@ export default function ImageGallery({ images, alt }: ImageGalleryProps) {
               <img
                 src={image}
                 alt={`${alt} thumbnail ${index + 1}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-xl"
               />
             </button>
           ))}
