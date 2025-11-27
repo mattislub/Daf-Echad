@@ -95,11 +95,16 @@ function mapItemRowToBook(row) {
 }
 
 async function fetchItems() {
-  const [rows] = await pool.query(
-    'SELECT ID, name, name2, name3, namef, publishid, vol, chailik, size, binding, authorid, lang, color, length, width, depth, cubcm, weight, instock, typeid, identical, inset, grp, pri FROM items'
-  );
+  try {
+    const [rows] = await pool.query(
+      'SELECT ID, name, name2, name3, namef, publishid, vol, chailik, size, binding, authorid, lang, color, length, width, depth, cubcm, weight, instock, typeid, identical, inset, grp, pri FROM items'
+    );
 
-  return rows;
+    return rows;
+  } catch (error) {
+    console.error('Database query failed while fetching items:', error);
+    throw error;
+  }
 }
 
 function deriveUniqueOptions(rows, key) {
@@ -126,6 +131,16 @@ function deriveUniqueOptions(rows, key) {
 const app = express();
 
 app.use(cors());
+
+app.use((err, req, res, next) => {
+  const message = err?.message?.toLowerCase() ?? '';
+
+  if (err?.name === 'CorsError' || message.includes('cors')) {
+    console.error(`CORS error for origin ${req.headers.origin || 'unknown origin'}:`, err);
+  }
+
+  next(err);
+});
 app.use(express.json());
 
 app.get('/api/db-health', async (_req, res) => {
