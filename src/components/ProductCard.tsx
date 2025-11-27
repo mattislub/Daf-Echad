@@ -63,7 +63,7 @@ export default function ProductCard(props: ProductCardProps) {
           <img
             src={imageUrl}
             alt={title}
-            className="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-500"
+            className="max-h-full max-w-full object-contain drop-shadow-lg group-hover:scale-105 transition-transform duration-500 rounded-2xl bg-white/80 p-2"
           />
         ) : (
           <Book className="w-16 h-16 text-gray-400 stroke-[1.5]" />
