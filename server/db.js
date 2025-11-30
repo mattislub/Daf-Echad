@@ -10,6 +10,8 @@ const {
   MYSQL_SSL = 'false',
 } = process.env;
 
+export const DATABASE_NAME = MYSQL_DATABASE;
+
 if (!MYSQL_USER || !MYSQL_PASSWORD || !MYSQL_DATABASE) {
   console.warn(
     'Missing one of MYSQL_USER, MYSQL_PASSWORD, or MYSQL_DATABASE. Database queries will fail until these are provided.'
