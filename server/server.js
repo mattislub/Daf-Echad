@@ -43,7 +43,35 @@ function buildAuthorMap(authorRows) {
   }, new Map());
 }
 
-function mapItemRowToBook(row, authorMap = new Map()) {
+function buildBindingMap(bindingRows) {
+  return bindingRows.reduce((map, row) => {
+    const id = row.ID ?? row.id;
+    if (!id) return map;
+
+    map.set(String(id), {
+      id: String(id),
+      name: row.name ?? '',
+      type: row.type ?? '',
+      material: row.material ?? '',
+    });
+
+    return map;
+  }, new Map());
+}
+
+function mapBindingValue(bindingId, bindingMap = new Map()) {
+  if (!bindingId) return '';
+
+  const binding = bindingMap.get(bindingId);
+  if (!binding) return bindingId;
+
+  const descriptionParts = [binding.type, binding.material].filter((part) => part && String(part).trim() !== '');
+  const description = descriptionParts.join(' - ');
+
+  return description || binding.name || bindingId;
+}
+
+function mapItemRowToBook(row, authorMap = new Map(), bindingMap = new Map()) {
   const price = Number(row.pri) || 0;
   const volumes = Number(row.vol) || 1;
   const defaultDate = new Date().toISOString();
@@ -96,7 +124,7 @@ function mapItemRowToBook(row, authorMap = new Map()) {
     size: row.size ? String(row.size) : '',
     color: row.color ? String(row.color) : '',
     volumes,
-    binding: row.binding ? String(row.binding) : '',
+    binding: mapBindingValue(row.binding ? String(row.binding) : '', bindingMap),
     language: row.lang ? String(row.lang) : '',
     original_text: normalizeBoolean(row.inset),
     in_stock: normalizeBoolean(row.instock),
@@ -120,6 +148,22 @@ async function fetchItems() {
     return rows;
   } catch (error) {
     console.error('Database query failed while fetching items:', error);
+    throw error;
+  }
+}
+
+async function fetchBindings() {
+  try {
+    const [rows] = await pool.query('SELECT ID, name, type, material FROM binding');
+
+    return rows.map((row) => ({
+      id: String(row.ID ?? row.id ?? ''),
+      name: row.name ?? '',
+      type: row.type ?? '',
+      material: row.material ?? '',
+    }));
+  } catch (error) {
+    console.error('Database query failed while fetching bindings:', error);
     throw error;
   }
 }
@@ -272,9 +316,10 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const [rows, authors] = await Promise.all([fetchItems(), fetchAuthors()]);
+    const [rows, authors, bindings] = await Promise.all([fetchItems(), fetchAuthors(), fetchBindings()]);
     const authorMap = buildAuthorMap(authors);
-    let books = rows.map((row) => mapItemRowToBook(row, authorMap));
+    const bindingMap = buildBindingMap(bindings);
+    let books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap));
 
     const { category_id, exclude, limit, featured } = req.query;
 
@@ -309,9 +354,10 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const [rows, authors] = await Promise.all([fetchItems(), fetchAuthors()]);
+    const [rows, authors, bindings] = await Promise.all([fetchItems(), fetchAuthors(), fetchBindings()]);
     const authorMap = buildAuthorMap(authors);
-    const books = rows.map((row) => mapItemRowToBook(row, authorMap));
+    const bindingMap = buildBindingMap(bindings);
+    const books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap));
     const book = books.find((item) => item.id === req.params.id);
 
     if (!book) {
