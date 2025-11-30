@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { getServerTime, testConnection, pool } from './db.js';
+import { DATABASE_NAME, getServerTime, testConnection, pool } from './db.js';
 
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
@@ -130,6 +130,27 @@ function deriveUniqueOptions(rows, key) {
 
 const app = express();
 
+const RELATED_ITEM_TABLES = [
+  'authore',
+  'binding',
+  'cate',
+  'grpitms',
+  'itemcat',
+  'itemkeyword',
+  'itemorigsfr',
+  'items',
+  'itemtype',
+  'lists',
+  'newpop',
+  'origsfr',
+  'publish',
+  'qtylimit',
+  'rcmlst',
+  'recomend',
+  'sellprice',
+  'temppri',
+];
+
 app.use(cors());
 
 app.use((err, req, res, next) => {
@@ -151,6 +172,64 @@ app.get('/api/db-health', async (_req, res) => {
     res.json({ status: 'ok', serverTime });
   } catch (error) {
     console.error('Database health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+async function describeTableColumns(tableName) {
+  const [columns] = await pool.query(
+    `SELECT COLUMN_NAME as field, DATA_TYPE as data_type, IS_NULLABLE as is_nullable, COLUMN_KEY as column_key, COLUMN_DEFAULT as column_default, COLUMN_COMMENT as comment
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+     ORDER BY ORDINAL_POSITION`,
+    [DATABASE_NAME, tableName]
+  );
+
+  return columns;
+}
+
+async function fetchTableRows(tableName, limit) {
+  const [rows] = await pool.query('SELECT * FROM ?? LIMIT ?', [tableName, limit]);
+  return rows;
+}
+
+async function buildItemDataSnapshot(limit) {
+  if (!DATABASE_NAME) {
+    throw new Error('DATABASE_NAME is not configured. Set MYSQL_DATABASE in the environment.');
+  }
+
+  const results = [];
+
+  for (const tableName of RELATED_ITEM_TABLES) {
+    try {
+      const [columns, rows] = await Promise.all([
+        describeTableColumns(tableName),
+        fetchTableRows(tableName, limit),
+      ]);
+
+      results.push({ table: tableName, columns, rows });
+    } catch (error) {
+      results.push({
+        table: tableName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  return results;
+}
+
+app.get('/api/item-data-snapshot', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 200;
+    const tables = await buildItemDataSnapshot(limit);
+
+    res.json({ database: DATABASE_NAME, limit, tables });
+  } catch (error) {
+    console.error('Failed to build item data snapshot:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
