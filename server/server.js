@@ -181,7 +181,7 @@ app.get('/api/db-health', async (_req, res) => {
 
 async function describeTableColumns(tableName) {
   const [columns] = await pool.query(
-    `SELECT COLUMN_NAME as name, DATA_TYPE as data_type, IS_NULLABLE as is_nullable, COLUMN_KEY as column_key, COLUMN_DEFAULT as column_default
+    `SELECT COLUMN_NAME as field, DATA_TYPE as data_type, IS_NULLABLE as is_nullable, COLUMN_KEY as column_key, COLUMN_DEFAULT as column_default, COLUMN_COMMENT as comment
      FROM INFORMATION_SCHEMA.COLUMNS
      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
      ORDER BY ORDINAL_POSITION`,
