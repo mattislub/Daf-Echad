@@ -2,6 +2,8 @@ export interface Category {
   id: string;
   name_en: string;
   name_he: string;
+  cat1?: string | null;
+  cat2?: string | null;
   slug: string;
   created_at: string;
 }

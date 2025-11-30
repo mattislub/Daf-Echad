@@ -59,6 +59,27 @@ function buildBindingMap(bindingRows) {
   }, new Map());
 }
 
+function buildCategoryMap(categoryRows) {
+  const defaultDate = new Date().toISOString();
+
+  return categoryRows.reduce((map, row) => {
+    const id = row.code ?? row.ID ?? row.id;
+    if (!id) return map;
+
+    map.set(String(id), {
+      id: String(id),
+      name_en: row.name ?? String(id),
+      name_he: row.name ?? String(id),
+      cat1: row.cat1 ? String(row.cat1) : null,
+      cat2: row.cat2 ? String(row.cat2) : null,
+      slug: `category-${id}`,
+      created_at: row.created_at ?? defaultDate,
+    });
+
+    return map;
+  }, new Map());
+}
+
 function mapBindingValue(bindingId, bindingMap = new Map()) {
   if (!bindingId) return '';
 
@@ -71,27 +92,41 @@ function mapBindingValue(bindingId, bindingMap = new Map()) {
   return description || binding.name || bindingId;
 }
 
-function mapItemRowToBook(row, authorMap = new Map(), bindingMap = new Map()) {
+function mapItemRowToBook(
+  row,
+  authorMap = new Map(),
+  bindingMap = new Map(),
+  categoryMap = new Map(),
+  itemCategoryMap = new Map()
+) {
   const price = Number(row.pri) || 0;
   const volumes = Number(row.vol) || 1;
   const defaultDate = new Date().toISOString();
 
+  const itemId = String(row.ID);
+  const categoryCode = itemCategoryMap.get(itemId) || (row.typeid ? String(row.typeid) : null);
+  const categoryFromMap = categoryCode ? categoryMap.get(categoryCode) : undefined;
+
   const title_he = row.name || row.name2 || row.name3 || row.namef || '';
   const title_en = row.namef || row.name3 || row.name2 || row.name || '';
 
-  const categoryId = row.typeid ? String(row.typeid) : null;
+  const categoryId = categoryFromMap?.id ?? (categoryCode ? String(categoryCode) : null);
   const publisherId = row.publishid ? String(row.publishid) : null;
   const authorId = row.authorid ? String(row.authorid) : null;
 
-  const category = categoryId
-    ? {
-        id: categoryId,
-        name_en: String(row.typeid ?? ''),
-        name_he: String(row.typeid ?? ''),
-        slug: `category-${categoryId}`,
-        created_at: defaultDate,
-      }
-    : undefined;
+  const category = categoryFromMap
+    ? categoryFromMap
+    : categoryId
+      ? {
+          id: categoryId,
+          name_en: String(categoryId ?? ''),
+          name_he: String(categoryId ?? ''),
+          cat1: null,
+          cat2: null,
+          slug: `category-${categoryId}`,
+          created_at: defaultDate,
+        }
+      : undefined;
 
   const publisher = publisherId
     ? {
@@ -148,6 +183,38 @@ async function fetchItems() {
     return rows;
   } catch (error) {
     console.error('Database query failed while fetching items:', error);
+    throw error;
+  }
+}
+
+async function fetchCategories() {
+  try {
+    const [rows] = await pool.query('SELECT code, cat1, cat2, name FROM cate');
+    const categoryMap = buildCategoryMap(rows);
+
+    return Array.from(categoryMap.values());
+  } catch (error) {
+    console.error('Database query failed while fetching categories:', error);
+    throw error;
+  }
+}
+
+async function fetchItemCategoryMap() {
+  try {
+    const [rows] = await pool.query('SELECT itemid, catid FROM itemcat');
+
+    return rows.reduce((map, row) => {
+      const itemId = row.itemid ?? row.itemId ?? row.ID;
+      const categoryId = row.catid ?? row.categoryid ?? row.categoryId;
+
+      if (!itemId || !categoryId || map.has(String(itemId))) return map;
+
+      map.set(String(itemId), String(categoryId));
+
+      return map;
+    }, new Map());
+  } catch (error) {
+    console.error('Database query failed while fetching item categories:', error);
     throw error;
   }
 }
@@ -316,10 +383,17 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const [rows, authors, bindings] = await Promise.all([fetchItems(), fetchAuthors(), fetchBindings()]);
+    const [rows, authors, bindings, categories, itemCategoryMap] = await Promise.all([
+      fetchItems(),
+      fetchAuthors(),
+      fetchBindings(),
+      fetchCategories(),
+      fetchItemCategoryMap(),
+    ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
-    let books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap));
+    const categoryMap = buildCategoryMap(categories);
+    let books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap));
 
     const { category_id, exclude, limit, featured } = req.query;
 
@@ -354,10 +428,17 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const [rows, authors, bindings] = await Promise.all([fetchItems(), fetchAuthors(), fetchBindings()]);
+    const [rows, authors, bindings, categories, itemCategoryMap] = await Promise.all([
+      fetchItems(),
+      fetchAuthors(),
+      fetchBindings(),
+      fetchCategories(),
+      fetchItemCategoryMap(),
+    ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
-    const books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap));
+    const categoryMap = buildCategoryMap(categories);
+    const books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap));
     const book = books.find((item) => item.id === req.params.id);
 
     if (!book) {
@@ -376,8 +457,7 @@ app.get('/api/books/:id', async (req, res) => {
 
 app.get('/api/categories', async (_req, res) => {
   try {
-    const rows = await fetchItems();
-    const categories = deriveUniqueOptions(rows, 'typeid');
+    const categories = await fetchCategories();
     res.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
