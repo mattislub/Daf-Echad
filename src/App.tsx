@@ -10,7 +10,7 @@ import Catalog from './pages/Catalog';
 import ItemPage from './pages/ItemPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
-import { getBooks } from './services/api';
+import { getBooks, getCategories } from './services/api';
 import { Loader2 } from 'lucide-react';
 
 function HomePage({
@@ -81,8 +81,17 @@ function App() {
     const loadBooks = async () => {
       try {
         setLoadingBooks(true);
-        const data = await getBooks();
-        setBooks(data ?? []);
+        const [booksData, categoriesData] = await Promise.all([
+          getBooks(),
+          getCategories(),
+        ]);
+
+        const booksWithCategories = (booksData ?? []).map((book) => {
+          const category = categoriesData?.find((cat) => cat.id === book.category_id);
+          return category ? { ...book, category } : book;
+        });
+
+        setBooks(booksWithCategories);
       } catch (error) {
         console.error('Failed to load books:', error);
         setBooks([]);

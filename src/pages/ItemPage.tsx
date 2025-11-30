@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
-import { Book } from '../types/catalog';
+import { Book, Category } from '../types/catalog';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ImageGallery from '../components/ImageGallery';
 import ItemFacts from '../components/ItemFacts';
 import ProductCard from '../components/ProductCard';
 import { Loader2, ShoppingCart, Check, Package } from 'lucide-react';
-import { getBookById, getPopularBooks, getRelatedBooks } from '../services/api';
+import { getBookById, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
 import { CartItem } from '../types';
 
 interface ItemPageProps {
@@ -37,15 +37,29 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
       const bookData = await getBookById(bookId);
 
       if (bookData) {
-        setBook(bookData);
-
-        const [relatedData, popularData] = await Promise.all([
+        const [categoriesData, relatedData, popularData] = await Promise.all([
+          getCategories(),
           getRelatedBooks(bookData.category_id, bookId),
           getPopularBooks(bookId),
         ]);
 
-        setRelatedBooks(relatedData ?? []);
-        setPopularBooks(popularData ?? []);
+        const findCategory = (targetBook: Book): Category | undefined =>
+          categoriesData?.find((cat) => cat.id === targetBook.category_id);
+
+        const bookWithCategory = (() => {
+          const category = bookData.category ?? findCategory(bookData);
+          return category ? { ...bookData, category } : bookData;
+        })();
+
+        const mapWithCategory = (items: Book[]) =>
+          items.map((item) => {
+            const category = item.category ?? findCategory(item);
+            return category ? { ...item, category } : item;
+          });
+
+        setBook(bookWithCategory);
+        setRelatedBooks(mapWithCategory(relatedData ?? []));
+        setPopularBooks(mapWithCategory(popularData ?? []));
       }
     } catch (error) {
       console.error('Error fetching book data:', error);
