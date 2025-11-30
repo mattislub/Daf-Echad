@@ -53,8 +53,13 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
         getAuthors(),
       ]);
 
-      setBooks(booksData ?? []);
-      setFilteredBooks(booksData ?? []);
+      const booksWithCategories = (booksData ?? []).map((book) => {
+        const category = categoriesData?.find((cat) => cat.id === book.category_id);
+        return category ? { ...book, category } : book;
+      });
+
+      setBooks(booksWithCategories);
+      setFilteredBooks(booksWithCategories);
       setCategories(categoriesData ?? []);
       setPublishers(publishersData ?? []);
       setAuthors(authorsData ?? []);
