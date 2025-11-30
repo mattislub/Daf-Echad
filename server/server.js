@@ -26,7 +26,24 @@ function buildDimensions({ length, width, depth, size }) {
   return size ? String(size) : '';
 }
 
-function mapItemRowToBook(row) {
+function buildAuthorMap(authorRows) {
+  const defaultDate = new Date().toISOString();
+
+  return authorRows.reduce((map, row) => {
+    const id = row.ID ?? row.id;
+    if (!id) return map;
+
+    map.set(String(id), {
+      id: String(id),
+      name: row.name ?? '',
+      created_at: row.created_at ?? defaultDate,
+    });
+
+    return map;
+  }, new Map());
+}
+
+function mapItemRowToBook(row, authorMap = new Map()) {
   const price = Number(row.pri) || 0;
   const volumes = Number(row.vol) || 1;
   const defaultDate = new Date().toISOString();
@@ -59,8 +76,8 @@ function mapItemRowToBook(row) {
   const author = authorId
     ? {
         id: authorId,
-        name: String(row.authorid ?? ''),
-        created_at: defaultDate,
+        name: authorMap.get(authorId)?.name ?? String(row.authorid ?? ''),
+        created_at: authorMap.get(authorId)?.created_at ?? defaultDate,
       }
     : undefined;
 
@@ -103,6 +120,22 @@ async function fetchItems() {
     return rows;
   } catch (error) {
     console.error('Database query failed while fetching items:', error);
+    throw error;
+  }
+}
+
+async function fetchAuthors() {
+  try {
+    const [rows] = await pool.query('SELECT ID, name FROM authore');
+    const defaultDate = new Date().toISOString();
+
+    return rows.map((row) => ({
+      id: String(row.ID),
+      name: row.name ?? '',
+      created_at: defaultDate,
+    }));
+  } catch (error) {
+    console.error('Database query failed while fetching authors:', error);
     throw error;
   }
 }
@@ -239,8 +272,9 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const rows = await fetchItems();
-    let books = rows.map(mapItemRowToBook);
+    const [rows, authors] = await Promise.all([fetchItems(), fetchAuthors()]);
+    const authorMap = buildAuthorMap(authors);
+    let books = rows.map((row) => mapItemRowToBook(row, authorMap));
 
     const { category_id, exclude, limit, featured } = req.query;
 
@@ -275,8 +309,9 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const rows = await fetchItems();
-    const books = rows.map(mapItemRowToBook);
+    const [rows, authors] = await Promise.all([fetchItems(), fetchAuthors()]);
+    const authorMap = buildAuthorMap(authors);
+    const books = rows.map((row) => mapItemRowToBook(row, authorMap));
     const book = books.find((item) => item.id === req.params.id);
 
     if (!book) {
@@ -328,14 +363,10 @@ app.get('/api/publishers', async (_req, res) => {
 
 app.get('/api/authors', async (_req, res) => {
   try {
-    const rows = await fetchItems();
-    const authors = deriveUniqueOptions(rows, 'authorid').map((author) => ({
-      id: author.id,
-      name: author.name_en,
-      created_at: author.created_at,
-    }));
+    const authors = await fetchAuthors();
 
     res.json(authors);
+
   } catch (error) {
     console.error('Error fetching authors:', error);
     res.status(500).json({
