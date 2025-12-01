@@ -13,18 +13,88 @@ import {
   FileText,
   Mail,
 } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
+import { useSearch } from '../context/SearchContext';
+import { Book } from '../types/catalog';
 
-interface HeaderProps {
+export interface HeaderProps {
   onNavigate?: (page: string) => void;
+  searchItems?: Book[];
+  onSearch?: (query: string) => void;
+  searchTerm?: string;
 }
 
-export default function Header({ onNavigate }: HeaderProps = {}) {
+export default function Header({ onNavigate, onSearch, searchItems, searchTerm }: HeaderProps = {}) {
   const { language, setLanguage, currency, setCurrency, t } = useLanguage();
   const { getTotalItems, getTotalPrice } = useCart();
+  const searchContext = useSearch();
+
+  const effectiveSearchItems = searchItems ?? searchContext.searchItems;
+  const currentSearchTerm = searchTerm ?? searchContext.searchTerm;
+  const setSearchTerm = searchContext.setSearchTerm;
+  const triggerSearch = onSearch ?? searchContext.onSearch;
+
+  const [inputValue, setInputValue] = useState(currentSearchTerm);
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    setInputValue(currentSearchTerm);
+  }, [currentSearchTerm]);
+
+  const suggestions = useMemo(() => {
+    const term = inputValue.trim().toLowerCase();
+    if (!term) return [] as Array<{ id: string; label: string; type: string }>;
+
+    const uniqueLabels = new Map<string, { id: string; label: string; type: string }>();
+
+    effectiveSearchItems.forEach((item) => {
+      const labelEntries: Array<{ label: string; type: string }> = [];
+
+      if (item.title_he) labelEntries.push({ label: item.title_he, type: 'title' });
+      if (item.title_en) labelEntries.push({ label: item.title_en, type: 'title' });
+      if (item.keywords?.length)
+        labelEntries.push({ label: item.keywords.join(' '), type: 'keyword' });
+      if (item.author?.name) labelEntries.push({ label: item.author.name, type: 'author' });
+      if (item.category)
+        labelEntries.push({
+          label: language === 'he' ? item.category.name_he : item.category.name_en,
+          type: 'category',
+        });
+      if (item.publisher?.name) labelEntries.push({ label: item.publisher.name, type: 'publisher' });
+
+      labelEntries.forEach(({ label, type }) => {
+        if (label.toLowerCase().includes(term)) {
+          const key = `${item.id}-${label}-${type}`;
+          if (!uniqueLabels.has(key)) {
+            uniqueLabels.set(key, { id: item.id, label, type });
+          }
+        }
+      });
+    });
+
+    return Array.from(uniqueLabels.values()).slice(0, 6);
+  }, [effectiveSearchItems, inputValue, language]);
 
   const isRTL = language === 'he';
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = inputValue.trim();
+    if (!query) return;
+
+    setSearchTerm?.(query);
+    triggerSearch?.(query);
+    setIsFocused(false);
+  };
+
+  const handleSuggestionSelect = (label: string) => {
+    setInputValue(label);
+    setSearchTerm?.(label);
+    triggerSearch?.(label);
+    setIsFocused(false);
+  };
 
   return (
     <header className={`bg-white shadow-md ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
@@ -75,14 +145,42 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
           </div>
 
           <div className="flex-1 max-w-2xl">
-            <div className="relative">
+            <form className="relative" onSubmit={handleSubmit}>
               <input
                 type="text"
+                value={inputValue}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  setSearchTerm?.(e.target.value);
+                }}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setTimeout(() => setIsFocused(false), 100)}
                 placeholder={t('search.placeholder')}
                 className={`w-full px-4 py-3 ${isRTL ? 'pr-12' : 'pl-12'} border-2 border-gray-300 rounded-lg focus:outline-none focus:border-yellow-600 transition-colors`}
               />
-              <Search className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400`} />
-            </div>
+              <button
+                type="submit"
+                className={`absolute ${isRTL ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 p-2 rounded-full text-gray-500 hover:text-yellow-700 focus:outline-none`}
+                aria-label={t('search.button')}
+              >
+                <Search className="w-5 h-5" />
+              </button>
+              {isFocused && suggestions.length > 0 && (
+                <div className="absolute mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      type="button"
+                      key={`${suggestion.id}-${suggestion.label}`}
+                      onClick={() => handleSuggestionSelect(suggestion.label)}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex justify-between items-center"
+                    >
+                      <span className="text-gray-800">{suggestion.label}</span>
+                      <span className="text-xs text-gray-500 uppercase">{suggestion.type}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </form>
           </div>
 
           <div className="flex items-center gap-4">
