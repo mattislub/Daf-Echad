@@ -131,6 +131,28 @@ function mapColorValue(colorCode, colorMap = new Map()) {
   return mappedValue ?? normalizedCode;
 }
 
+function buildLanguageMap(languageRows = []) {
+  return languageRows.reduce((map, row) => {
+    const code = row.lvalue ?? row.code ?? row.ID ?? row.id;
+
+    if (!code) return map;
+
+    const description = row.ldesc ?? row.description ?? row.name ?? '';
+    map.set(String(code), description ? String(description) : String(code));
+
+    return map;
+  }, new Map());
+}
+
+function mapLanguageValue(languageCode, languageMap = new Map()) {
+  if (!languageCode) return '';
+
+  const normalizedCode = String(languageCode);
+  const mappedValue = languageMap.get(normalizedCode);
+
+  return mappedValue ?? normalizedCode;
+}
+
 function mapItemRowToBook(
   row,
   authorMap = new Map(),
@@ -139,7 +161,8 @@ function mapItemRowToBook(
   publisherMap = new Map(),
   itemCategoryMap = new Map(),
   keywordMap = new Map(),
-  colorMap = new Map()
+  colorMap = new Map(),
+  languageMap = new Map()
 ) {
   const price = Number(row.pri) || 0;
   const volumes = Number(row.vol) || 1;
@@ -204,7 +227,7 @@ function mapItemRowToBook(
     color: mapColorValue(row.color, colorMap),
     volumes,
     binding: mapBindingValue(row.binding ? String(row.binding) : '', bindingMap),
-    language: row.lang ? String(row.lang) : '',
+    language: mapLanguageValue(row.lang, languageMap),
     original_text: normalizeBoolean(row.inset),
     in_stock: normalizeBoolean(row.instock),
     featured: Boolean(row.grp),
@@ -298,6 +321,20 @@ async function fetchColors() {
     }));
   } catch (error) {
     console.error('Database query failed while fetching colors:', error);
+    throw error;
+  }
+}
+
+async function fetchLanguages() {
+  try {
+    const [rows] = await pool.query("SELECT lvalue, ldesc FROM lists WHERE ltype = 'lang'");
+
+    return rows.map((row) => ({
+      lvalue: row.lvalue ?? row.code ?? row.ID ?? row.id ?? '',
+      ldesc: row.ldesc ?? row.description ?? row.name ?? '',
+    }));
+  } catch (error) {
+    console.error('Database query failed while fetching languages:', error);
     throw error;
   }
 }
@@ -463,7 +500,7 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap, colors] =
+    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap, colors, languages] =
       await Promise.all([
         fetchItems(),
         fetchAuthors(),
@@ -473,12 +510,14 @@ app.get('/api/books', async (req, res) => {
         fetchItemCategoryMap(),
         fetchItemKeywords(),
         fetchColors(),
+        fetchLanguages(),
       ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
     const colorMap = buildColorMap(colors);
+    const languageMap = buildLanguageMap(languages);
     let books = rows.map((row) =>
       mapItemRowToBook(
         row,
@@ -488,7 +527,8 @@ app.get('/api/books', async (req, res) => {
         publisherMap,
         itemCategoryMap,
         keywordMap,
-        colorMap
+        colorMap,
+        languageMap
       )
     );
 
@@ -525,7 +565,7 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap, colors] =
+    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap, colors, languages] =
       await Promise.all([
         fetchItems(),
         fetchAuthors(),
@@ -535,12 +575,14 @@ app.get('/api/books/:id', async (req, res) => {
         fetchItemCategoryMap(),
         fetchItemKeywords(),
         fetchColors(),
+        fetchLanguages(),
       ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
     const colorMap = buildColorMap(colors);
+    const languageMap = buildLanguageMap(languages);
     const books = rows.map((row) =>
       mapItemRowToBook(
         row,
@@ -550,7 +592,8 @@ app.get('/api/books/:id', async (req, res) => {
         publisherMap,
         itemCategoryMap,
         keywordMap,
-        colorMap
+        colorMap,
+        languageMap
       )
     );
     const book = books.find((item) => item.id === req.params.id);
