@@ -9,11 +9,24 @@ const __dirname = path.dirname(__filename);
 const siteUrl = (process.env.VITE_SITE_URL || process.env.SITE_URL || 'https://daf-echad.example.com')
   .replace(/\/$/, '');
 
+const createSlugFromTitle = (title) => title.trim().replace(/\s+/g, '-').replace(/-+/g, '-');
+const buildProductSlug = (product) => {
+  const title = product.title_he || product.title_en || product.id;
+  const sku = product.item_number ?? product.id;
+
+  const titleSlug = createSlugFromTitle(String(title));
+  const skuSlug = createSlugFromTitle(String(sku));
+
+  return `${titleSlug}-sku-${skuSlug}`;
+};
+
+const buildProductPath = (product) => `/item/${encodeURIComponent(buildProductSlug(product))}`;
+
 const urls = [
   { path: '/', changefreq: 'daily', priority: 1.0 },
   { path: '/catalog', changefreq: 'weekly', priority: 0.8 },
   ...products.map((product) => ({
-    path: `/item/${product.id}`,
+    path: buildProductPath(product),
     changefreq: 'weekly',
     priority: 0.7,
   })),
