@@ -1,5 +1,6 @@
 import { Language } from '../types';
 import { Book } from '../types/catalog';
+import { buildProductPath } from '../utils/slug';
 
 export type SeoPage = 'home' | 'catalog' | 'item' | 'cart' | 'account';
 
@@ -143,7 +144,7 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
     metadata = {
       title: language === 'he' ? product.title_he : product.title_en,
       description: buildItemDescription(language, product),
-      path: `/item/${product.id}`,
+      path: buildProductPath(product),
       type: 'article',
       siteName: siteTitle,
       keywords: buildKeywords(

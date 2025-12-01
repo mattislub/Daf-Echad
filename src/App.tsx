@@ -19,7 +19,12 @@ import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getBooks, getCategories } from './services/api';
 import { Loader2 } from 'lucide-react';
-import { createSlugFromTitle, normalizeSlug } from './utils/slug';
+import {
+  buildProductPath,
+  buildProductSlug,
+  extractSkuFromSlug,
+  normalizeSlug,
+} from './utils/slug';
 
 function HomePage({
   books,
@@ -81,22 +86,36 @@ function App() {
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
 
-  const findBookBySlug = useCallback(
-    (slug: string) => {
-      const normalizedSlug = normalizeSlug(decodeURIComponent(slug));
-      return books.find((book) => {
-        const heSlug = normalizeSlug(book.title_he);
-        const enSlug = normalizeSlug(book.title_en);
-        return heSlug === normalizedSlug || enSlug === normalizedSlug;
-      });
-    },
-    [books],
-  );
-
   const getBookSlug = useCallback((book: Book | undefined) => {
     if (!book) return '';
-    return createSlugFromTitle(book.title_he || book.title_en || book.id);
+    return buildProductSlug(book);
   }, []);
+
+  const findBookBySlug = useCallback(
+    (slug: string) => {
+      const decodedSlug = decodeURIComponent(slug);
+      const normalizedSlug = normalizeSlug(decodedSlug);
+      const skuFromSlug = extractSkuFromSlug(decodedSlug);
+
+      return books.find((book) => {
+        const bookSlug = normalizeSlug(getBookSlug(book));
+        const normalizedItemNumber = book.item_number
+          ? normalizeSlug(book.item_number)
+          : null;
+        const skuMatch = skuFromSlug
+          ? normalizeSlug(skuFromSlug) === normalizeSlug(book.id) ||
+            (normalizedItemNumber && normalizeSlug(skuFromSlug) === normalizedItemNumber)
+          : false;
+
+        const titleMatch =
+          normalizeSlug(book.title_he) === normalizedSlug ||
+          normalizeSlug(book.title_en) === normalizedSlug;
+
+        return bookSlug === normalizedSlug || skuMatch || titleMatch;
+      });
+    },
+    [books, getBookSlug],
+  );
 
   const updateHashForPage = useCallback(
     (page: string, book?: Book) => {
@@ -104,7 +123,7 @@ function App() {
 
       if (page === 'item') {
         const slug = getBookSlug(book);
-        window.location.hash = slug ? `/item/${encodeURIComponent(slug)}` : '/item';
+        window.location.hash = slug && book ? buildProductPath(book) : '/item';
         return;
       }
 

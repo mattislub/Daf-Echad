@@ -4,60 +4,60 @@
     <loc>https://daf-echad.example.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-    <lastmod>2025-11-26T12:59:57.824Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.028Z</lastmod>
   </url>
   <url>
     <loc>https://daf-echad.example.com/catalog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/1</loc>
+    <loc>https://daf-echad.example.com/item/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99-%D7%9E%D7%95%D7%94%D7%A8%22%D7%9F-%D7%97%D7%9C%D7%A7-%D7%90-sku-1</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/2</loc>
+    <loc>https://daf-echad.example.com/item/%D7%A1%D7%99%D7%A4%D7%95%D7%A8%D7%99-%D7%9E%D7%A2%D7%A9%D7%99%D7%95%D7%AA-sku-2</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/3</loc>
+    <loc>https://daf-echad.example.com/item/%D7%A1%D7%A4%D7%A8-%D7%94%D7%9E%D7%99%D7%93%D7%95%D7%AA-sku-3</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/4</loc>
+    <loc>https://daf-echad.example.com/item/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99-%D7%AA%D7%A4%D7%99%D7%9C%D7%95%D7%AA-sku-4</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/5</loc>
+    <loc>https://daf-echad.example.com/item/%D7%A1%D7%99%D7%A4%D7%95%D7%A8%D7%99-%D7%A6%D7%93%D7%99%D7%A7%D7%99%D7%9D-%D7%9C%D7%99%D7%9C%D7%93%D7%99%D7%9D-sku-5</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/6</loc>
+    <loc>https://daf-echad.example.com/item/%D7%97%D7%99%D7%99-%D7%9E%D7%95%D7%94%D7%A8%22%D7%9F-sku-6</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/7</loc>
+    <loc>https://daf-echad.example.com/item/%D7%A9%D7%91%D7%97%D7%99-%D7%94%D7%A8%22%D7%9F-sku-7</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
   <url>
-    <loc>https://daf-echad.example.com/item/8</loc>
+    <loc>https://daf-echad.example.com/item/%D7%A1%D7%A4%D7%A8-%D7%91%D7%A8%D7%A1%D7%9C%D7%91-%D7%9C%D7%A0%D7%A9%D7%99%D7%9D-sku-8</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2025-11-26T12:59:57.825Z</lastmod>
+    <lastmod>2025-12-01T20:45:01.030Z</lastmod>
   </url>
 </urlset>
