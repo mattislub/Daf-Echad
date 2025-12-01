@@ -53,6 +53,30 @@ const setHtmlDirection = (language: Language) => {
 
 const buildCanonical = (path: string) => `${baseUrl}${path}`;
 
+const buildKeywords = (
+  ...keywordSources: (string | string[] | null | undefined)[]
+): string => {
+  const keywords = new Set<string>();
+
+  const addKeyword = (keyword: string | null | undefined) => {
+    keyword
+      ?.split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach((part) => keywords.add(part));
+  };
+
+  keywordSources.forEach((keywordSource) => {
+    if (Array.isArray(keywordSource)) {
+      keywordSource.forEach(addKeyword);
+    } else {
+      addKeyword(keywordSource);
+    }
+  });
+
+  return Array.from(keywords).join(', ');
+};
+
 const buildItemDescription = (language: Language, product: Book) => {
   if (language === 'he') {
     return product.description_he || `${product.title_he} - ספר מקור מברסלב עם כריכה איכותית.`;
@@ -74,9 +98,11 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
     description: homeDescription,
     path: '/',
     type: 'website',
-    keywords: language === 'he'
-      ? 'ספרי ברסלב, רבי נחמן, חנות ספרים, חסידות'
-      : 'Breslov books, Rabbi Nachman, sefer store, chassidut',
+    keywords: buildKeywords(
+      language === 'he'
+        ? 'ספרי ברסלב, רבי נחמן, חנות ספרים, חסידות'
+        : 'Breslov books, Rabbi Nachman, sefer store, chassidut',
+    ),
     image: '/logo.png',
   };
 
@@ -88,9 +114,11 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         : 'Browse the complete Breslov catalog by category, pricing, and new arrivals.',
       path: '/catalog',
       type: 'website',
-      keywords: language === 'he'
-        ? 'קטלוג ברסלב, ספרים חסידיים, קניות אונליין'
-        : 'Breslov catalog, chassidic books, buy jewish books online',
+      keywords: buildKeywords(
+        language === 'he'
+          ? 'קטלוג ברסלב, ספרים חסידיים, קניות אונליין'
+          : 'Breslov catalog, chassidic books, buy jewish books online',
+      ),
       image: '/logo.png',
     };
   }
@@ -107,13 +135,13 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
       description: buildItemDescription(language, product),
       path: `/item/${product.id}`,
       type: 'article',
-      keywords: [
+      keywords: buildKeywords(
+        product.keywords,
         categoryName,
+        language === 'he' ? product.title_he : product.title_en,
         language === 'he' ? 'ספר ברסלב' : 'Breslov sefer',
         language === 'he' ? 'רבי נחמן' : 'Rabbi Nachman',
-      ]
-        .filter(Boolean)
-        .join(', '),
+      ),
       image: product.image_url,
     };
   }
@@ -126,9 +154,11 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         : 'Review your cart, choose worldwide delivery, and select payment before confirming.',
       path: '/cart',
       type: 'website',
-      keywords: language === 'he'
-        ? 'עגלה, תשלום, משלוח בינלאומי, ברסלב'
-        : 'cart, checkout, worldwide shipping, breslov books',
+      keywords: buildKeywords(
+        language === 'he'
+          ? 'עגלה, תשלום, משלוח בינלאומי, ברסלב'
+          : 'cart, checkout, worldwide shipping, breslov books',
+      ),
       image: '/logo.png',
     };
   }
@@ -141,9 +171,11 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         : 'Private area for managing orders, delivery addresses, and shopping preferences.',
       path: '/account',
       type: 'website',
-      keywords: language === 'he'
-        ? 'חשבון לקוח, הזמנות, משלוחים, ספרי ברסלב'
-        : 'customer account, orders, shipping, breslov books',
+      keywords: buildKeywords(
+        language === 'he'
+          ? 'חשבון לקוח, הזמנות, משלוחים, ספרי ברסלב'
+          : 'customer account, orders, shipping, breslov books',
+      ),
       image: '/logo.png',
     };
   }
