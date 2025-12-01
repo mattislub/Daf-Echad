@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
+import { SearchProvider } from './context/SearchContext';
 import Header from './components/Header';
 import Banner from './components/Banner';
 import CategoryCards from './components/CategoryCards';
@@ -17,7 +18,7 @@ import PoliciesPage from './pages/PoliciesPage';
 import TermsPage from './pages/TermsPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
-import { getBooks, getCategories } from './services/api';
+import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
 import { Loader2 } from 'lucide-react';
 import {
   buildProductPath,
@@ -85,6 +86,7 @@ function App() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const getBookSlug = useCallback((book: Book | undefined) => {
     if (!book) return '';
@@ -154,17 +156,21 @@ function App() {
     const loadBooks = async () => {
       try {
         setLoadingBooks(true);
-        const [booksData, categoriesData] = await Promise.all([
+        const [booksData, categoriesData, authorsData, publishersData] = await Promise.all([
           getBooks(),
           getCategories(),
+          getAuthors(),
+          getPublishers(),
         ]);
 
-        const booksWithCategories = (booksData ?? []).map((book) => {
+        const booksWithRelations = (booksData ?? []).map((book) => {
           const category = categoriesData?.find((cat) => cat.id === book.category_id);
-          return category ? { ...book, category } : book;
+          const author = authorsData?.find((a) => a.id === book.author_id);
+          const publisher = publishersData?.find((p) => p.id === book.publisher_id);
+          return { ...book, category, author, publisher };
         });
 
-        setBooks(booksWithCategories);
+        setBooks(booksWithRelations);
       } catch (error) {
         console.error('Failed to load books:', error);
         setBooks([]);
@@ -175,6 +181,17 @@ function App() {
 
     loadBooks();
   }, []);
+
+  const handleSearch = useCallback(
+    (query: string) => {
+      const normalizedQuery = query.trim();
+      setSearchQuery(normalizedQuery);
+      setCurrentPage('catalog');
+      setSelectedBookId(null);
+      updateHashForPage('catalog');
+    },
+    [updateHashForPage],
+  );
 
   useEffect(() => {
     const matchBookFromSlug = () => {
@@ -259,14 +276,21 @@ function App() {
   return (
     <LanguageProvider>
       <CartProvider>
-        <AppContent
-          currentPage={currentPage}
-          selectedBookId={selectedBookId}
-          onNavigate={handleNavigate}
-          books={books}
-          loadingBooks={loadingBooks}
-          pendingSlug={pendingSlug}
-        />
+        <SearchProvider
+          searchItems={books}
+          searchTerm={searchQuery}
+          setSearchTerm={setSearchQuery}
+          onSearch={handleSearch}
+        >
+          <AppContent
+            currentPage={currentPage}
+            selectedBookId={selectedBookId}
+            onNavigate={handleNavigate}
+            books={books}
+            loadingBooks={loadingBooks}
+            pendingSlug={pendingSlug}
+          />
+        </SearchProvider>
       </CartProvider>
     </LanguageProvider>
   );

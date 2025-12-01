@@ -7,6 +7,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Loader2, SlidersHorizontal } from 'lucide-react';
 import { getAuthors, getBooks, getCategories, getPublishers } from '../services/api';
+import { useSearch } from '../context/SearchContext';
 
 interface CatalogProps {
   onNavigate?: (page: string, bookId?: string) => void;
@@ -14,6 +15,7 @@ interface CatalogProps {
 
 export default function Catalog({ onNavigate }: CatalogProps = {}) {
   const { language, currency } = useLanguage();
+  const { searchTerm } = useSearch();
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,7 +43,7 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
 
   useEffect(() => {
     applyFilters();
-  }, [books, filters, currency]);
+  }, [books, filters, currency, searchTerm]);
 
   const fetchData = async () => {
     try {
@@ -55,7 +57,9 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
 
       const booksWithCategories = (booksData ?? []).map((book) => {
         const category = categoriesData?.find((cat) => cat.id === book.category_id);
-        return category ? { ...book, category } : book;
+        const author = authorsData?.find((a) => a.id === book.author_id);
+        const publisher = publishersData?.find((p) => p.id === book.publisher_id);
+        return { ...book, category, author, publisher };
       });
 
       setBooks(booksWithCategories);
@@ -72,6 +76,27 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
 
   const applyFilters = () => {
     let result = [...books];
+
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    if (normalizedSearch) {
+      result = result.filter((book) => {
+        const searchableText = [
+          book.title_he,
+          book.title_en,
+          book.description_he,
+          book.description_en,
+          book.keywords?.join(' '),
+          book.category ? `${book.category.name_he} ${book.category.name_en}` : null,
+          book.author?.name,
+          book.publisher?.name,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return searchableText.includes(normalizedSearch);
+      });
+    }
 
     // Filter by categories
     if (filters.categories.length > 0) {
