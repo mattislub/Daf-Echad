@@ -160,15 +160,16 @@ function mapItemRowToBook(
   categoryMap = new Map(),
   publisherMap = new Map(),
   itemCategoryMap = new Map(),
+  itemPriceMap = new Map(),
   keywordMap = new Map(),
   colorMap = new Map(),
   languageMap = new Map()
 ) {
-  const price = Number(row.pri) || 0;
   const volumes = Number(row.vol) || 1;
   const defaultDate = new Date().toISOString();
 
   const itemId = String(row.ID);
+  const price = Number(itemPriceMap.get(itemId) ?? row.pri) || 0;
   const categoryCode = itemCategoryMap.get(itemId) || (row.typeid ? String(row.typeid) : null);
   const categoryFromMap = categoryCode ? categoryMap.get(categoryCode) : undefined;
 
@@ -307,6 +308,41 @@ async function fetchItemKeywords() {
     }, new Map());
   } catch (error) {
     console.error('Database query failed while fetching item keywords:', error);
+    throw error;
+  }
+}
+
+async function fetchItemPrices() {
+  try {
+    const [rows] = await pool.query('SELECT * FROM sellprice');
+
+    return rows.reduce((map, row) => {
+      const itemId = row.itemid ?? row.itemId ?? row.ID ?? row.id;
+
+      if (!itemId) return map;
+
+      const priceValue =
+        row.price ??
+        row.pri ??
+        row.sellprice ??
+        row.sellPrice ??
+        row.price_ils ??
+        row.priceIls ??
+        row.price_usd ??
+        row.priceUsd;
+
+      if (priceValue === undefined || priceValue === null) return map;
+
+      const numericPrice = Number(priceValue);
+
+      if (Number.isNaN(numericPrice)) return map;
+
+      map.set(String(itemId), numericPrice);
+
+      return map;
+    }, new Map());
+  } catch (error) {
+    console.error('Database query failed while fetching item prices:', error);
     throw error;
   }
 }
@@ -500,22 +536,34 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap, colors, languages] =
-      await Promise.all([
-        fetchItems(),
-        fetchAuthors(),
-        fetchBindings(),
-        fetchCategories(),
-        fetchPublishers(),
-        fetchItemCategoryMap(),
-        fetchItemKeywords(),
-        fetchColors(),
-        fetchLanguages(),
-      ]);
+    const [
+      rows,
+      authors,
+      bindings,
+      categories,
+      publishers,
+      itemCategoryMap,
+      itemPriceMap,
+      keywordMap,
+      colors,
+      languages,
+    ] = await Promise.all([
+      fetchItems(),
+      fetchAuthors(),
+      fetchBindings(),
+      fetchCategories(),
+      fetchPublishers(),
+      fetchItemCategoryMap(),
+      fetchItemPrices(),
+      fetchItemKeywords(),
+      fetchColors(),
+      fetchLanguages(),
+    ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
+    const priceMap = itemPriceMap instanceof Map ? itemPriceMap : new Map();
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
     let books = rows.map((row) =>
@@ -526,6 +574,7 @@ app.get('/api/books', async (req, res) => {
         categoryMap,
         publisherMap,
         itemCategoryMap,
+        priceMap,
         keywordMap,
         colorMap,
         languageMap
@@ -565,22 +614,34 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap, colors, languages] =
-      await Promise.all([
-        fetchItems(),
-        fetchAuthors(),
-        fetchBindings(),
-        fetchCategories(),
-        fetchPublishers(),
-        fetchItemCategoryMap(),
-        fetchItemKeywords(),
-        fetchColors(),
-        fetchLanguages(),
-      ]);
+    const [
+      rows,
+      authors,
+      bindings,
+      categories,
+      publishers,
+      itemCategoryMap,
+      itemPriceMap,
+      keywordMap,
+      colors,
+      languages,
+    ] = await Promise.all([
+      fetchItems(),
+      fetchAuthors(),
+      fetchBindings(),
+      fetchCategories(),
+      fetchPublishers(),
+      fetchItemCategoryMap(),
+      fetchItemPrices(),
+      fetchItemKeywords(),
+      fetchColors(),
+      fetchLanguages(),
+    ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
+    const priceMap = itemPriceMap instanceof Map ? itemPriceMap : new Map();
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
     const books = rows.map((row) =>
@@ -591,6 +652,7 @@ app.get('/api/books/:id', async (req, res) => {
         categoryMap,
         publisherMap,
         itemCategoryMap,
+        priceMap,
         keywordMap,
         colorMap,
         languageMap
