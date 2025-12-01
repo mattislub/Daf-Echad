@@ -1,19 +1,21 @@
+import { useState, type ReactNode } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Book } from '../types/catalog';
-import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, FileText, Hash, Tags } from 'lucide-react';
+import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, FileText, Hash, Tags, ChevronDown } from 'lucide-react';
 
 interface ItemFactsProps {
   book: Book;
 }
 
 interface FactItem {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 }
 
 export default function ItemFacts({ book }: ItemFactsProps) {
   const { language } = useLanguage();
+  const [isOpen, setIsOpen] = useState(false);
 
   const facts: FactItem[] = [
     {
@@ -80,25 +82,48 @@ export default function ItemFacts({ book }: ItemFactsProps) {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-        <Package className="w-6 h-6 text-yellow-600" />
-        {language === 'he' ? 'פרטי המוצר' : 'Product Details'}
-      </h3>
-      <div className="space-y-3">
-        {facts.map((fact, index) => (
-          <div
-            key={index}
-            className="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0"
-          >
-            <div className="text-yellow-600 mt-0.5">{fact.icon}</div>
-            <div className="flex-1">
-              <dt className="text-sm font-medium text-gray-500">{fact.label}</dt>
-              <dd className="text-base font-semibold text-gray-900 mt-0.5">{fact.value}</dd>
-            </div>
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3 text-left">
+          <div className="p-2 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100">
+            <Package className="w-5 h-5" />
           </div>
-        ))}
-      </div>
+          <div>
+            <p className="text-sm text-gray-500">
+              {language === 'he' ? 'פרטי המוצר' : 'Product Details'}
+            </p>
+            <p className="text-base font-semibold text-gray-900">
+              {language === 'he' ? 'הרחב לפרטים נוספים' : 'Expand for more details'}
+            </p>
+          </div>
+        </div>
+        <ChevronDown
+          className={`w-5 h-5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="px-5 pb-5 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            {facts.map((fact, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-3 border-b border-gray-100 pb-3 last:border-0"
+              >
+                <div className="text-yellow-600 mt-0.5">{fact.icon}</div>
+                <div className="flex-1">
+                  <dt className="text-sm font-medium text-gray-500">{fact.label}</dt>
+                  <dd className="text-base font-semibold text-gray-900 mt-0.5">{fact.value}</dd>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
