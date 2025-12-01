@@ -12,6 +12,7 @@ import {
   Info,
   FileText,
   Mail,
+  ShieldCheck,
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
@@ -268,6 +269,13 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
           >
             <FileText className="w-4 h-4" />
             <span>{t('nav.terms')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate?.('admin')}
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>{t('nav.admin')}</span>
           </button>
         </nav>
       </div>

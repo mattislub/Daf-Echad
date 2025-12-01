@@ -16,6 +16,7 @@ import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import PoliciesPage from './pages/PoliciesPage';
 import TermsPage from './pages/TermsPage';
+import AdminPage from './pages/AdminPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
@@ -259,6 +260,11 @@ function App() {
           setSelectedBookId(null);
           setPendingSlug(null);
           break;
+        case 'admin':
+          setCurrentPage('admin');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
         default:
           setCurrentPage('home');
           setSelectedBookId(null);
@@ -349,6 +355,7 @@ function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBoo
       {currentPage === 'contact' && <ContactPage onNavigate={onNavigate} />}
       {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
       {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
+      {currentPage === 'admin' && <AdminPage onNavigate={onNavigate} />}
     </>
   );
 }
