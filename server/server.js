@@ -43,6 +43,23 @@ function buildAuthorMap(authorRows) {
   }, new Map());
 }
 
+function buildPublisherMap(publisherRows) {
+  const defaultDate = new Date().toISOString();
+
+  return publisherRows.reduce((map, row) => {
+    const id = row.ID ?? row.id;
+    if (!id) return map;
+
+    map.set(String(id), {
+      id: String(id),
+      name: row.name ?? '',
+      created_at: row.created_at ?? defaultDate,
+    });
+
+    return map;
+  }, new Map());
+}
+
 function buildBindingMap(bindingRows) {
   return bindingRows.reduce((map, row) => {
     const id = row.ID ?? row.id;
@@ -97,6 +114,7 @@ function mapItemRowToBook(
   authorMap = new Map(),
   bindingMap = new Map(),
   categoryMap = new Map(),
+  publisherMap = new Map(),
   itemCategoryMap = new Map(),
   keywordMap = new Map()
 ) {
@@ -129,11 +147,13 @@ function mapItemRowToBook(
         }
       : undefined;
 
+  const publisherDetails = publisherId ? publisherMap.get(publisherId) : undefined;
+
   const publisher = publisherId
     ? {
         id: publisherId,
-        name: String(row.publishid ?? ''),
-        created_at: defaultDate,
+        name: publisherDetails?.name ?? String(row.publishid ?? ''),
+        created_at: publisherDetails?.created_at ?? defaultDate,
       }
     : undefined;
 
@@ -277,25 +297,22 @@ async function fetchAuthors() {
   }
 }
 
-function deriveUniqueOptions(rows, key) {
-  const seen = new Set();
+async function fetchPublishers() {
+  try {
+    const [rows] = await pool.query('SELECT ID, name FROM publish');
+    const defaultDate = new Date().toISOString();
 
-  return rows
-    .map((row) => row[key])
-    .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
-    .filter((value) => {
-      const stringValue = String(value);
-      if (seen.has(stringValue)) return false;
-      seen.add(stringValue);
-      return true;
-    })
-    .map((value) => ({
-      id: String(value),
-      name_en: String(value),
-      name_he: String(value),
-      slug: `${key}-${value}`,
-      created_at: new Date().toISOString(),
-    }));
+    return rows
+      .filter((row) => row.ID || row.id)
+      .map((row) => ({
+        id: String(row.ID ?? row.id ?? ''),
+        name: row.name ?? '',
+        created_at: defaultDate,
+      }));
+  } catch (error) {
+    console.error('Database query failed while fetching publishers:', error);
+    throw error;
+  }
 }
 
 const app = express();
@@ -409,19 +426,29 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, itemCategoryMap, keywordMap] = await Promise.all([
+    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap] = await Promise.all([
       fetchItems(),
       fetchAuthors(),
       fetchBindings(),
       fetchCategories(),
+      fetchPublishers(),
       fetchItemCategoryMap(),
       fetchItemKeywords(),
     ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
+    const publisherMap = buildPublisherMap(publishers);
     let books = rows.map((row) =>
-      mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap, keywordMap)
+      mapItemRowToBook(
+        row,
+        authorMap,
+        bindingMap,
+        categoryMap,
+        publisherMap,
+        itemCategoryMap,
+        keywordMap
+      )
     );
 
     const { category_id, exclude, limit, featured } = req.query;
@@ -457,19 +484,29 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, itemCategoryMap, keywordMap] = await Promise.all([
+    const [rows, authors, bindings, categories, publishers, itemCategoryMap, keywordMap] = await Promise.all([
       fetchItems(),
       fetchAuthors(),
       fetchBindings(),
       fetchCategories(),
+      fetchPublishers(),
       fetchItemCategoryMap(),
       fetchItemKeywords(),
     ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
+    const publisherMap = buildPublisherMap(publishers);
     const books = rows.map((row) =>
-      mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap, keywordMap)
+      mapItemRowToBook(
+        row,
+        authorMap,
+        bindingMap,
+        categoryMap,
+        publisherMap,
+        itemCategoryMap,
+        keywordMap
+      )
     );
     const book = books.find((item) => item.id === req.params.id);
 
@@ -502,12 +539,7 @@ app.get('/api/categories', async (_req, res) => {
 
 app.get('/api/publishers', async (_req, res) => {
   try {
-    const rows = await fetchItems();
-    const publishers = deriveUniqueOptions(rows, 'publishid').map((publisher) => ({
-      id: publisher.id,
-      name: publisher.name_en,
-      created_at: publisher.created_at,
-    }));
+    const publishers = await fetchPublishers();
 
     res.json(publishers);
   } catch (error) {
