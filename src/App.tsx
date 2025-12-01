@@ -10,6 +10,10 @@ import Catalog from './pages/Catalog';
 import ItemPage from './pages/ItemPage';
 import CartPage from './pages/CartPage';
 import AccountPage from './pages/AccountPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
+import PoliciesPage from './pages/PoliciesPage';
+import TermsPage from './pages/TermsPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getBooks, getCategories } from './services/api';
@@ -64,7 +68,7 @@ function HomePage({
         )}
       </main>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }
@@ -193,6 +197,14 @@ function App() {
           setSelectedBookId(null);
           setPendingSlug(null);
           break;
+        case 'about':
+        case 'contact':
+        case 'policies':
+        case 'terms':
+          setCurrentPage(route);
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
         default:
           setCurrentPage('home');
           setSelectedBookId(null);
@@ -271,6 +283,10 @@ function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBoo
       )}
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
       {currentPage === 'account' && <AccountPage onNavigate={onNavigate} />}
+      {currentPage === 'about' && <AboutPage onNavigate={onNavigate} />}
+      {currentPage === 'contact' && <ContactPage onNavigate={onNavigate} />}
+      {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
+      {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { Language } from '../types';
 import { Book } from '../types/catalog';
 
-export type SeoPage = 'home' | 'catalog' | 'item' | 'cart' | 'account';
+export type SeoPage = 'home' | 'catalog' | 'item' | 'cart' | 'account' | 'about' | 'contact' | 'policies' | 'terms';
 
 interface SeoOptions {
   language: Language;
@@ -188,6 +188,78 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         language === 'he'
           ? 'חשבון לקוח, הזמנות, משלוחים, ספרי ברסלב'
           : 'customer account, orders, shipping, breslov books',
+      ),
+      image: '/logo.png',
+    };
+  }
+
+  if (page === 'about') {
+    metadata = {
+      title: language === 'he' ? 'אודות דף אחד' : 'About Daf Echad',
+      description: language === 'he'
+        ? 'מידע על פעילות האתר, השירותים והשליחות של דף אחד.'
+        : 'Learn about Daf Echad, our mission, and the services we provide.',
+      path: '/about',
+      type: 'website',
+      siteName: siteTitle,
+      keywords: buildKeywords(
+        language === 'he'
+          ? 'אודות דף אחד, ספרי ברסלב, שירות לקוחות'
+          : 'about daf echad, breslov books, customer service',
+      ),
+      image: '/logo.png',
+    };
+  }
+
+  if (page === 'contact') {
+    metadata = {
+      title: language === 'he' ? 'יצירת קשר' : 'Contact us',
+      description: language === 'he'
+        ? 'פרטי קשר מלאים כולל טלפון, כתובת פיזית ודוא"ל.'
+        : 'Full contact details including phone, physical address, and email.',
+      path: '/contact',
+      type: 'website',
+      siteName: siteTitle,
+      keywords: buildKeywords(
+        language === 'he'
+          ? 'יצירת קשר, שירות לקוחות, טלפון חנות ספרים'
+          : 'contact, customer service, bookstore phone',
+      ),
+      image: '/logo.png',
+    };
+  }
+
+  if (page === 'policies') {
+    metadata = {
+      title: language === 'he' ? 'מדיניות אספקה, ביטול ופרטיות' : 'Supply, cancellation, and privacy policies',
+      description: language === 'he'
+        ? 'פרטי מדיניות אספקת מוצרים, ביטול עסקה ופרטיות בהתאם לחוק.'
+        : 'Details on supply timelines, cancellation rights, and privacy commitments.',
+      path: '/policies',
+      type: 'website',
+      siteName: siteTitle,
+      keywords: buildKeywords(
+        language === 'he'
+          ? 'מדיניות אספקה, ביטול עסקה, פרטיות, חוק הגנת הצרכן'
+          : 'delivery policy, cancellation policy, privacy, consumer protection law',
+      ),
+      image: '/logo.png',
+    };
+  }
+
+  if (page === 'terms') {
+    metadata = {
+      title: language === 'he' ? 'תקנון האתר' : 'Site terms',
+      description: language === 'he'
+        ? 'תקנון שימוש לפני ביצוע עסקה כולל הפניות לחוק הגנת הצרכן.'
+        : 'Site terms to confirm before purchasing, with references to consumer protection law.',
+      path: '/terms',
+      type: 'website',
+      siteName: siteTitle,
+      keywords: buildKeywords(
+        language === 'he'
+          ? 'תקנון אתר, אישור תנאים, חוק הגנת הצרכן'
+          : 'site terms, accept terms, consumer protection law',
       ),
       image: '/logo.png',
     };

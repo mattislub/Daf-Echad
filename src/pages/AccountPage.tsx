@@ -406,7 +406,7 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
         </div>
       </main>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

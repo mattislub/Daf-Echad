@@ -29,6 +29,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [selectedShipping, setSelectedShipping] = useState<string>('israel-standard');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const shippingOptions: ShippingOption[] = useMemo(
     () => [
@@ -364,9 +365,28 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     <span>{paymentMethod === 'card' ? t('cart.order.note') : t('cart.payment.cash.note')}</span>
                   </div>
                 </div>
+                <label className="mt-4 flex items-start gap-3 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  />
+                  <span>
+                    {t('cart.terms.label')}{' '}
+                    <button
+                      type="button"
+                      className="text-yellow-700 font-semibold underline"
+                      onClick={() => onNavigate?.('terms')}
+                    >
+                      {t('cart.terms.cta')}
+                    </button>
+                  </span>
+                </label>
                 <button
                   className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition"
                   onClick={() => setShowConfirmation(true)}
+                  disabled={!acceptedTerms}
                 >
                   {t('cart.checkout')}
                 </button>
@@ -389,7 +409,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
         )}
       </main>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

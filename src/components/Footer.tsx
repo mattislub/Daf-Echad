@@ -1,7 +1,11 @@
-import { Mail, Phone, MapPin, CreditCard, Heart } from 'lucide-react';
+import { Mail, Phone, MapPin, CreditCard, Heart, FileText } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
-export default function Footer() {
+interface FooterProps {
+  onNavigate?: (page: string) => void;
+}
+
+export default function Footer({ onNavigate }: FooterProps = {}) {
   const { language, t } = useLanguage();
   const isRTL = language === 'he';
 
@@ -40,24 +44,77 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-bold mb-4">{t('footer.sitemap')}</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-yellow-500 transition-colors">{t('nav.home')}</a></li>
-              <li><a href="#" className="hover:text-yellow-500 transition-colors">{t('nav.books')}</a></li>
-              <li><a href="#" className="hover:text-yellow-500 transition-colors">{t('nav.children')}</a></li>
-              <li><a href="#" className="hover:text-yellow-500 transition-colors">{t('nav.women')}</a></li>
-              <li><a href="#" className="hover:text-yellow-500 transition-colors">{t('categories.all')}</a></li>
+              <li>
+                <button
+                  className="hover:text-yellow-500 transition-colors"
+                  onClick={() => onNavigate?.('home')}
+                >
+                  {t('nav.home')}
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:text-yellow-500 transition-colors"
+                  onClick={() => onNavigate?.('catalog')}
+                >
+                  {t('nav.books')}
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:text-yellow-500 transition-colors"
+                  onClick={() => onNavigate?.('catalog')}
+                >
+                  {t('nav.children')}
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:text-yellow-500 transition-colors"
+                  onClick={() => onNavigate?.('catalog')}
+                >
+                  {t('nav.women')}
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:text-yellow-500 transition-colors"
+                  onClick={() => onNavigate?.('catalog')}
+                >
+                  {t('categories.all')}
+                </button>
+              </li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-lg font-bold mb-4">{t('footer.about')}</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-yellow-500 transition-colors">{t('footer.about')}</a></li>
-              <li><a href="#" className="hover:text-yellow-500 transition-colors">{t('footer.contact')}</a></li>
               <li>
-                <a href="#" className="hover:text-yellow-500 transition-colors flex items-center gap-2">
+                <button
+                  className="hover:text-yellow-500 transition-colors"
+                  onClick={() => onNavigate?.('about')}
+                >
+                  {t('footer.about')}
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:text-yellow-500 transition-colors"
+                  onClick={() => onNavigate?.('contact')}
+                >
+                  {t('footer.contact')}
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:text-yellow-500 transition-colors flex items-center gap-2"
+                  onClick={() => onNavigate?.('policies')}
+                >
+                  <FileText className="w-4 h-4" />
                   <Heart className="w-4 h-4" />
                   {t('footer.donations')}
-                </a>
+                </button>
               </li>
             </ul>
           </div>
@@ -88,13 +145,19 @@ export default function Footer() {
             {t('footer.rights')} {new Date().getFullYear()} - {t('site.title')}
           </div>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-yellow-500 transition-colors">
+            <button
+              className="hover:text-yellow-500 transition-colors"
+              onClick={() => onNavigate?.('terms')}
+            >
               {isRTL ? 'תנאי שימוש' : 'Terms of Service'}
-            </a>
+            </button>
             <span>|</span>
-            <a href="#" className="hover:text-yellow-500 transition-colors">
+            <button
+              className="hover:text-yellow-500 transition-colors"
+              onClick={() => onNavigate?.('policies')}
+            >
               {isRTL ? 'מדיניות פרטיות' : 'Privacy Policy'}
-            </a>
+            </button>
           </div>
         </div>
       </div>
