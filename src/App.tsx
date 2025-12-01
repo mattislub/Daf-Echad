@@ -8,6 +8,7 @@ import ProductSection from './components/ProductSection';
 import Footer from './components/Footer';
 import Catalog from './pages/Catalog';
 import ItemPage from './pages/ItemPage';
+import CartPage from './pages/CartPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getBooks, getCategories } from './services/api';
@@ -151,6 +152,7 @@ function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBoo
       {currentPage === 'item' && selectedBookId && (
         <ItemPage bookId={selectedBookId} onNavigate={onNavigate} />
       )}
+      {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
     </>
   );
 }
