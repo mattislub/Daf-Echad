@@ -9,6 +9,9 @@ import {
   Baby,
   Sparkles,
   LogIn,
+  Info,
+  FileText,
+  Mail,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
@@ -146,6 +149,27 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
           >
             <Sparkles className="w-4 h-4" />
             <span>{t('nav.women')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate?.('about')}
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+          >
+            <Info className="w-4 h-4" />
+            <span>{t('nav.about')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate?.('contact')}
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+          >
+            <Mail className="w-4 h-4" />
+            <span>{t('nav.contact')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate?.('terms')}
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            <span>{t('nav.terms')}</span>
           </button>
         </nav>
       </div>

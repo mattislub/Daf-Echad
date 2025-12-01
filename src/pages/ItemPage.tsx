@@ -296,7 +296,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
         )}
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

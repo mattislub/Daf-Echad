@@ -229,7 +229,7 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
         </div>
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

@@ -184,7 +184,7 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
         </div>
       </main>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }
