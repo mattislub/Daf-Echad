@@ -29,6 +29,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [selectedShipping, setSelectedShipping] = useState<string>('israel-standard');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsError, setShowTermsError] = useState(false);
 
   const shippingOptions: ShippingOption[] = useMemo(
     () => [
@@ -363,10 +365,42 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     <Wallet className="w-4 h-4 text-yellow-700" />
                     <span>{paymentMethod === 'card' ? t('cart.order.note') : t('cart.payment.cash.note')}</span>
                   </div>
+                  <div className="flex items-start gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      id="terms-agreement"
+                      checked={termsAccepted}
+                      onChange={(e) => {
+                        setTermsAccepted(e.target.checked);
+                        setShowTermsError(false);
+                      }}
+                      className="mt-1"
+                    />
+                    <label htmlFor="terms-agreement" className="leading-snug">
+                      {t('cart.terms.checkbox')}
+                      <button
+                        type="button"
+                        onClick={() => onNavigate?.('terms')}
+                        className="block text-yellow-700 font-semibold hover:underline"
+                      >
+                        {t('cart.terms.link')}
+                      </button>
+                    </label>
+                  </div>
+                  {showTermsError && (
+                    <p className="text-red-600 text-sm">{t('cart.terms.required')}</p>
+                  )}
                 </div>
                 <button
                   className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition"
-                  onClick={() => setShowConfirmation(true)}
+                  onClick={() => {
+                    if (!termsAccepted) {
+                      setShowTermsError(true);
+                      setShowConfirmation(false);
+                      return;
+                    }
+                    setShowConfirmation(true);
+                  }}
                 >
                   {t('cart.checkout')}
                 </button>
@@ -389,7 +423,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
         )}
       </main>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

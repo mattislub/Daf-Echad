@@ -559,7 +559,7 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
         {renderContent()}
       </main>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

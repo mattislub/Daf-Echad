@@ -11,6 +11,10 @@ import ItemPage from './pages/ItemPage';
 import CartPage from './pages/CartPage';
 import AccountPage from './pages/AccountPage';
 import LoginPage from './pages/LoginPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
+import PoliciesPage from './pages/PoliciesPage';
+import TermsPage from './pages/TermsPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getBooks, getCategories } from './services/api';
@@ -65,7 +69,7 @@ function HomePage({
         )}
       </main>
 
-      <Footer />
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }
@@ -189,6 +193,26 @@ function App() {
           setSelectedBookId(null);
           setPendingSlug(null);
           break;
+        case 'about':
+          setCurrentPage('about');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
+        case 'contact':
+          setCurrentPage('contact');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
+        case 'policies':
+          setCurrentPage('policies');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
+        case 'terms':
+          setCurrentPage('terms');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
         case 'account':
           setCurrentPage('account');
           setSelectedBookId(null);
@@ -278,6 +302,10 @@ function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBoo
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
       {currentPage === 'account' && <AccountPage onNavigate={onNavigate} />}
       {currentPage === 'login' && <LoginPage onNavigate={onNavigate} />}
+      {currentPage === 'about' && <AboutPage onNavigate={onNavigate} />}
+      {currentPage === 'contact' && <ContactPage onNavigate={onNavigate} />}
+      {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
+      {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
     </>
   );
 }
