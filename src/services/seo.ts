@@ -16,6 +16,7 @@ interface SeoMetadata {
   type?: 'website' | 'article';
   keywords?: string;
   image?: string;
+  siteName?: string;
 }
 
 const DEFAULT_BASE_URL = 'https://daf-echad.example.com';
@@ -49,6 +50,13 @@ const setHtmlDirection = (language: Language) => {
   const html = document.documentElement;
   html.lang = language;
   html.dir = language === 'he' ? 'rtl' : 'ltr';
+};
+
+const removeMetaTags = (selectors: string[]) => {
+  selectors.forEach((selector) => {
+    const element = document.querySelector(selector);
+    element?.remove();
+  });
 };
 
 const buildCanonical = (path: string) => `${baseUrl}${path}`;
@@ -98,6 +106,7 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
     description: homeDescription,
     path: '/',
     type: 'website',
+    siteName: siteTitle,
     keywords: buildKeywords(
       language === 'he'
         ? 'ספרי ברסלב, רבי נחמן, חנות ספרים, חסידות'
@@ -114,6 +123,7 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         : 'Browse the complete Breslov catalog by category, pricing, and new arrivals.',
       path: '/catalog',
       type: 'website',
+      siteName: siteTitle,
       keywords: buildKeywords(
         language === 'he'
           ? 'קטלוג ברסלב, ספרים חסידיים, קניות אונליין'
@@ -135,6 +145,7 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
       description: buildItemDescription(language, product),
       path: `/item/${product.id}`,
       type: 'article',
+      siteName: siteTitle,
       keywords: buildKeywords(
         product.keywords,
         categoryName,
@@ -154,6 +165,7 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         : 'Review your cart, choose worldwide delivery, and select payment before confirming.',
       path: '/cart',
       type: 'website',
+      siteName: siteTitle,
       keywords: buildKeywords(
         language === 'he'
           ? 'עגלה, תשלום, משלוח בינלאומי, ברסלב'
@@ -171,6 +183,7 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         : 'Private area for managing orders, delivery addresses, and shopping preferences.',
       path: '/account',
       type: 'website',
+      siteName: siteTitle,
       keywords: buildKeywords(
         language === 'he'
           ? 'חשבון לקוח, הזמנות, משלוחים, ספרי ברסלב'
@@ -188,6 +201,7 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
   ensureMetaTag('meta[name="description"]', 'content', metadata.description);
   ensureMetaTag('meta[name="keywords"]', 'content', metadata.keywords || '');
   ensureMetaTag('meta[property="og:title"]', 'content', pageTitle);
+  ensureMetaTag('meta[property="og:site_name"]', 'content', metadata.siteName || siteTitle);
   ensureMetaTag('meta[property="og:description"]', 'content', metadata.description);
   ensureMetaTag('meta[property="og:type"]', 'content', metadata.type || 'website');
   ensureMetaTag('meta[property="og:url"]', 'content', canonicalUrl);
@@ -196,6 +210,32 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
   ensureMetaTag('meta[name="twitter:title"]', 'content', pageTitle);
   ensureMetaTag('meta[name="twitter:description"]', 'content', metadata.description);
   ensureMetaTag('meta[name="twitter:image"]', 'content', metadata.image || `${baseUrl}/logo.png`);
+
+  const productMetaSelectors = [
+    'meta[property="product:price:amount"]',
+    'meta[property="product:price:currency"]',
+    'meta[property="product:availability"]',
+    'meta[name="product:item_number"]',
+    'meta[name="product:binding"]',
+    'meta[name="product:dimensions"]',
+    'meta[name="product:language"]',
+  ];
+
+  if (page === 'item' && product) {
+    const priceAmount = language === 'he' ? product.price_ils : product.price_usd;
+    const priceCurrency = language === 'he' ? 'ILS' : 'USD';
+    const availability = product.in_stock ? 'in stock' : 'out of stock';
+
+    ensureMetaTag('meta[property="product:price:amount"]', 'content', String(priceAmount));
+    ensureMetaTag('meta[property="product:price:currency"]', 'content', priceCurrency);
+    ensureMetaTag('meta[property="product:availability"]', 'content', availability);
+    ensureMetaTag('meta[name="product:item_number"]', 'content', product.item_number || product.id);
+    ensureMetaTag('meta[name="product:binding"]', 'content', product.binding);
+    ensureMetaTag('meta[name="product:dimensions"]', 'content', product.dimensions);
+    ensureMetaTag('meta[name="product:language"]', 'content', product.language);
+  } else {
+    removeMetaTags(productMetaSelectors);
+  }
 
   ensureLinkTag('canonical', canonicalUrl);
 };
