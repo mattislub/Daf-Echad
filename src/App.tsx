@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
 import Header from './components/Header';
@@ -14,6 +14,7 @@ import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getBooks, getCategories } from './services/api';
 import { Loader2 } from 'lucide-react';
+import { createSlugFromTitle, normalizeSlug } from './utils/slug';
 
 function HomePage({
   books,
@@ -73,10 +74,56 @@ function App() {
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
+  const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+
+  const findBookBySlug = useCallback(
+    (slug: string) => {
+      const normalizedSlug = normalizeSlug(decodeURIComponent(slug));
+      return books.find((book) => {
+        const heSlug = normalizeSlug(book.title_he);
+        const enSlug = normalizeSlug(book.title_en);
+        return heSlug === normalizedSlug || enSlug === normalizedSlug;
+      });
+    },
+    [books],
+  );
+
+  const getBookSlug = useCallback((book: Book | undefined) => {
+    if (!book) return '';
+    return createSlugFromTitle(book.title_he || book.title_en || book.id);
+  }, []);
+
+  const updateHashForPage = useCallback(
+    (page: string, book?: Book) => {
+      const basePath = page === 'home' ? '/' : `/${page}`;
+
+      if (page === 'item') {
+        const slug = getBookSlug(book);
+        window.location.hash = slug ? `/item/${encodeURIComponent(slug)}` : '/item';
+        return;
+      }
+
+      window.location.hash = basePath;
+    },
+    [getBookSlug],
+  );
 
   const handleNavigate = (page: string, bookId?: string) => {
+    const targetBook = books.find((book) => book.id === bookId);
+
+    if (page === 'item') {
+      const fallbackSlug = bookId ?? '';
+      setPendingSlug(targetBook ? null : fallbackSlug || null);
+      setCurrentPage('item');
+      setSelectedBookId(bookId ?? null);
+      updateHashForPage('item', targetBook);
+      return;
+    }
+
+    setPendingSlug(null);
     setCurrentPage(page);
-    setSelectedBookId(bookId ?? null);
+    setSelectedBookId(null);
+    updateHashForPage(page);
   };
 
   useEffect(() => {
@@ -105,6 +152,61 @@ function App() {
     loadBooks();
   }, []);
 
+  useEffect(() => {
+    const matchBookFromSlug = () => {
+      if (pendingSlug && books.length > 0) {
+        const matchedBook = findBookBySlug(pendingSlug);
+        if (matchedBook) {
+          setSelectedBookId(matchedBook.id);
+          setCurrentPage('item');
+          setPendingSlug(null);
+        }
+      }
+    };
+
+    matchBookFromSlug();
+  }, [books, findBookBySlug, pendingSlug]);
+
+  useEffect(() => {
+    const parseHashRoute = () => {
+      const hash = window.location.hash.replace(/^#/, '');
+      const [route, slugOrId] = hash.split('/').filter(Boolean);
+
+      switch (route) {
+        case 'catalog':
+          setCurrentPage('catalog');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
+        case 'item':
+          setCurrentPage('item');
+          setSelectedBookId(null);
+          setPendingSlug(slugOrId ?? null);
+          break;
+        case 'cart':
+          setCurrentPage('cart');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
+        case 'account':
+          setCurrentPage('account');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
+        default:
+          setCurrentPage('home');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
+      }
+    };
+
+    parseHashRoute();
+    window.addEventListener('hashchange', parseHashRoute);
+
+    return () => window.removeEventListener('hashchange', parseHashRoute);
+  }, []);
+
   return (
     <LanguageProvider>
       <CartProvider>
@@ -114,6 +216,7 @@ function App() {
           onNavigate={handleNavigate}
           books={books}
           loadingBooks={loadingBooks}
+          pendingSlug={pendingSlug}
         />
       </CartProvider>
     </LanguageProvider>
@@ -126,9 +229,10 @@ interface AppContentProps {
   onNavigate: (page: string, bookId?: string) => void;
   books: Book[];
   loadingBooks: boolean;
+  pendingSlug: string | null;
 }
 
-function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBooks }: AppContentProps) {
+function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBooks, pendingSlug }: AppContentProps) {
   const { language, t } = useLanguage();
 
   const selectedProduct = useMemo<Book | undefined>(
@@ -152,6 +256,18 @@ function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBoo
       {currentPage === 'catalog' && <Catalog onNavigate={onNavigate} />}
       {currentPage === 'item' && selectedBookId && (
         <ItemPage bookId={selectedBookId} onNavigate={onNavigate} />
+      )}
+      {currentPage === 'item' && !selectedBookId && (
+        <div className="min-h-screen bg-gray-50">
+          <Header onNavigate={onNavigate} />
+          <div className="flex items-center justify-center h-screen text-gray-500">
+            {pendingSlug ? (
+              <Loader2 className="w-8 h-8 animate-spin text-yellow-600" />
+            ) : (
+              <p>{language === 'he' ? 'ספר לא נמצא' : 'Book not found'}</p>
+            )}
+          </div>
+        </div>
       )}
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
       {currentPage === 'account' && <AccountPage onNavigate={onNavigate} />}
