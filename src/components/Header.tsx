@@ -8,6 +8,7 @@ import {
   BookOpen,
   Baby,
   Sparkles,
+  LogIn,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
@@ -82,6 +83,13 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
           </div>
 
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => onNavigate?.('login')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100 transition-colors"
+            >
+              <LogIn className="w-5 h-5" />
+              <span>{t('nav.login')}</span>
+            </button>
             <button
               onClick={() => onNavigate?.('account')}
               className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors"
