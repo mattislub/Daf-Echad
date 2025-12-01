@@ -17,7 +17,7 @@ interface FilterSectionProps {
   defaultOpen?: boolean;
 }
 
-const FilterSection = ({ title, children, defaultOpen = true }: FilterSectionProps) => {
+const FilterSection = ({ title, children, defaultOpen = false }: FilterSectionProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
