@@ -10,6 +10,7 @@ import Catalog from './pages/Catalog';
 import ItemPage from './pages/ItemPage';
 import CartPage from './pages/CartPage';
 import AccountPage from './pages/AccountPage';
+import LoginPage from './pages/LoginPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getBooks, getCategories } from './services/api';
@@ -193,6 +194,11 @@ function App() {
           setSelectedBookId(null);
           setPendingSlug(null);
           break;
+        case 'login':
+          setCurrentPage('login');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          break;
         default:
           setCurrentPage('home');
           setSelectedBookId(null);
@@ -271,6 +277,7 @@ function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBoo
       )}
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
       {currentPage === 'account' && <AccountPage onNavigate={onNavigate} />}
+      {currentPage === 'login' && <LoginPage onNavigate={onNavigate} />}
     </>
   );
 }
