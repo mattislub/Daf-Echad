@@ -14,15 +14,25 @@ import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getBooks, getCategories } from './services/api';
 import { Loader2 } from 'lucide-react';
+import { getBookSlug } from './utils/slug';
+
+type PageKey = 'home' | 'catalog' | 'item' | 'cart' | 'account';
+
+interface RouteState {
+  page: PageKey;
+  slug?: string | null;
+}
 
 function HomePage({
   books,
   loading,
-  onNavigate,
+  onViewAll,
+  onViewDetails,
 }: {
   books: Book[];
   loading: boolean;
-  onNavigate: (page: string, bookId?: string) => void;
+  onViewAll: () => void;
+  onViewDetails: (product: Book) => void;
 }) {
   const { t } = useLanguage();
 
@@ -31,7 +41,7 @@ function HomePage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onNavigate={onNavigate} />
+      <Header />
 
       <main className="container mx-auto px-4 py-8">
         <Banner />
@@ -49,15 +59,15 @@ function HomePage({
             <ProductSection
               title={t('featured')}
               products={featuredProducts}
-              onViewAll={() => onNavigate('catalog')}
-              onViewDetails={(product) => onNavigate('item', product.id)}
+              onViewAll={onViewAll}
+              onViewDetails={onViewDetails}
             />
 
             <ProductSection
               title={t('new.arrivals')}
               products={newArrivals}
-              onViewAll={() => onNavigate('catalog')}
-              onViewDetails={(product) => onNavigate('item', product.id)}
+              onViewAll={onViewAll}
+              onViewDetails={onViewDetails}
             />
           </>
         )}
@@ -69,14 +79,26 @@ function HomePage({
 }
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [route, setRoute] = useState<RouteState>(() =>
+    getRouteFromPath(window.location.pathname),
+  );
   const [books, setBooks] = useState<Book[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
 
-  const handleNavigate = (page: string, bookId?: string) => {
-    setCurrentPage(page);
-    setSelectedBookId(bookId ?? null);
+  useEffect(() => {
+    const handlePopState = () => setRoute(getRouteFromPath(window.location.pathname));
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigate = (page: PageKey, bookSlug?: string) => {
+    const targetPath = getPathForPage(page, bookSlug);
+
+    if (targetPath) {
+      window.history.pushState({}, '', targetPath);
+      setRoute({ page, slug: bookSlug });
+    }
   };
 
   useEffect(() => {
@@ -109,8 +131,7 @@ function App() {
     <LanguageProvider>
       <CartProvider>
         <AppContent
-          currentPage={currentPage}
-          selectedBookId={selectedBookId}
+          route={route}
           onNavigate={handleNavigate}
           books={books}
           loadingBooks={loadingBooks}
@@ -120,43 +141,101 @@ function App() {
   );
 }
 
-interface AppContentProps {
-  currentPage: string;
-  selectedBookId: string | null;
-  onNavigate: (page: string, bookId?: string) => void;
+function AppContent({ route, onNavigate, books, loadingBooks }: {
+  route: RouteState;
+  onNavigate: (page: PageKey, bookSlug?: string) => void;
   books: Book[];
   loadingBooks: boolean;
-}
-
-function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBooks }: AppContentProps) {
+}) {
   const { language, t } = useLanguage();
+  const [selectedProduct, setSelectedProduct] = useState<Book | undefined>();
 
-  const selectedProduct = useMemo<Book | undefined>(
-    () => books.find((product) => product.id === selectedBookId),
-    [books, selectedBookId],
+  useEffect(() => {
+    if (route.page !== 'item') {
+      setSelectedProduct(undefined);
+    }
+  }, [route.page]);
+
+  const selectedBookFromList = useMemo<Book | undefined>(
+    () =>
+      route.page === 'item' && route.slug
+        ? books.find((product) => getBookSlug(product) === route.slug)
+        : undefined,
+    [books, route.page, route.slug],
   );
 
   useEffect(() => {
-    applySeoForPage(currentPage, {
+    const productForSeo = route.page === 'item'
+      ? selectedProduct ?? selectedBookFromList
+      : undefined;
+
+    applySeoForPage(route.page, {
       language,
       t,
-      product: selectedProduct,
+      product: productForSeo,
     });
-  }, [currentPage, language, selectedProduct, t]);
+  }, [language, route.page, route.slug, selectedBookFromList, selectedProduct, t]);
+
+  const handleViewDetails = (product: Book) => {
+    const slug = getBookSlug(product);
+    onNavigate('item', slug);
+    setSelectedProduct(product);
+  };
 
   return (
     <>
-      {currentPage === 'home' && (
-        <HomePage books={books} loading={loadingBooks} onNavigate={onNavigate} />
+      {route.page === 'home' && (
+        <HomePage
+          books={books}
+          loading={loadingBooks}
+          onViewAll={() => onNavigate('catalog')}
+          onViewDetails={handleViewDetails}
+        />
       )}
-      {currentPage === 'catalog' && <Catalog onNavigate={onNavigate} />}
-      {currentPage === 'item' && selectedBookId && (
-        <ItemPage bookId={selectedBookId} onNavigate={onNavigate} />
+      {route.page === 'catalog' && <Catalog onNavigate={onNavigate} />}
+      {route.page === 'item' && route.slug && (
+        <ItemPage
+          bookSlug={route.slug}
+          books={books}
+          onNavigate={onNavigate}
+          onBookResolved={setSelectedProduct}
+        />
       )}
-      {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
-      {currentPage === 'account' && <AccountPage onNavigate={onNavigate} />}
+      {route.page === 'cart' && <CartPage onNavigate={onNavigate} />}
+      {route.page === 'account' && <AccountPage onNavigate={onNavigate} />}
     </>
   );
+}
+
+function getRouteFromPath(path: string): RouteState {
+  const normalizedPath = path.replace(/\/+$/, '') || '/';
+
+  if (normalizedPath.startsWith('/catalog')) return { page: 'catalog' };
+  if (normalizedPath.startsWith('/cart')) return { page: 'cart' };
+  if (normalizedPath.startsWith('/account')) return { page: 'account' };
+  if (normalizedPath.startsWith('/item/')) {
+    const slug = decodeURIComponent(normalizedPath.replace('/item/', ''));
+    return { page: 'item', slug };
+  }
+
+  return { page: 'home' };
+}
+
+function getPathForPage(page: PageKey, slug?: string) {
+  switch (page) {
+    case 'home':
+      return '/';
+    case 'catalog':
+      return '/catalog';
+    case 'cart':
+      return '/cart';
+    case 'account':
+      return '/account';
+    case 'item':
+      return slug ? `/item/${slug}` : null;
+    default:
+      return '/';
+  }
 }
 
 export default App;

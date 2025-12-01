@@ -8,15 +8,18 @@ import ImageGallery from '../components/ImageGallery';
 import ItemFacts from '../components/ItemFacts';
 import ProductCard from '../components/ProductCard';
 import { Loader2, ShoppingCart, Check, Package } from 'lucide-react';
-import { getBookById, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
+import { getBookById, getBooks, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
 import { CartItem } from '../types';
+import { findBookBySlug, getBookSlug } from '../utils/slug';
 
 interface ItemPageProps {
-  bookId: string;
-  onNavigate?: (page: string, bookId?: string) => void;
+  bookSlug: string;
+  books: Book[];
+  onNavigate?: (page: string, bookSlug?: string) => void;
+  onBookResolved?: (book?: Book) => void;
 }
 
-export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
+export default function ItemPage({ bookSlug, books, onNavigate, onBookResolved }: ItemPageProps) {
   const { language, currency } = useLanguage();
   const { addToCart } = useCart();
   const [book, setBook] = useState<Book | null>(null);
@@ -25,12 +28,51 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [resolvedBookId, setResolvedBookId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchBookData();
-  }, [bookId]);
+    setLoading(true);
+    setBook(null);
+    setResolvedBookId(null);
+    const matchedBook = findBookBySlug(books, bookSlug);
 
-  const fetchBookData = async () => {
+    if (matchedBook) {
+      setResolvedBookId(matchedBook.id);
+      onBookResolved?.(matchedBook);
+      return;
+    }
+
+    const fetchBookBySlug = async () => {
+      let foundBook: Book | undefined;
+
+      try {
+        const allBooks = await getBooks();
+        foundBook = findBookBySlug(allBooks ?? [], bookSlug);
+
+        if (foundBook) {
+          setResolvedBookId(foundBook.id);
+          onBookResolved?.(foundBook);
+        }
+      } catch (error) {
+        console.error('Error resolving book slug:', error);
+      } finally {
+        if (!foundBook) {
+          setBook(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchBookBySlug();
+  }, [bookSlug, books, onBookResolved]);
+
+  useEffect(() => {
+    if (resolvedBookId) {
+      fetchBookData(resolvedBookId);
+    }
+  }, [resolvedBookId]);
+
+  const fetchBookData = async (bookId: string) => {
     try {
       setLoading(true);
 
@@ -58,6 +100,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
           });
 
         setBook(bookWithCategory);
+        onBookResolved?.(bookWithCategory);
         setRelatedBooks(mapWithCategory(relatedData ?? []));
         setPopularBooks(mapWithCategory(popularData ?? []));
       }
@@ -261,7 +304,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                         : relatedBook.category.name_en
                       : ''
                   }
-                  onViewDetails={() => onNavigate?.('item', relatedBook.id)}
+                  onViewDetails={() => onNavigate?.('item', getBookSlug(relatedBook))}
                 />
               ))}
             </div>
@@ -288,7 +331,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                         : popularBook.category.name_en
                       : ''
                   }
-                  onViewDetails={() => onNavigate?.('item', popularBook.id)}
+                  onViewDetails={() => onNavigate?.('item', getBookSlug(popularBook))}
                 />
               ))}
             </div>

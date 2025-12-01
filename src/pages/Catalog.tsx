@@ -7,9 +7,10 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Loader2, SlidersHorizontal } from 'lucide-react';
 import { getAuthors, getBooks, getCategories, getPublishers } from '../services/api';
+import { getBookSlug } from '../utils/slug';
 
 interface CatalogProps {
-  onNavigate?: (page: string, bookId?: string) => void;
+  onNavigate?: (page: string, bookSlug?: string) => void;
 }
 
 export default function Catalog({ onNavigate }: CatalogProps = {}) {
@@ -220,7 +221,7 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
                           : book.category.name_en
                         : ''
                     }
-                    onViewDetails={() => onNavigate?.('item', book.id)}
+                    onViewDetails={() => onNavigate?.('item', getBookSlug(book))}
                   />
                 ))}
               </div>

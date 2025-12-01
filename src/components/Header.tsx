@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { Search, ShoppingCart, User, Phone, Globe } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
@@ -11,6 +12,34 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
   const { getTotalItems, getTotalPrice } = useCart();
 
   const isRTL = language === 'he';
+
+  const handleNavigation = useCallback(
+    (page: string) => {
+      if (onNavigate) {
+        onNavigate(page);
+        return;
+      }
+
+      const path = (() => {
+        switch (page) {
+          case 'home':
+            return '/';
+          case 'catalog':
+            return '/catalog';
+          case 'cart':
+            return '/cart';
+          case 'account':
+            return '/account';
+          default:
+            return '/';
+        }
+      })();
+
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    },
+    [onNavigate],
+  );
 
   return (
     <header className={`bg-white shadow-md ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
@@ -52,7 +81,7 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
               src="/logo.png"
               alt="Logo"
               className="w-16 h-16 object-contain cursor-pointer"
-              onClick={() => onNavigate?.('home')}
+              onClick={() => handleNavigation('home')}
             />
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-700 via-yellow-600 to-yellow-700 bg-clip-text text-transparent">{t('site.title')}</h1>
@@ -73,7 +102,7 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={() => onNavigate?.('account')}
+              onClick={() => handleNavigation('account')}
               className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <User className="w-5 h-5 text-gray-700" />
@@ -81,7 +110,7 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
             </button>
 
             <button
-              onClick={() => onNavigate?.('cart')}
+              onClick={() => handleNavigation('cart')}
               className="relative flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white rounded-lg transition-colors shadow-md border border-yellow-600/30"
             >
               <ShoppingCart className="w-5 h-5" />
@@ -102,31 +131,31 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
 
         <nav className="mt-4 flex items-center gap-6 border-t pt-3">
           <button
-            onClick={() => onNavigate?.('account')}
+            onClick={() => handleNavigation('account')}
             className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
             {t('nav.account')}
           </button>
           <button
-            onClick={() => onNavigate?.('home')}
+            onClick={() => handleNavigation('home')}
             className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
             {t('nav.home')}
           </button>
           <button
-            onClick={() => onNavigate?.('catalog')}
+            onClick={() => handleNavigation('catalog')}
             className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
             {t('nav.books')}
           </button>
           <button
-            onClick={() => onNavigate?.('catalog')}
+            onClick={() => handleNavigation('catalog')}
             className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
             {t('nav.children')}
           </button>
           <button
-            onClick={() => onNavigate?.('catalog')}
+            onClick={() => handleNavigation('catalog')}
             className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
             {t('nav.women')}
