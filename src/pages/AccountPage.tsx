@@ -1,4 +1,5 @@
-import { Bell, CreditCard, Globe2, Home, LogOut, MapPin, Package, ShieldCheck, UserCircle } from 'lucide-react';
+import { FormEvent, useState } from 'react';
+import { Bell, CreditCard, Globe2, Home, LogOut, MapPin, Package, ShieldCheck, Truck, UserCircle } from 'lucide-react';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
@@ -14,6 +15,8 @@ interface OrderItem {
   status: { he: string; en: string };
   totalILS: number;
   totalUSD: number;
+  trackingNumber: string;
+  courier: string;
 }
 
 interface AddressItem {
@@ -26,6 +29,8 @@ interface AddressItem {
 export default function AccountPage({ onNavigate }: AccountPageProps) {
   const { language, currency, t } = useLanguage();
   const isRTL = language === 'he';
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [courier, setCourier] = useState('');
 
   const customerName = language === 'he' ? 'אברהם כהן' : 'Avraham Cohen';
 
@@ -40,6 +45,8 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
       status: { he: 'נשלח עם מעקב', en: 'Shipped with tracking' },
       totalILS: 410,
       totalUSD: 112,
+      trackingNumber: 'IL123456789',
+      courier: language === 'he' ? 'דואר ישראל' : 'Israel Post',
     },
     {
       id: '#BR-1031',
@@ -51,6 +58,8 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
       status: { he: 'הושלם', en: 'Completed' },
       totalILS: 180,
       totalUSD: 49,
+      trackingNumber: 'FX987654321',
+      courier: 'FedEx',
     },
     {
       id: '#BR-0988',
@@ -62,8 +71,30 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
       status: { he: 'ממתין לאיסוף', en: 'Awaiting pickup' },
       totalILS: 95,
       totalUSD: 26,
+      trackingNumber: 'PU445566778',
+      courier: language === 'he' ? 'איסוף עצמי - ירושלים' : 'Pickup - Jerusalem',
     },
   ];
+
+  const carriers = [
+    { value: 'Israel Post', label: language === 'he' ? 'דואר ישראל' : 'Israel Post' },
+    { value: 'FedEx', label: 'FedEx' },
+    { value: 'DHL', label: 'DHL' },
+    { value: 'Aramex', label: 'Aramex' },
+  ];
+
+  const formatTotal = (order: OrderItem) => (currency === 'ILS' ? `₪${order.totalILS}` : `$${order.totalUSD}`);
+
+  const handleTrackSubmit = (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!trackingNumber || !courier) {
+      return;
+    }
+
+    // In a real app this would call an API. For now we simply log the request.
+    console.info('Track request', { trackingNumber, courier });
+  };
 
   const addresses: AddressItem[] = [
     {
@@ -160,33 +191,125 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                {orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border border-gray-100 rounded-lg hover:border-yellow-200 transition-colors"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <Package className="w-5 h-5 text-yellow-700" />
-                        <p className="font-semibold text-gray-900">{order.title[language]}</p>
-                        <span className="text-sm text-gray-500">{order.id}</span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 space-y-3">
+                  {orders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border border-gray-100 rounded-lg hover:border-yellow-200 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <Package className="w-5 h-5 text-yellow-700" />
+                          <p className="font-semibold text-gray-900">{order.title[language]}</p>
+                          <span className="text-sm text-gray-500">{order.id}</span>
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1 flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                          <span>{order.date}</span>
+                          <span className="hidden sm:inline-block text-gray-300">•</span>
+                          <span>
+                            {t('account.courier')}: {order.courier}
+                          </span>
+                          <span className="hidden sm:inline-block text-gray-300">•</span>
+                          <span>
+                            {t('account.trackingNumber')}: {order.trackingNumber}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{order.date}</p>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-sm font-semibold">
+                          {order.status[language]}
+                        </span>
+                        <span className="font-bold text-gray-900">{formatTotal(order)}</span>
+                        <button className="text-sm font-semibold text-yellow-700 hover:text-yellow-800">
+                          {t('account.viewDetails')}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-sm font-semibold">
-                        {order.status[language]}
-                      </span>
-                      <span className="font-bold text-gray-900">
-                        {currency === 'ILS' ? `₪${order.totalILS}` : `$${order.totalUSD}`}
-                      </span>
-                      <button className="text-sm font-semibold text-yellow-700 hover:text-yellow-800">
-                        {t('account.viewDetails')}
-                      </button>
+                  ))}
+
+                  <div className="overflow-x-auto border border-gray-100 rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-100">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('account.orderId')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('account.date')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('account.status')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('account.total')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('account.trackingNumber')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {orders.map((order) => (
+                          <tr key={`${order.id}-history`} className="hover:bg-yellow-50/40">
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-900">{order.id}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{order.date}</td>
+                            <td className="px-4 py-3 text-sm text-yellow-700 font-semibold">{order.status[language]}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 font-semibold">{formatTotal(order)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{order.trackingNumber}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 h-full">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Truck className="w-5 h-5 text-yellow-700" />
+                    <div>
+                      <p className="text-sm text-yellow-800 uppercase tracking-wide">{t('account.trackOrders')}</p>
+                      <h3 className="text-lg font-semibold text-gray-900">{t('account.trackOrdersTitle')}</h3>
                     </div>
                   </div>
-                ))}
+
+                  <p className="text-sm text-gray-700 mb-3">{t('account.trackOrdersDescription')}</p>
+
+                  <form className="space-y-3" onSubmit={handleTrackSubmit}>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-800" htmlFor="trackingNumber">
+                        {t('account.trackingNumber')}
+                      </label>
+                      <input
+                        id="trackingNumber"
+                        name="trackingNumber"
+                        value={trackingNumber}
+                        onChange={(e) => setTrackingNumber(e.target.value)}
+                        className="w-full rounded-lg border border-yellow-200 bg-white px-3 py-2 text-sm focus:border-yellow-400 focus:ring-yellow-300"
+                        placeholder={t('account.trackingPlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-800" htmlFor="courier">
+                        {t('account.courier')}
+                      </label>
+                      <select
+                        id="courier"
+                        name="courier"
+                        value={courier}
+                        onChange={(e) => setCourier(e.target.value)}
+                        className="w-full rounded-lg border border-yellow-200 bg-white px-3 py-2 text-sm focus:border-yellow-400 focus:ring-yellow-300"
+                      >
+                        <option value="">{t('account.selectCourier')}</option>
+                        {carriers.map((carrier) => (
+                          <option key={carrier.value} value={carrier.value}>
+                            {carrier.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800 disabled:opacity-60"
+                      disabled={!trackingNumber || !courier}
+                    >
+                      <Truck className="w-4 h-4" />
+                      {t('account.trackNow')}
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
