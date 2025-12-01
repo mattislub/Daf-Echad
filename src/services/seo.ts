@@ -1,7 +1,7 @@
 import { Language } from '../types';
 import { Book } from '../types/catalog';
 
-export type SeoPage = 'home' | 'catalog' | 'item';
+export type SeoPage = 'home' | 'catalog' | 'item' | 'cart';
 
 interface SeoOptions {
   language: Language;
@@ -115,6 +115,21 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
         .filter(Boolean)
         .join(', '),
       image: product.image_url,
+    };
+  }
+
+  if (page === 'cart') {
+    metadata = {
+      title: language === 'he' ? 'עגלה והזמנה' : 'Cart & Checkout',
+      description: language === 'he'
+        ? 'סקירת פריטים, משלוח ואמצעי תשלום לפני השלמת הזמנה.'
+        : 'Review your cart, choose worldwide delivery, and select payment before confirming.',
+      path: '/cart',
+      type: 'website',
+      keywords: language === 'he'
+        ? 'עגלה, תשלום, משלוח בינלאומי, ברסלב'
+        : 'cart, checkout, worldwide shipping, breslov books',
+      image: '/logo.png',
     };
   }
 
