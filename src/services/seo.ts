@@ -1,7 +1,7 @@
 import { Language } from '../types';
 import { Book } from '../types/catalog';
 
-export type SeoPage = 'home' | 'catalog' | 'item' | 'cart';
+export type SeoPage = 'home' | 'catalog' | 'item' | 'cart' | 'account';
 
 interface SeoOptions {
   language: Language;
@@ -129,6 +129,21 @@ export const applySeoForPage = (page: string, options: SeoOptions) => {
       keywords: language === 'he'
         ? 'עגלה, תשלום, משלוח בינלאומי, ברסלב'
         : 'cart, checkout, worldwide shipping, breslov books',
+      image: '/logo.png',
+    };
+  }
+
+  if (page === 'account') {
+    metadata = {
+      title: language === 'he' ? 'חשבון לקוח' : 'Customer account',
+      description: language === 'he'
+        ? 'איזור אישי לניהול הזמנות, משלוחים, כתובות והעדפות קנייה.'
+        : 'Private area for managing orders, delivery addresses, and shopping preferences.',
+      path: '/account',
+      type: 'website',
+      keywords: language === 'he'
+        ? 'חשבון לקוח, הזמנות, משלוחים, ספרי ברסלב'
+        : 'customer account, orders, shipping, breslov books',
       image: '/logo.png',
     };
   }
