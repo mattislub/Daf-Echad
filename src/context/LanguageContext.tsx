@@ -13,7 +13,7 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   he: {
-    'site.title': 'ספרי ברסלב',
+    'site.title': 'דף אחד',
     'site.tagline': 'כל ספרי ברסלב במקום אחד',
     'nav.home': 'בית',
     'nav.books': 'ספרים',
@@ -116,7 +116,7 @@ const translations: Record<Language, Record<string, string>> = {
     'account.contactSupport': 'צור קשר עם תמיכה',
   },
   en: {
-    'site.title': 'Breslov Books',
+    'site.title': 'Daf Echad',
     'site.tagline': 'Authentic Breslov Holy Books & Products',
     'nav.home': 'Home',
     'nav.books': 'Books',
