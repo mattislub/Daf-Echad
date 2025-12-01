@@ -1,4 +1,14 @@
-import { Search, ShoppingCart, User, Phone, Globe } from 'lucide-react';
+import {
+  Search,
+  ShoppingCart,
+  User,
+  Phone,
+  Globe,
+  Home,
+  BookOpen,
+  Baby,
+  Heart,
+} from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 
@@ -103,33 +113,38 @@ export default function Header({ onNavigate }: HeaderProps = {}) {
         <nav className="mt-4 flex items-center gap-6 border-t pt-3">
           <button
             onClick={() => onNavigate?.('account')}
-            className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
-            {t('nav.account')}
+            <User className="w-4 h-4" />
+            <span>{t('nav.account')}</span>
           </button>
           <button
             onClick={() => onNavigate?.('home')}
-            className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
-            {t('nav.home')}
+            <Home className="w-4 h-4" />
+            <span>{t('nav.home')}</span>
           </button>
           <button
             onClick={() => onNavigate?.('catalog')}
-            className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
-            {t('nav.books')}
+            <BookOpen className="w-4 h-4" />
+            <span>{t('nav.books')}</span>
           </button>
           <button
             onClick={() => onNavigate?.('catalog')}
-            className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
-            {t('nav.children')}
+            <Baby className="w-4 h-4" />
+            <span>{t('nav.children')}</span>
           </button>
           <button
             onClick={() => onNavigate?.('catalog')}
-            className="text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
           >
-            {t('nav.women')}
+            <Heart className="w-4 h-4" />
+            <span>{t('nav.women')}</span>
           </button>
         </nav>
       </div>
