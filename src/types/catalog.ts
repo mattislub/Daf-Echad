@@ -56,6 +56,7 @@ export interface Book {
   publisher?: Publisher;
   category?: Category;
   images?: BookImage[];
+  keywords?: string[];
 }
 
 export interface FilterOptions {

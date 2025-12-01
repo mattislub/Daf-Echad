@@ -97,7 +97,8 @@ function mapItemRowToBook(
   authorMap = new Map(),
   bindingMap = new Map(),
   categoryMap = new Map(),
-  itemCategoryMap = new Map()
+  itemCategoryMap = new Map(),
+  keywordMap = new Map()
 ) {
   const price = Number(row.pri) || 0;
   const volumes = Number(row.vol) || 1;
@@ -171,6 +172,7 @@ function mapItemRowToBook(
     author,
     publisher,
     category,
+    keywords: keywordMap.get(itemId) ?? [],
   };
 }
 
@@ -215,6 +217,30 @@ async function fetchItemCategoryMap() {
     }, new Map());
   } catch (error) {
     console.error('Database query failed while fetching item categories:', error);
+    throw error;
+  }
+}
+
+async function fetchItemKeywords() {
+  try {
+    const [rows] = await pool.query('SELECT hkeyword, itemid FROM itemkeyword');
+
+    return rows.reduce((map, row) => {
+      const itemId = row.itemid ?? row.itemId ?? row.ID;
+      const keyword = row.hkeyword ?? row.keyword;
+
+      if (!itemId || !keyword) return map;
+
+      const normalizedItemId = String(itemId);
+      const currentKeywords = map.get(normalizedItemId) ?? [];
+
+      currentKeywords.push(String(keyword));
+      map.set(normalizedItemId, currentKeywords);
+
+      return map;
+    }, new Map());
+  } catch (error) {
+    console.error('Database query failed while fetching item keywords:', error);
     throw error;
   }
 }
@@ -383,17 +409,20 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, itemCategoryMap] = await Promise.all([
+    const [rows, authors, bindings, categories, itemCategoryMap, keywordMap] = await Promise.all([
       fetchItems(),
       fetchAuthors(),
       fetchBindings(),
       fetchCategories(),
       fetchItemCategoryMap(),
+      fetchItemKeywords(),
     ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
-    let books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap));
+    let books = rows.map((row) =>
+      mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap, keywordMap)
+    );
 
     const { category_id, exclude, limit, featured } = req.query;
 
@@ -428,17 +457,20 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const [rows, authors, bindings, categories, itemCategoryMap] = await Promise.all([
+    const [rows, authors, bindings, categories, itemCategoryMap, keywordMap] = await Promise.all([
       fetchItems(),
       fetchAuthors(),
       fetchBindings(),
       fetchCategories(),
       fetchItemCategoryMap(),
+      fetchItemKeywords(),
     ]);
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
-    const books = rows.map((row) => mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap));
+    const books = rows.map((row) =>
+      mapItemRowToBook(row, authorMap, bindingMap, categoryMap, itemCategoryMap, keywordMap)
+    );
     const book = books.find((item) => item.id === req.params.id);
 
     if (!book) {

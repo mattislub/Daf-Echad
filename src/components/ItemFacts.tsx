@@ -1,6 +1,6 @@
 import { useLanguage } from '../context/LanguageContext';
 import { Book } from '../types/catalog';
-import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, FileText, Hash } from 'lucide-react';
+import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, FileText, Hash, Tags } from 'lucide-react';
 
 interface ItemFactsProps {
   book: Book;
@@ -71,6 +71,11 @@ export default function ItemFacts({ book }: ItemFactsProps) {
         : language === 'he'
         ? 'לא'
         : 'No',
+    },
+    {
+      icon: <Tags className="w-5 h-5" />,
+      label: language === 'he' ? 'מילות מפתח' : 'Keywords',
+      value: book.keywords && book.keywords.length > 0 ? book.keywords.join(', ') : '-',
     },
   ];
 
