@@ -153,6 +153,26 @@ function mapLanguageValue(languageCode, languageMap = new Map()) {
   return mappedValue ?? normalizedCode;
 }
 
+function mapCustomerRow(row, languageMap = new Map()) {
+  const defaultDate = new Date().toISOString();
+
+  return {
+    id: row.ID ? String(row.ID) : '',
+    phone: row.telno ?? '',
+    first_name: row.fname ?? '',
+    last_name: row.lname ?? '',
+    email: row.email ?? '',
+    fax: row.fax ?? '',
+    language: mapLanguageValue(row.lang, languageMap),
+    setup: row.setup ?? '',
+    default_communication: row.comdflt ?? '',
+    customer_type: row.ctype ?? '',
+    username: row.username ?? '',
+    password: row.pass ?? '',
+    stamp: row.stamp ?? row.setup ?? defaultDate,
+  };
+}
+
 function buildSizeMap(sizeRows = []) {
   return sizeRows.reduce((map, row) => {
     const code = row.lvalue ?? row.code ?? row.ID ?? row.id;
@@ -412,6 +432,19 @@ async function fetchLanguages() {
   }
 }
 
+async function fetchCustomers() {
+  try {
+    const [rows] = await pool.query(
+      'SELECT ID, telno, fname, lname, email, fax, lang, setup, comdflt, ctype, username, pass, stamp FROM custe'
+    );
+
+    return rows;
+  } catch (error) {
+    console.error('Database query failed while fetching customers:', error);
+    throw error;
+  }
+}
+
 async function fetchBindings() {
   try {
     const [rows] = await pool.query('SELECT ID, name, type, material FROM binding');
@@ -506,6 +539,23 @@ app.get('/api/db-health', async (_req, res) => {
     res.json({ status: 'ok', serverTime });
   } catch (error) {
     console.error('Database health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/customers', async (_req, res) => {
+  try {
+    const [customers, languages] = await Promise.all([fetchCustomers(), fetchLanguages()]);
+    const languageMap = buildLanguageMap(languages);
+
+    const normalizedCustomers = customers.map((row) => mapCustomerRow(row, languageMap));
+
+    res.json(normalizedCustomers);
+  } catch (error) {
+    console.error('Error fetching customers:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
