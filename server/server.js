@@ -153,6 +153,28 @@ function mapLanguageValue(languageCode, languageMap = new Map()) {
   return mappedValue ?? normalizedCode;
 }
 
+function buildSizeMap(sizeRows = []) {
+  return sizeRows.reduce((map, row) => {
+    const code = row.lvalue ?? row.code ?? row.ID ?? row.id;
+
+    if (!code) return map;
+
+    const description = row.ldesc ?? row.description ?? row.name ?? '';
+    map.set(String(code), description ? String(description) : String(code));
+
+    return map;
+  }, new Map());
+}
+
+function mapSizeValue(sizeCode, sizeMap = new Map()) {
+  if (!sizeCode) return '';
+
+  const normalizedCode = String(sizeCode);
+  const mappedValue = sizeMap.get(normalizedCode);
+
+  return mappedValue ?? normalizedCode;
+}
+
 function mapItemRowToBook(
   row,
   authorMap = new Map(),
@@ -162,6 +184,7 @@ function mapItemRowToBook(
   itemCategoryMap = new Map(),
   itemPriceMap = new Map(),
   keywordMap = new Map(),
+  sizeMap = new Map(),
   colorMap = new Map(),
   languageMap = new Map()
 ) {
@@ -224,7 +247,7 @@ function mapItemRowToBook(
     price_usd: price,
     price_ils: price,
     image_url: '',
-    size: row.size ? String(row.size) : '',
+    size: mapSizeValue(row.size, sizeMap),
     color: mapColorValue(row.color, colorMap),
     volumes,
     binding: mapBindingValue(row.binding ? String(row.binding) : '', bindingMap),
@@ -357,6 +380,20 @@ async function fetchColors() {
     }));
   } catch (error) {
     console.error('Database query failed while fetching colors:', error);
+    throw error;
+  }
+}
+
+async function fetchSizes() {
+  try {
+    const [rows] = await pool.query("SELECT lvalue, ldesc FROM lists WHERE ltype = 'size'");
+
+    return rows.map((row) => ({
+      lvalue: row.lvalue ?? row.code ?? row.ID ?? row.id ?? '',
+      ldesc: row.ldesc ?? row.description ?? row.name ?? '',
+    }));
+  } catch (error) {
+    console.error('Database query failed while fetching sizes:', error);
     throw error;
   }
 }
@@ -545,6 +582,7 @@ app.get('/api/books', async (req, res) => {
       itemCategoryMap,
       itemPriceMap,
       keywordMap,
+      sizes,
       colors,
       languages,
     ] = await Promise.all([
@@ -556,6 +594,7 @@ app.get('/api/books', async (req, res) => {
       fetchItemCategoryMap(),
       fetchItemPrices(),
       fetchItemKeywords(),
+      fetchSizes(),
       fetchColors(),
       fetchLanguages(),
     ]);
@@ -564,6 +603,7 @@ app.get('/api/books', async (req, res) => {
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
     const priceMap = itemPriceMap instanceof Map ? itemPriceMap : new Map();
+    const sizeMap = buildSizeMap(sizes);
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
     let books = rows.map((row) =>
@@ -576,6 +616,7 @@ app.get('/api/books', async (req, res) => {
         itemCategoryMap,
         priceMap,
         keywordMap,
+        sizeMap,
         colorMap,
         languageMap
       )
@@ -623,6 +664,7 @@ app.get('/api/books/:id', async (req, res) => {
       itemCategoryMap,
       itemPriceMap,
       keywordMap,
+      sizes,
       colors,
       languages,
     ] = await Promise.all([
@@ -634,6 +676,7 @@ app.get('/api/books/:id', async (req, res) => {
       fetchItemCategoryMap(),
       fetchItemPrices(),
       fetchItemKeywords(),
+      fetchSizes(),
       fetchColors(),
       fetchLanguages(),
     ]);
@@ -642,6 +685,7 @@ app.get('/api/books/:id', async (req, res) => {
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
     const priceMap = itemPriceMap instanceof Map ? itemPriceMap : new Map();
+    const sizeMap = buildSizeMap(sizes);
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
     const books = rows.map((row) =>
@@ -654,6 +698,7 @@ app.get('/api/books/:id', async (req, res) => {
         itemCategoryMap,
         priceMap,
         keywordMap,
+        sizeMap,
         colorMap,
         languageMap
       )
