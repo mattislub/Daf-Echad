@@ -49,7 +49,17 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
   const [courier, setCourier] = useState('');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
-  const customerName = language === 'he' ? 'אברהם כהן' : 'Avraham Cohen';
+  const customerProfile = {
+    name: { he: 'אברהם כהן', en: 'Avraham Cohen' },
+    email: 'avraham.cohen@example.com',
+    phone: '+972-52-123-4567',
+    city: { he: 'ירושלים', en: 'Jerusalem' },
+    id: 'CUST-1045',
+    customerType: { he: 'לקוח פרטי', en: 'Personal customer' },
+    languagePreference: { he: 'עברית', en: 'Hebrew' },
+  } as const;
+
+  const customerName = customerProfile.name[language];
 
   const orders: OrderItem[] = [
     {
@@ -142,6 +152,15 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
   const tierDescription =
     language === 'he' ? 'משלוח מועדף והטבות קבועות' : 'Priority shipping and member rewards';
 
+  const customerDetailsRows = [
+    { label: t('account.customerId'), value: customerProfile.id },
+    { label: t('account.email'), value: customerProfile.email },
+    { label: t('account.phone'), value: customerProfile.phone },
+    { label: t('account.location'), value: customerProfile.city[language] },
+    { label: t('account.customerTypeLabel'), value: customerProfile.customerType[language] },
+    { label: t('account.languagePreference'), value: customerProfile.languagePreference[language] },
+  ];
+
   const nextDelivery = orders[0];
   const pickupOrder = orders.find((order) => order.status.en === 'Awaiting pickup');
 
@@ -231,6 +250,35 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
               {t('account.updatePayment')}
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-gray-500 uppercase tracking-wide">{t('account.customerDetails')}</p>
+            <h3 className="text-lg font-semibold text-gray-900">{t('account.customerDetailsTitle')}</h3>
+            <p className="text-sm text-gray-600">{t('account.customerDetailsDescription')}</p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-100 rounded-lg overflow-hidden">
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {customerDetailsRows.map((row) => (
+                <tr key={row.label} className="hover:bg-yellow-50/40">
+                  <th
+                    className={`w-1/3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600 ${
+                      isRTL ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {row.label}
+                  </th>
+                  <td className="px-4 py-3 text-sm text-gray-900">{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
