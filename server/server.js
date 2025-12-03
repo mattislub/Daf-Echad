@@ -225,7 +225,10 @@ function mapItemRowToBook(
   keywordMap = new Map(),
   sizeMap = new Map(),
   colorMap = new Map(),
-  languageMap = new Map()
+  languageMap = new Map(),
+  itemDescriptionMap = new Map(),
+  itemOriginalMap = new Map(),
+  originalDescriptionMap = new Map()
 ) {
   const volumes = Number(row.vol) || 1;
   const defaultDate = new Date().toISOString();
@@ -291,12 +294,18 @@ function mapItemRowToBook(
       ? NaN
       : Number(row.weight);
 
+  const shortDescription = itemDescriptionMap.get(itemId) ?? '';
+  const originalId = itemOriginalMap.get(itemId);
+  const originalDescription = originalId ? originalDescriptionMap.get(originalId) ?? '' : '';
+
   return {
     id: String(row.ID),
     title_en,
     title_he,
-    description_en: '',
-    description_he: '',
+    description_en: shortDescription,
+    description_he: shortDescription,
+    short_description: shortDescription,
+    original_description: originalDescription,
     author_id: authorId,
     publisher_id: publisherId,
     category_id: categoryId,
@@ -466,6 +475,9 @@ app.get('/api/books', async (req, res) => {
       sizes,
       colors,
       languages,
+      itemDescriptionMap,
+      itemOriginalMap,
+      originalDescriptionMap,
     } = referenceData;
 
     const authorMap = buildAuthorMap(authors);
@@ -489,7 +501,10 @@ app.get('/api/books', async (req, res) => {
         keywordMap,
         sizeMap,
         colorMap,
-        languageMap
+        languageMap,
+        itemDescriptionMap,
+        itemOriginalMap,
+        originalDescriptionMap
       )
     );
 
@@ -539,6 +554,9 @@ app.get('/api/books/:id', async (req, res) => {
       sizes,
       colors,
       languages,
+      itemDescriptionMap,
+      itemOriginalMap,
+      originalDescriptionMap,
     } = referenceData;
 
     const authorMap = buildAuthorMap(authors);
@@ -562,7 +580,10 @@ app.get('/api/books/:id', async (req, res) => {
         keywordMap,
         sizeMap,
         colorMap,
-        languageMap
+        languageMap,
+        itemDescriptionMap,
+        itemOriginalMap,
+        originalDescriptionMap
       )
     );
     const book = books.find((item) => item.id === req.params.id);
