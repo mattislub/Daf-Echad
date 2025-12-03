@@ -294,7 +294,13 @@ function mapItemRowToBook(
       ? NaN
       : Number(row.weight);
 
-  const shortDescription = itemDescriptionMap.get(itemId) ?? '';
+  const descriptionEntry = itemDescriptionMap.get(itemId);
+  const shortDescription =
+    typeof descriptionEntry === 'string' ? descriptionEntry : descriptionEntry?.description ?? '';
+  const descriptionTitle =
+    typeof descriptionEntry === 'object' && descriptionEntry !== null
+      ? descriptionEntry.caption ?? ''
+      : '';
   const originalId = itemOriginalMap.get(itemId);
   const originalDescription = originalId ? originalDescriptionMap.get(originalId) ?? '' : '';
 
@@ -305,6 +311,7 @@ function mapItemRowToBook(
     description_en: shortDescription,
     description_he: shortDescription,
     short_description: shortDescription,
+    description_title: descriptionTitle,
     original_description: originalDescription,
     author_id: authorId,
     publisher_id: publisherId,

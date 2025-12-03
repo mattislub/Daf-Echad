@@ -35,6 +35,7 @@ export interface Book {
   description_en: string;
   description_he: string;
   short_description?: string;
+  description_title?: string;
   original_description?: string;
   author_id: string | null;
   publisher_id: string | null;

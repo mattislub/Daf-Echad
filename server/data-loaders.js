@@ -46,15 +46,20 @@ export async function fetchOriginalDescriptions() {
 }
 
 export async function fetchItemDescriptions() {
-  const rows = await runQuery('fetching item descriptions', 'SELECT itemid, idescw FROM itemdesc');
+  const rows = await runQuery('fetching item descriptions', 'SELECT itemid, idescw, icapt FROM itemdesc');
 
   return rows.reduce((map, row) => {
     const itemId = row.itemid ?? row.itemId ?? row.ID;
     const description = row.idescw ?? row.description;
+    const caption = row.icapt ?? row.caption;
 
-    if (!itemId || !description) return map;
+    if (!itemId || (!description && !caption)) return map;
 
-    map.set(String(itemId), String(description));
+    map.set(String(itemId), {
+      description: description ? String(description) : '',
+      caption: caption ? String(caption) : '',
+    });
+
     return map;
   }, new Map());
 }
