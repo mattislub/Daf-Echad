@@ -22,7 +22,7 @@ interface ItemFactsProps {
 interface FactItem {
   icon: ReactNode;
   label: string;
-  value: string;
+  value: ReactNode;
 }
 
 export default function ItemFacts({ book }: ItemFactsProps) {
@@ -83,7 +83,21 @@ export default function ItemFacts({ book }: ItemFactsProps) {
     {
       icon: <Tags className="w-5 h-5" />,
       label: language === 'he' ? 'מילות מפתח' : 'Keywords',
-      value: book.keywords && book.keywords.length > 0 ? book.keywords.join(', ') : '-',
+      value:
+        book.keywords && book.keywords.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {book.keywords.map((keyword) => (
+              <span
+                key={keyword}
+                className="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-sm font-medium text-yellow-800 border border-yellow-100"
+              >
+                {keyword}
+              </span>
+            ))}
+          </div>
+        ) : (
+          '-'
+        ),
     },
   ];
 
