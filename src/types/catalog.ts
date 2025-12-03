@@ -46,6 +46,7 @@ export interface Book {
   volumes: number;
   binding: string;
   language: string;
+  weight?: number | null;
   original_text: boolean;
   in_stock: boolean;
   featured: boolean;
