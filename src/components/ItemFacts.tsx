@@ -1,7 +1,19 @@
 import { useState, type ReactNode } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Book } from '../types/catalog';
-import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, Hash, Tags, ChevronDown } from 'lucide-react';
+import {
+  Package,
+  User,
+  Building2,
+  Ruler,
+  Palette,
+  BookOpen,
+  Languages,
+  Hash,
+  Tags,
+  ChevronDown,
+  Weight,
+} from 'lucide-react';
 
 interface ItemFactsProps {
   book: Book;
@@ -42,6 +54,11 @@ export default function ItemFacts({ book }: ItemFactsProps) {
       icon: <Package className="w-5 h-5" />,
       label: language === 'he' ? 'מידות' : 'Dimensions',
       value: book.dimensions || '-',
+    },
+    {
+      icon: <Weight className="w-5 h-5" />,
+      label: language === 'he' ? 'משקל' : 'Weight',
+      value: book.weight !== undefined && book.weight !== null ? book.weight.toString() : '-',
     },
     {
       icon: <Palette className="w-5 h-5" />,

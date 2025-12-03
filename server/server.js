@@ -267,6 +267,11 @@ function mapItemRowToBook(
       }
     : undefined;
 
+  const parsedWeight =
+    row.weight === '' || row.weight === null || row.weight === undefined
+      ? NaN
+      : Number(row.weight);
+
   return {
     id: String(row.ID),
     title_en,
@@ -289,6 +294,7 @@ function mapItemRowToBook(
     featured: Boolean(row.grp),
     item_number: row.identical ? String(row.identical) : String(row.ID),
     dimensions: buildDimensions(row),
+    weight: Number.isFinite(parsedWeight) ? parsedWeight : null,
     created_at: defaultDate,
     updated_at: defaultDate,
     author,
