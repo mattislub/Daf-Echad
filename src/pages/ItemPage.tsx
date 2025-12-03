@@ -278,10 +278,6 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
           </div>
         </div>
 
-        <div className="mb-12">
-          <ItemFacts book={book} />
-        </div>
-
         {originalDescription && (
           <div className="mb-12">
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -310,6 +306,10 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
             </div>
           </div>
         )}
+
+        <div className="mb-12">
+          <ItemFacts book={book} />
+        </div>
 
         {relatedBooks.length > 0 && (
           <div className="mb-12">
