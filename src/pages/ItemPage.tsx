@@ -148,6 +148,8 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
 
   const price = currency === 'ILS' ? book.price_ils : book.price_usd;
   const currencySymbol = currency === 'ILS' ? '₪' : '$';
+  const shortDescription = book.short_description || (language === 'he' ? book.description_he : book.description_en);
+  const originalDescription = book.original_description;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -260,13 +262,28 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
               </button>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-3">
-                {language === 'he' ? 'תיאור' : 'Description'}
-              </h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {language === 'he' ? book.description_he : book.description_en}
-              </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {shortDescription && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-3">
+                    {language === 'he' ? 'תיאור קצר' : 'Short Description'}
+                  </h2>
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    {shortDescription}
+                  </p>
+                </div>
+              )}
+
+              {originalDescription && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-3">
+                    {language === 'he' ? 'תיאור מהספר המקורי' : 'Original Sefer Description'}
+                  </h2>
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    {originalDescription}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

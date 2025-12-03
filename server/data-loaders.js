@@ -17,6 +17,48 @@ export async function fetchItems() {
   );
 }
 
+export async function fetchItemOriginalMap() {
+  const rows = await runQuery('fetching item original references', 'SELECT itemid, origsfrid FROM itemorigsfr');
+
+  return rows.reduce((map, row) => {
+    const itemId = row.itemid ?? row.itemId ?? row.ID;
+    const originalId = row.origsfrid ?? row.originalId ?? row.originalid;
+
+    if (!itemId || !originalId) return map;
+
+    map.set(String(itemId), String(originalId));
+    return map;
+  }, new Map());
+}
+
+export async function fetchOriginalDescriptions() {
+  const rows = await runQuery('fetching original descriptions', 'SELECT ID, osdescw FROM origsfr');
+
+  return rows.reduce((map, row) => {
+    const id = row.ID ?? row.id;
+    const description = row.osdescw ?? '';
+
+    if (!id || !description) return map;
+
+    map.set(String(id), String(description));
+    return map;
+  }, new Map());
+}
+
+export async function fetchItemDescriptions() {
+  const rows = await runQuery('fetching item descriptions', 'SELECT itemid, idescw FROM itemdesc');
+
+  return rows.reduce((map, row) => {
+    const itemId = row.itemid ?? row.itemId ?? row.ID;
+    const description = row.idescw ?? row.description;
+
+    if (!itemId || !description) return map;
+
+    map.set(String(itemId), String(description));
+    return map;
+  }, new Map());
+}
+
 export async function fetchCategories() {
   return runQuery('fetching categories', 'SELECT code, cat1, cat2, name FROM cate');
 }
@@ -172,6 +214,9 @@ export async function loadBookReferenceData() {
     sizes,
     colors,
     languages,
+    itemDescriptionMap,
+    itemOriginalMap,
+    originalDescriptionMap,
   ] = await Promise.all([
     fetchAuthors(),
     fetchBindings(),
@@ -183,6 +228,9 @@ export async function loadBookReferenceData() {
     fetchSizes(),
     fetchColors(),
     fetchLanguages(),
+    fetchItemDescriptions(),
+    fetchItemOriginalMap(),
+    fetchOriginalDescriptions(),
   ]);
 
   return {
@@ -196,5 +244,8 @@ export async function loadBookReferenceData() {
     sizes,
     colors,
     languages,
+    itemDescriptionMap,
+    itemOriginalMap,
+    originalDescriptionMap,
   };
 }
