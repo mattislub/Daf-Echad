@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Book } from '../types/catalog';
-import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, FileText, Hash, Tags, ChevronDown } from 'lucide-react';
+import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, Hash, Tags, ChevronDown } from 'lucide-react';
 
 interface ItemFactsProps {
   book: Book;
@@ -62,17 +62,6 @@ export default function ItemFacts({ book }: ItemFactsProps) {
       icon: <Languages className="w-5 h-5" />,
       label: language === 'he' ? 'שפה' : 'Language',
       value: book.language || '-',
-    },
-    {
-      icon: <FileText className="w-5 h-5" />,
-      label: language === 'he' ? 'טקסט מקורי' : 'Original Text',
-      value: book.original_text
-        ? language === 'he'
-          ? 'כן'
-          : 'Yes'
-        : language === 'he'
-        ? 'לא'
-        : 'No',
     },
     {
       icon: <Tags className="w-5 h-5" />,
