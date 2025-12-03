@@ -83,10 +83,14 @@ function buildCategoryMap(categoryRows) {
     const id = row.code ?? row.ID ?? row.id;
     if (!id) return map;
 
+    const fallbackName = row.name ?? row.name_he ?? row.name_en ?? String(id);
+    const nameEn = row.name_en ?? fallbackName;
+    const nameHe = row.name_he ?? fallbackName;
+
     map.set(String(id), {
       id: String(id),
-      name_en: row.name ?? String(id),
-      name_he: row.name ?? String(id),
+      name_en: nameEn,
+      name_he: nameHe,
       cat1: row.cat1 ? String(row.cat1) : null,
       cat2: row.cat2 ? String(row.cat2) : null,
       slug: `category-${id}`,
