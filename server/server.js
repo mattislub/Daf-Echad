@@ -2,6 +2,21 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { DATABASE_NAME, getServerTime, testConnection, pool } from './db.js';
+import {
+  fetchAuthors,
+  fetchBindings,
+  fetchCategories,
+  fetchColors,
+  fetchCustomers,
+  fetchItemCategoryMap,
+  fetchItemKeywords,
+  fetchItemPrices,
+  fetchItems,
+  fetchLanguages,
+  fetchPublishers,
+  fetchSizes,
+  loadBookReferenceData,
+} from './data-loaders.js';
 
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
@@ -310,221 +325,6 @@ function mapItemRowToBook(
   };
 }
 
-async function fetchItems() {
-  try {
-    const [rows] = await pool.query(
-      'SELECT ID, name, name2, name3, namef, publishid, vol, chailik, size, binding, authorid, lang, color, length, width, depth, cubcm, weight, instock, typeid, identical, inset, grp, pri FROM items'
-    );
-
-    return rows;
-  } catch (error) {
-    console.error('Database query failed while fetching items:', error);
-    throw error;
-  }
-}
-
-async function fetchCategories() {
-  try {
-    const [rows] = await pool.query('SELECT code, cat1, cat2, name FROM cate');
-    const categoryMap = buildCategoryMap(rows);
-
-    return Array.from(categoryMap.values());
-  } catch (error) {
-    console.error('Database query failed while fetching categories:', error);
-    throw error;
-  }
-}
-
-async function fetchItemCategoryMap() {
-  try {
-    const [rows] = await pool.query('SELECT itemid, catid FROM itemcat');
-
-    return rows.reduce((map, row) => {
-      const itemId = row.itemid ?? row.itemId ?? row.ID;
-      const categoryId = row.catid ?? row.categoryid ?? row.categoryId;
-
-      if (!itemId || !categoryId) return map;
-
-      const normalizedItemId = String(itemId);
-      const normalizedCategoryId = String(categoryId);
-      const existingCategories = map.get(normalizedItemId) ?? [];
-
-      if (existingCategories.includes(normalizedCategoryId)) return map;
-
-      map.set(normalizedItemId, [...existingCategories, normalizedCategoryId]);
-
-      return map;
-    }, new Map());
-  } catch (error) {
-    console.error('Database query failed while fetching item categories:', error);
-    throw error;
-  }
-}
-
-async function fetchItemKeywords() {
-  try {
-    const [rows] = await pool.query('SELECT hkeyword, itemid FROM itemkeyword');
-
-    return rows.reduce((map, row) => {
-      const itemId = row.itemid ?? row.itemId ?? row.ID;
-      const keyword = row.hkeyword ?? row.keyword;
-
-      if (!itemId || !keyword) return map;
-
-      const normalizedItemId = String(itemId);
-      const currentKeywords = map.get(normalizedItemId) ?? [];
-
-      currentKeywords.push(String(keyword));
-      map.set(normalizedItemId, currentKeywords);
-
-      return map;
-    }, new Map());
-  } catch (error) {
-    console.error('Database query failed while fetching item keywords:', error);
-    throw error;
-  }
-}
-
-async function fetchItemPrices() {
-  try {
-    const [rows] = await pool.query('SELECT * FROM sellprice');
-
-    return rows.reduce((map, row) => {
-      const itemId = row.itemid ?? row.itemId ?? row.ID ?? row.id;
-
-      if (!itemId) return map;
-
-      const priceValue =
-        row.price ??
-        row.pri ??
-        row.sellprice ??
-        row.sellPrice ??
-        row.price_ils ??
-        row.priceIls ??
-        row.price_usd ??
-        row.priceUsd;
-
-      if (priceValue === undefined || priceValue === null) return map;
-
-      const numericPrice = Number(priceValue);
-
-      if (Number.isNaN(numericPrice)) return map;
-
-      map.set(String(itemId), numericPrice);
-
-      return map;
-    }, new Map());
-  } catch (error) {
-    console.error('Database query failed while fetching item prices:', error);
-    throw error;
-  }
-}
-
-async function fetchColors() {
-  try {
-    const [rows] = await pool.query("SELECT lvalue, ldesc FROM lists WHERE ltype = 'color'");
-
-    return rows.map((row) => ({
-      lvalue: row.lvalue ?? row.code ?? row.ID ?? row.id ?? '',
-      ldesc: row.ldesc ?? row.description ?? row.name ?? '',
-    }));
-  } catch (error) {
-    console.error('Database query failed while fetching colors:', error);
-    throw error;
-  }
-}
-
-async function fetchSizes() {
-  try {
-    const [rows] = await pool.query("SELECT lvalue, ldesc FROM lists WHERE ltype = 'size'");
-
-    return rows.map((row) => ({
-      lvalue: row.lvalue ?? row.code ?? row.ID ?? row.id ?? '',
-      ldesc: row.ldesc ?? row.description ?? row.name ?? '',
-    }));
-  } catch (error) {
-    console.error('Database query failed while fetching sizes:', error);
-    throw error;
-  }
-}
-
-async function fetchLanguages() {
-  try {
-    const [rows] = await pool.query("SELECT lvalue, ldesc FROM lists WHERE ltype = 'lang'");
-
-    return rows.map((row) => ({
-      lvalue: row.lvalue ?? row.code ?? row.ID ?? row.id ?? '',
-      ldesc: row.ldesc ?? row.description ?? row.name ?? '',
-    }));
-  } catch (error) {
-    console.error('Database query failed while fetching languages:', error);
-    throw error;
-  }
-}
-
-async function fetchCustomers() {
-  try {
-    const [rows] = await pool.query(
-      'SELECT ID, telno, fname, lname, email, fax, lang, setup, comdflt, ctype, username, pass, stamp FROM custe'
-    );
-
-    return rows;
-  } catch (error) {
-    console.error('Database query failed while fetching customers:', error);
-    throw error;
-  }
-}
-
-async function fetchBindings() {
-  try {
-    const [rows] = await pool.query('SELECT ID, name, type, material FROM binding');
-
-    return rows.map((row) => ({
-      id: String(row.ID ?? row.id ?? ''),
-      name: row.name ?? '',
-      type: row.type ?? '',
-      material: row.material ?? '',
-    }));
-  } catch (error) {
-    console.error('Database query failed while fetching bindings:', error);
-    throw error;
-  }
-}
-
-async function fetchAuthors() {
-  try {
-    const [rows] = await pool.query('SELECT ID, name FROM authore');
-    const defaultDate = new Date().toISOString();
-
-    return rows.map((row) => ({
-      id: String(row.ID),
-      name: row.name ?? '',
-      created_at: defaultDate,
-    }));
-  } catch (error) {
-    console.error('Database query failed while fetching authors:', error);
-    throw error;
-  }
-}
-
-async function fetchPublishers() {
-  try {
-    const [rows] = await pool.query('SELECT ID, name FROM publish');
-    const defaultDate = new Date().toISOString();
-
-    return rows
-      .filter((row) => row.ID || row.id)
-      .map((row) => ({
-        id: String(row.ID ?? row.id ?? ''),
-        name: row.name ?? '',
-        created_at: defaultDate,
-      }));
-  } catch (error) {
-    console.error('Database query failed while fetching publishers:', error);
-    throw error;
-  }
-}
-
 const app = express();
 
 const RELATED_ITEM_TABLES = [
@@ -653,8 +453,9 @@ app.get('/api/item-data-snapshot', async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
   try {
-    const [
-      rows,
+    const [rows, referenceData] = await Promise.all([fetchItems(), loadBookReferenceData()]);
+
+    const {
       authors,
       bindings,
       categories,
@@ -665,19 +466,8 @@ app.get('/api/books', async (req, res) => {
       sizes,
       colors,
       languages,
-    ] = await Promise.all([
-      fetchItems(),
-      fetchAuthors(),
-      fetchBindings(),
-      fetchCategories(),
-      fetchPublishers(),
-      fetchItemCategoryMap(),
-      fetchItemPrices(),
-      fetchItemKeywords(),
-      fetchSizes(),
-      fetchColors(),
-      fetchLanguages(),
-    ]);
+    } = referenceData;
+
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
@@ -686,6 +476,7 @@ app.get('/api/books', async (req, res) => {
     const sizeMap = buildSizeMap(sizes);
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
+
     let books = rows.map((row) =>
       mapItemRowToBook(
         row,
@@ -735,8 +526,9 @@ app.get('/api/books', async (req, res) => {
 
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const [
-      rows,
+    const [rows, referenceData] = await Promise.all([fetchItems(), loadBookReferenceData()]);
+
+    const {
       authors,
       bindings,
       categories,
@@ -747,19 +539,8 @@ app.get('/api/books/:id', async (req, res) => {
       sizes,
       colors,
       languages,
-    ] = await Promise.all([
-      fetchItems(),
-      fetchAuthors(),
-      fetchBindings(),
-      fetchCategories(),
-      fetchPublishers(),
-      fetchItemCategoryMap(),
-      fetchItemPrices(),
-      fetchItemKeywords(),
-      fetchSizes(),
-      fetchColors(),
-      fetchLanguages(),
-    ]);
+    } = referenceData;
+
     const authorMap = buildAuthorMap(authors);
     const bindingMap = buildBindingMap(bindings);
     const categoryMap = buildCategoryMap(categories);
@@ -768,6 +549,7 @@ app.get('/api/books/:id', async (req, res) => {
     const sizeMap = buildSizeMap(sizes);
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
+
     const books = rows.map((row) =>
       mapItemRowToBook(
         row,
@@ -802,7 +584,9 @@ app.get('/api/books/:id', async (req, res) => {
 app.get('/api/categories', async (_req, res) => {
   try {
     const categories = await fetchCategories();
-    res.json(categories);
+    const categoryMap = buildCategoryMap(categories);
+
+    res.json(Array.from(categoryMap.values()));
   } catch (error) {
     console.error('Error fetching categories:', error);
     res.status(500).json({
