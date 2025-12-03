@@ -88,6 +88,7 @@ function App() {
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [catalogFiltersFromUrl, setCatalogFiltersFromUrl] = useState<string[]>([]);
 
   const getBookSlug = useCallback((book: Book | undefined) => {
     if (!book) return '';
@@ -138,6 +139,8 @@ function App() {
   const handleNavigate = (page: string, bookId?: string) => {
     const targetBook = books.find((book) => book.id === bookId);
 
+    setCatalogFiltersFromUrl([]);
+
     if (page === 'item') {
       const fallbackSlug = bookId ?? '';
       setPendingSlug(targetBook ? null : fallbackSlug || null);
@@ -187,6 +190,7 @@ function App() {
     (query: string) => {
       const normalizedQuery = query.trim();
       setSearchQuery(normalizedQuery);
+      setCatalogFiltersFromUrl([]);
       setCurrentPage('catalog');
       setSelectedBookId(null);
       updateHashForPage('catalog');
@@ -212,63 +216,77 @@ function App() {
   useEffect(() => {
     const parseHashRoute = () => {
       const hash = window.location.hash.replace(/^#/, '');
-      const [route, slugOrId] = hash.split('/').filter(Boolean);
+      const [path, searchString] = hash.split('?');
+      const [route, slugOrId] = (path || '').split('/').filter(Boolean);
+      const searchParams = new URLSearchParams(searchString ?? '');
+      const categoryFilters = searchParams.getAll('category').filter(Boolean);
 
       switch (route) {
         case 'catalog':
           setCurrentPage('catalog');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl(categoryFilters);
           break;
         case 'item':
           setCurrentPage('item');
           setSelectedBookId(null);
           setPendingSlug(slugOrId ?? null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'cart':
           setCurrentPage('cart');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'about':
           setCurrentPage('about');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'contact':
           setCurrentPage('contact');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'policies':
           setCurrentPage('policies');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'terms':
           setCurrentPage('terms');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'account':
           setCurrentPage('account');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'login':
           setCurrentPage('login');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         case 'admin':
           setCurrentPage('admin');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
         default:
           setCurrentPage('home');
           setSelectedBookId(null);
           setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
           break;
       }
     };
@@ -295,6 +313,7 @@ function App() {
             books={books}
             loadingBooks={loadingBooks}
             pendingSlug={pendingSlug}
+            catalogFiltersFromUrl={catalogFiltersFromUrl}
           />
         </SearchProvider>
       </CartProvider>
@@ -309,9 +328,18 @@ interface AppContentProps {
   books: Book[];
   loadingBooks: boolean;
   pendingSlug: string | null;
+  catalogFiltersFromUrl: string[];
 }
 
-function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBooks, pendingSlug }: AppContentProps) {
+function AppContent({
+  currentPage,
+  selectedBookId,
+  onNavigate,
+  books,
+  loadingBooks,
+  pendingSlug,
+  catalogFiltersFromUrl,
+}: AppContentProps) {
   const { language, t } = useLanguage();
 
   const selectedProduct = useMemo<Book | undefined>(
@@ -332,7 +360,12 @@ function AppContent({ currentPage, selectedBookId, onNavigate, books, loadingBoo
       {currentPage === 'home' && (
         <HomePage books={books} loading={loadingBooks} onNavigate={onNavigate} />
       )}
-      {currentPage === 'catalog' && <Catalog onNavigate={onNavigate} />}
+      {currentPage === 'catalog' && (
+        <Catalog
+          onNavigate={onNavigate}
+          initialCategoryFilters={catalogFiltersFromUrl}
+        />
+      )}
       {currentPage === 'item' && selectedBookId && (
         <ItemPage bookId={selectedBookId} onNavigate={onNavigate} />
       )}

@@ -143,6 +143,9 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const displayCategories =
     book.categories?.length ? book.categories : book.category ? [book.category] : [];
 
+  const buildCategoryCatalogUrl = (categoryId: string) =>
+    `/#/catalog?category=${encodeURIComponent(categoryId)}`;
+
   const price = currency === 'ILS' ? book.price_ils : book.price_usd;
   const currencySymbol = currency === 'ILS' ? '₪' : '$';
 
@@ -164,12 +167,15 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
               {displayCategories.length > 0 && (
                 <div className="flex flex-wrap gap-2 text-sm text-gray-700 mb-3">
                   {displayCategories.map((category) => (
-                    <span
+                    <a
                       key={category.id}
-                      className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 px-3 py-1"
+                      href={buildCategoryCatalogUrl(category.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 hover:bg-yellow-200 transition-colors"
                     >
                       {language === 'he' ? category.name_he : category.name_en}
-                    </span>
+                    </a>
                   ))}
                 </div>
               )}

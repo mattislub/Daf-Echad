@@ -11,9 +11,10 @@ import { useSearch } from '../context/SearchContext';
 
 interface CatalogProps {
   onNavigate?: (page: string, bookId?: string) => void;
+  initialCategoryFilters?: string[];
 }
 
-export default function Catalog({ onNavigate }: CatalogProps = {}) {
+export default function Catalog({ onNavigate, initialCategoryFilters = [] }: CatalogProps = {}) {
   const { language, currency } = useLanguage();
   const { searchTerm } = useSearch();
   const [books, setBooks] = useState<Book[]>([]);
@@ -44,6 +45,21 @@ export default function Catalog({ onNavigate }: CatalogProps = {}) {
   useEffect(() => {
     applyFilters();
   }, [books, filters, currency, searchTerm]);
+
+  useEffect(() => {
+    setFilters((prevFilters) => {
+      const currentCategories = prevFilters.categories ?? [];
+      const nextCategories = initialCategoryFilters ?? [];
+
+      const hasSameCategories =
+        currentCategories.length === nextCategories.length &&
+        currentCategories.every((id, index) => id === nextCategories[index]);
+
+      if (hasSameCategories) return prevFilters;
+
+      return { ...prevFilters, categories: nextCategories };
+    });
+  }, [initialCategoryFilters]);
 
   const fetchData = async () => {
     try {
