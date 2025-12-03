@@ -7,7 +7,7 @@ import Footer from '../components/Footer';
 import ImageGallery from '../components/ImageGallery';
 import ItemFacts from '../components/ItemFacts';
 import ProductCard from '../components/ProductCard';
-import { Loader2, ShoppingCart, Check, Package } from 'lucide-react';
+import { Loader2, ShoppingCart, Check, Package, ChevronDown } from 'lucide-react';
 import { getBookById, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
 import { CartItem } from '../types';
 
@@ -25,6 +25,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [isExtendedDescriptionOpen, setIsExtendedDescriptionOpen] = useState(false);
 
   useEffect(() => {
     fetchBookData();
@@ -273,17 +274,6 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                   </p>
                 </div>
               )}
-
-              {originalDescription && (
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
-                    {language === 'he' ? 'תיאור מהספר המקורי' : 'Original Sefer Description'}
-                  </h2>
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                    {originalDescription}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -291,6 +281,35 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
         <div className="mb-12">
           <ItemFacts book={book} />
         </div>
+
+        {originalDescription && (
+          <div className="mb-12">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-6 py-4 text-left"
+                onClick={() => setIsExtendedDescriptionOpen((prev) => !prev)}
+              >
+                <span className="text-xl font-bold text-gray-900">
+                  {language === 'he' ? 'תיאור מורחב' : 'Extended Description'}
+                </span>
+                <ChevronDown
+                  className={`w-5 h-5 text-gray-600 transition-transform ${
+                    isExtendedDescriptionOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {isExtendedDescriptionOpen && (
+                <div className="border-t border-gray-200 px-6 py-4">
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    {originalDescription}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {relatedBooks.length > 0 && (
           <div className="mb-12">
