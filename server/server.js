@@ -213,29 +213,41 @@ function mapItemRowToBook(
 
   const itemId = String(row.ID);
   const price = Number(itemPriceMap.get(itemId) ?? row.pri) || 0;
-  const categoryCode = itemCategoryMap.get(itemId) || (row.typeid ? String(row.typeid) : null);
-  const categoryFromMap = categoryCode ? categoryMap.get(categoryCode) : undefined;
+  const categoryCodesFromMap = itemCategoryMap.get(itemId) || [];
+  const fallbackCategoryCode = row.typeid ? String(row.typeid) : null;
+  const normalizedCategoryCodes =
+    categoryCodesFromMap.length > 0
+      ? categoryCodesFromMap
+      : fallbackCategoryCode
+        ? [fallbackCategoryCode]
+        : [];
+
+  const categories = normalizedCategoryCodes.map((code) => {
+    const mappedCategory = categoryMap.get(code);
+
+    if (mappedCategory) return mappedCategory;
+
+    return {
+      id: code,
+      name_en: String(code),
+      name_he: String(code),
+      cat1: null,
+      cat2: null,
+      slug: `category-${code}`,
+      created_at: defaultDate,
+    };
+  });
+
+  const categoryFromMap = categories[0];
 
   const title_he = row.name || row.name2 || row.name3 || row.namef || '';
   const title_en = row.namef || row.name3 || row.name2 || row.name || '';
 
-  const categoryId = categoryFromMap?.id ?? (categoryCode ? String(categoryCode) : null);
+  const categoryId = categoryFromMap?.id ?? (normalizedCategoryCodes[0] ? String(normalizedCategoryCodes[0]) : null);
   const publisherId = row.publishid ? String(row.publishid) : null;
   const authorId = row.authorid ? String(row.authorid) : null;
 
-  const category = categoryFromMap
-    ? categoryFromMap
-    : categoryId
-      ? {
-          id: categoryId,
-          name_en: String(categoryId ?? ''),
-          name_he: String(categoryId ?? ''),
-          cat1: null,
-          cat2: null,
-          slug: `category-${categoryId}`,
-          created_at: defaultDate,
-        }
-      : undefined;
+  const category = categoryFromMap;
 
   const publisherDetails = publisherId ? publisherMap.get(publisherId) : undefined;
 
@@ -282,6 +294,8 @@ function mapItemRowToBook(
     author,
     publisher,
     category,
+    categories,
+    category_ids: categories.map((cat) => cat.id),
     keywords: keywordMap.get(itemId) ?? [],
   };
 }
@@ -319,9 +333,15 @@ async function fetchItemCategoryMap() {
       const itemId = row.itemid ?? row.itemId ?? row.ID;
       const categoryId = row.catid ?? row.categoryid ?? row.categoryId;
 
-      if (!itemId || !categoryId || map.has(String(itemId))) return map;
+      if (!itemId || !categoryId) return map;
 
-      map.set(String(itemId), String(categoryId));
+      const normalizedItemId = String(itemId);
+      const normalizedCategoryId = String(categoryId);
+      const existingCategories = map.get(normalizedItemId) ?? [];
+
+      if (existingCategories.includes(normalizedCategoryId)) return map;
+
+      map.set(normalizedItemId, [...existingCategories, normalizedCategoryId]);
 
       return map;
     }, new Map());
