@@ -1,7 +1,19 @@
 import { useState, type ReactNode } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Book } from '../types/catalog';
-import { Package, User, Building2, Ruler, Palette, BookOpen, Languages, Hash, Tags, ChevronDown } from 'lucide-react';
+import {
+  Package,
+  User,
+  Building2,
+  Ruler,
+  Palette,
+  BookOpen,
+  Languages,
+  Hash,
+  Tags,
+  ChevronDown,
+  Tag,
+} from 'lucide-react';
 
 interface ItemFactsProps {
   book: Book;
@@ -17,6 +29,14 @@ export default function ItemFacts({ book }: ItemFactsProps) {
   const { language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
+  const displayCategories =
+    book.categories?.length ? book.categories : book.category ? [book.category] : [];
+
+  const categoryValue = displayCategories
+    .map((category) => (language === 'he' ? category.name_he : category.name_en))
+    .filter(Boolean)
+    .join(', ');
+
   const facts: FactItem[] = [
     {
       icon: <Hash className="w-5 h-5" />,
@@ -27,6 +47,11 @@ export default function ItemFacts({ book }: ItemFactsProps) {
       icon: <User className="w-5 h-5" />,
       label: language === 'he' ? 'מחבר' : 'Author',
       value: book.author?.name || '-',
+    },
+    {
+      icon: <Tag className="w-5 h-5" />,
+      label: language === 'he' ? 'קטגוריה' : 'Category',
+      value: categoryValue || '-',
     },
     {
       icon: <Building2 className="w-5 h-5" />,
