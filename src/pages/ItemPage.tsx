@@ -150,6 +150,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const currencySymbol = currency === 'ILS' ? '₪' : '$';
   const shortDescription = book.short_description || (language === 'he' ? book.description_he : book.description_en);
   const originalDescription = book.original_description;
+  const descriptionTitle = book.description_title;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -263,14 +264,17 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {shortDescription && (
+              {(shortDescription || descriptionTitle) && (
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h2 className="text-xl font-bold text-gray-900 mb-3">
                     {language === 'he' ? 'תיאור קצר' : 'Short Description'}
                   </h2>
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                    {shortDescription}
-                  </p>
+                  {descriptionTitle && (
+                    <p className="text-lg font-semibold text-gray-900 mb-2">{descriptionTitle}</p>
+                  )}
+                  {shortDescription && (
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-line">{shortDescription}</p>
+                  )}
                 </div>
               )}
 
