@@ -37,6 +37,9 @@ export interface Book {
   author_id: string | null;
   publisher_id: string | null;
   category_id: string | null;
+  category_value?: string | null;
+  category_ids?: string[];
+  category_values?: string[];
   price_usd: number;
   price_ils: number;
   image_url: string;
@@ -55,6 +58,7 @@ export interface Book {
   author?: Author;
   publisher?: Publisher;
   category?: Category;
+  categories?: Category[];
   images?: BookImage[];
   keywords?: string[];
 }

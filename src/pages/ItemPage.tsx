@@ -46,16 +46,36 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
         const findCategory = (targetBook: Book): Category | undefined =>
           categoriesData?.find((cat) => cat.id === targetBook.category_id);
 
-        const bookWithCategory = (() => {
-          const category = bookData.category ?? findCategory(bookData);
-          return category ? { ...bookData, category } : bookData;
-        })();
+        const resolveCategories = (targetBook: Book): Category[] => {
+          if (targetBook.categories?.length) return targetBook.categories;
+
+          if (targetBook.category_ids?.length && categoriesData) {
+            const mappedCategories = targetBook.category_ids
+              .map((categoryId) => categoriesData.find((cat) => cat.id === categoryId))
+              .filter((category): category is Category => Boolean(category));
+
+            if (mappedCategories.length) return mappedCategories;
+          }
+
+          const fallbackCategory = findCategory(targetBook);
+          return fallbackCategory ? [fallbackCategory] : [];
+        };
 
         const mapWithCategory = (items: Book[]) =>
           items.map((item) => {
-            const category = item.category ?? findCategory(item);
-            return category ? { ...item, category } : item;
+            const categories = resolveCategories(item);
+            const category = item.category ?? categories[0] ?? findCategory(item);
+
+            return {
+              ...item,
+              category,
+              categories: categories.length ? categories : item.categories,
+              category_id: item.category_id ?? category?.id ?? null,
+              category_ids: item.category_ids ?? categories.map((cat) => cat.id),
+            };
           });
+
+        const [bookWithCategory] = mapWithCategory([bookData]);
 
         setBook(bookWithCategory);
         setRelatedBooks(mapWithCategory(relatedData ?? []));
@@ -120,6 +140,9 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
     ? book.images.sort((a, b) => a.position - b.position).map(img => img.image_url)
     : [book.image_url];
 
+  const displayCategories =
+    book.categories?.length ? book.categories : book.category ? [book.category] : [];
+
   const price = currency === 'ILS' ? book.price_ils : book.price_usd;
   const currencySymbol = currency === 'ILS' ? '₪' : '$';
 
@@ -138,13 +161,18 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
 
           <div className="space-y-6">
             <div>
-              <div className="text-sm text-gray-500 mb-2">
-                {book.category
-                  ? language === 'he'
-                    ? book.category.name_he
-                    : book.category.name_en
-                  : ''}
-              </div>
+              {displayCategories.length > 0 && (
+                <div className="flex flex-wrap gap-2 text-sm text-gray-700 mb-3">
+                  {displayCategories.map((category) => (
+                    <span
+                      key={category.id}
+                      className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 px-3 py-1"
+                    >
+                      {language === 'he' ? category.name_he : category.name_en}
+                    </span>
+                  ))}
+                </div>
+              )}
               <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
                 {language === 'he' ? book.title_he : book.title_en}
               </h1>
