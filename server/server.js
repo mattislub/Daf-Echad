@@ -208,6 +208,8 @@ function mapItemRowToBook(
   itemCategoryMap = new Map(),
   itemPriceMap = new Map(),
   keywordMap = new Map(),
+  longDescriptionMap = new Map(),
+  shortDescriptionMap = new Map(),
   sizeMap = new Map(),
   colorMap = new Map(),
   languageMap = new Map()
@@ -276,12 +278,15 @@ function mapItemRowToBook(
       ? NaN
       : Number(row.weight);
 
+  const longDescription = longDescriptionMap.get(itemId) ?? '';
+  const shortDescription = shortDescriptionMap.get(itemId) ?? '';
+
   return {
     id: String(row.ID),
     title_en,
     title_he,
-    description_en: '',
-    description_he: '',
+    description_en: shortDescription || longDescription,
+    description_he: longDescription || shortDescription,
     author_id: authorId,
     publisher_id: publisherId,
     category_id: categoryId,
@@ -381,6 +386,56 @@ async function fetchItemKeywords() {
     }, new Map());
   } catch (error) {
     console.error('Database query failed while fetching item keywords:', error);
+    throw error;
+  }
+}
+
+async function fetchOriginalDescriptions() {
+  try {
+    const [rows] = await pool.query(
+      'SELECT io.itemid, o.osdescw FROM itemorigsfr io JOIN origsfr o ON io.origsfrid = o.ID'
+    );
+
+    return rows.reduce((map, row) => {
+      const itemId = row.itemid ?? row.itemId ?? row.ID ?? row.id;
+      const description = row.osdescw ?? row.description;
+
+      if (!itemId || !description) return map;
+
+      const normalizedItemId = String(itemId);
+
+      if (map.has(normalizedItemId)) return map;
+
+      map.set(normalizedItemId, String(description));
+
+      return map;
+    }, new Map());
+  } catch (error) {
+    console.error('Database query failed while fetching original descriptions:', error);
+    throw error;
+  }
+}
+
+async function fetchItemDescriptions() {
+  try {
+    const [rows] = await pool.query('SELECT itemid, idescw FROM itemdesc');
+
+    return rows.reduce((map, row) => {
+      const itemId = row.itemid ?? row.itemId ?? row.ID ?? row.id;
+      const description = row.idescw ?? row.description;
+
+      if (!itemId || !description) return map;
+
+      const normalizedItemId = String(itemId);
+
+      if (map.has(normalizedItemId)) return map;
+
+      map.set(normalizedItemId, String(description));
+
+      return map;
+    }, new Map());
+  } catch (error) {
+    console.error('Database query failed while fetching item descriptions:', error);
     throw error;
   }
 }
@@ -662,6 +717,8 @@ app.get('/api/books', async (req, res) => {
       itemCategoryMap,
       itemPriceMap,
       keywordMap,
+      originalDescriptions,
+      itemDescriptions,
       sizes,
       colors,
       languages,
@@ -674,6 +731,8 @@ app.get('/api/books', async (req, res) => {
       fetchItemCategoryMap(),
       fetchItemPrices(),
       fetchItemKeywords(),
+      fetchOriginalDescriptions(),
+      fetchItemDescriptions(),
       fetchSizes(),
       fetchColors(),
       fetchLanguages(),
@@ -683,6 +742,9 @@ app.get('/api/books', async (req, res) => {
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
     const priceMap = itemPriceMap instanceof Map ? itemPriceMap : new Map();
+    const originalDescriptionMap =
+      originalDescriptions instanceof Map ? originalDescriptions : new Map();
+    const itemDescriptionMap = itemDescriptions instanceof Map ? itemDescriptions : new Map();
     const sizeMap = buildSizeMap(sizes);
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
@@ -696,6 +758,8 @@ app.get('/api/books', async (req, res) => {
         itemCategoryMap,
         priceMap,
         keywordMap,
+        originalDescriptionMap,
+        itemDescriptionMap,
         sizeMap,
         colorMap,
         languageMap
@@ -744,6 +808,8 @@ app.get('/api/books/:id', async (req, res) => {
       itemCategoryMap,
       itemPriceMap,
       keywordMap,
+      originalDescriptions,
+      itemDescriptions,
       sizes,
       colors,
       languages,
@@ -756,6 +822,8 @@ app.get('/api/books/:id', async (req, res) => {
       fetchItemCategoryMap(),
       fetchItemPrices(),
       fetchItemKeywords(),
+      fetchOriginalDescriptions(),
+      fetchItemDescriptions(),
       fetchSizes(),
       fetchColors(),
       fetchLanguages(),
@@ -765,6 +833,9 @@ app.get('/api/books/:id', async (req, res) => {
     const categoryMap = buildCategoryMap(categories);
     const publisherMap = buildPublisherMap(publishers);
     const priceMap = itemPriceMap instanceof Map ? itemPriceMap : new Map();
+    const originalDescriptionMap =
+      originalDescriptions instanceof Map ? originalDescriptions : new Map();
+    const itemDescriptionMap = itemDescriptions instanceof Map ? itemDescriptions : new Map();
     const sizeMap = buildSizeMap(sizes);
     const colorMap = buildColorMap(colors);
     const languageMap = buildLanguageMap(languages);
@@ -778,6 +849,8 @@ app.get('/api/books/:id', async (req, res) => {
         itemCategoryMap,
         priceMap,
         keywordMap,
+        originalDescriptionMap,
+        itemDescriptionMap,
         sizeMap,
         colorMap,
         languageMap
