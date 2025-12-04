@@ -7,6 +7,7 @@ export interface CartItem {
   price_ils: Book['price_ils'];
   price_usd: Book['price_usd'];
   image_url?: Book['image_url'];
+  weight?: Book['weight'];
   quantity: number;
 }
 
