@@ -7,7 +7,16 @@ import Footer from '../components/Footer';
 import ImageGallery from '../components/ImageGallery';
 import ItemFacts from '../components/ItemFacts';
 import ProductCard from '../components/ProductCard';
-import { Loader2, ShoppingCart, Check, Package, ChevronDown } from 'lucide-react';
+import {
+  Loader2,
+  ShoppingCart,
+  Check,
+  Package,
+  ChevronDown,
+  ShieldCheck,
+  Truck,
+  RotateCcw,
+} from 'lucide-react';
 import { getBookById, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
 import { CartItem } from '../types';
 
@@ -152,38 +161,62 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const shortDescription = book.short_description || (language === 'he' ? book.description_he : book.description_en);
   const originalDescription = book.original_description;
   const descriptionTitle = book.description_title;
+  const perks = [
+    {
+      icon: ShieldCheck,
+      title: language === 'he' ? 'תשלום מאובטח' : 'Secure checkout',
+      description: language === 'he' ? 'הצפנה מלאה ואישור הזמנה ברור' : 'Full encryption and transparent order details',
+    },
+    {
+      icon: Truck,
+      title: language === 'he' ? 'משלוח מהיר' : 'Fast delivery',
+      description: language === 'he' ? 'שליחה מהירה עם עדכון סטטוס בזמן אמת' : 'Rapid dispatch with real-time updates',
+    },
+    {
+      icon: RotateCcw,
+      title: language === 'he' ? 'מדיניות החזרה' : 'Easy returns',
+      description: language === 'he' ? 'אפשרויות החלפה גמישות' : 'Flexible exchange options',
+    },
+  ];
+  const metaHighlights = [
+    { label: language === 'he' ? 'כריכה' : 'Binding', value: book.binding },
+    { label: language === 'he' ? 'שפה' : 'Language', value: book.language },
+    { label: language === 'he' ? 'כרכים' : 'Volumes', value: book.volumes ? String(book.volumes) : null },
+  ].filter((item) => Boolean(item.value));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
       <Header onNavigate={onNavigate} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          <div>
-            <ImageGallery
-              images={images}
-              alt={language === 'he' ? book.title_he : book.title_en}
-            />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-10 lg:py-14">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-10 mb-14 items-start">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 sm:p-6">
+            <div className="rounded-xl bg-gradient-to-b from-gray-100 to-white p-2 sm:p-3">
+              <ImageGallery
+                images={images}
+                alt={language === 'he' ? book.title_he : book.title_en}
+              />
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <div>
+          <div className="space-y-8">
+            <div className="space-y-4">
               {displayCategories.length > 0 && (
-                <div className="flex flex-wrap gap-2 text-sm text-gray-700 mb-3">
+                <div className="flex flex-wrap gap-2 text-sm text-gray-700">
                   {displayCategories.map((category) => (
                     <a
                       key={category.id}
                       href={buildCategoryCatalogUrl(category.id)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 hover:bg-yellow-200 transition-colors"
+                      className="inline-flex items-center rounded-full bg-white text-yellow-800 px-3 py-1 shadow-sm border border-yellow-100 hover:border-yellow-200 hover:shadow transition"
                     >
                       {language === 'he' ? category.name_he : category.name_en}
                     </a>
                   ))}
                 </div>
               )}
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
+              <h1 className="text-3xl lg:text-4xl font-semibold text-gray-900 tracking-tight">
                 {language === 'he' ? book.title_he : book.title_en}
               </h1>
               {book.author && (
@@ -193,35 +226,55 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
               )}
             </div>
 
-            <div className="border-t border-b border-gray-200 py-4">
-              <div className="text-3xl font-bold text-yellow-600">
-                {currencySymbol}
-                {price.toFixed(2)}
+            <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-yellow-50 text-yellow-700 px-3 py-1 text-sm font-medium">
+                    {language === 'he' ? 'מהדורה עדכנית' : 'Latest edition'}
+                  </div>
+                  <div className="text-3xl font-bold text-gray-900">
+                    {currencySymbol}
+                    {price.toFixed(2)}
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold ${
+                  book.in_stock
+                    ? 'bg-green-50 text-green-700 border border-green-100'
+                    : 'bg-red-50 text-red-700 border border-red-100'
+                }`}>
+                  <Package className="w-4 h-4" />
+                  {book.in_stock
+                    ? language === 'he'
+                      ? 'במלאי'
+                      : 'In Stock'
+                    : language === 'he'
+                    ? 'אזל מהמלאי'
+                    : 'Out of Stock'}
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <Package className={`w-5 h-5 ${book.in_stock ? 'text-green-600' : 'text-red-600'}`} />
-              <span className={`font-medium ${book.in_stock ? 'text-green-600' : 'text-red-600'}`}>
-                {book.in_stock
-                  ? language === 'he'
-                    ? 'במלאי'
-                    : 'In Stock'
-                  : language === 'he'
-                  ? 'אזל מהמלאי'
-                  : 'Out of Stock'}
-              </span>
-            </div>
+              {metaHighlights.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                  {metaHighlights.map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-3"
+                    >
+                      <p className="text-xs uppercase tracking-wide text-gray-500">{item.label}</p>
+                      <p className="text-sm font-semibold text-gray-900">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 pt-2">
                 <label className="font-medium text-gray-700">
                   {language === 'he' ? 'כמות:' : 'Quantity:'}
                 </label>
-                <div className="flex items-center border-2 border-gray-300 rounded-lg">
+                <div className="flex items-center rounded-full bg-gray-50 border border-gray-200 shadow-inner">
                   <button
                     onClick={() => handleQuantityChange(quantity - 1)}
-                    className="px-4 py-2 hover:bg-gray-100 transition-colors font-bold"
+                    className="px-4 py-2 text-lg font-bold text-gray-700 hover:bg-white rounded-l-full transition-colors disabled:text-gray-400"
                     disabled={!book.in_stock}
                   >
                     -
@@ -230,14 +283,14 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                     type="number"
                     value={quantity}
                     onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                    className="w-16 text-center border-x-2 border-gray-300 py-2 focus:outline-none"
+                    className="w-16 text-center bg-transparent py-2 focus:outline-none text-gray-900"
                     min="1"
                     max="99"
                     disabled={!book.in_stock}
                   />
                   <button
                     onClick={() => handleQuantityChange(quantity + 1)}
-                    className="px-4 py-2 hover:bg-gray-100 transition-colors font-bold"
+                    className="px-4 py-2 text-lg font-bold text-gray-700 hover:bg-white rounded-r-full transition-colors disabled:text-gray-400"
                     disabled={!book.in_stock}
                   >
                     +
@@ -248,7 +301,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
               <button
                 onClick={handleAddToCart}
                 disabled={!book.in_stock || addedToCart}
-                className="w-full bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 disabled:from-gray-400 disabled:to-gray-400 text-white py-4 px-6 rounded-lg font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg border border-yellow-600/30 disabled:border-0"
+                className="w-full bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-500 hover:via-amber-500 hover:to-yellow-500 disabled:from-gray-300 disabled:to-gray-300 text-white py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all shadow-lg shadow-amber-200/40 disabled:shadow-none"
               >
                 {addedToCart ? (
                   <>
@@ -262,12 +315,27 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                   </>
                 )}
               </button>
+
+              <div className="grid sm:grid-cols-3 gap-3 pt-1">
+                {perks.map((perk) => (
+                  <div
+                    key={perk.title}
+                    className="flex gap-3 items-start rounded-xl bg-gray-50 border border-gray-100 px-3 py-3"
+                  >
+                    <perk.icon className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-semibold text-gray-900">{perk.title}</p>
+                      <p className="text-xs text-gray-600 leading-snug">{perk.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               {(shortDescription || descriptionTitle) && (
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
+                <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-3 tracking-tight">
                     {language === 'he' ? 'תיאור קצר' : 'Short Description'}
                   </h2>
                   {descriptionTitle && (
@@ -284,13 +352,13 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
 
         {originalDescription && (
           <div className="mb-12">
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
               <button
                 type="button"
-                className="w-full flex items-center justify-between px-6 py-4 text-left"
+                className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
                 onClick={() => setIsExtendedDescriptionOpen((prev) => !prev)}
               >
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-xl font-semibold text-gray-900">
                   {language === 'he' ? 'תיאור מורחב' : 'Extended Description'}
                 </span>
                 <ChevronDown
@@ -301,7 +369,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
               </button>
 
               {isExtendedDescriptionOpen && (
-                <div className="border-t border-gray-200 px-6 py-4">
+                <div className="border-t border-gray-100 px-6 py-5">
                   <p className="text-gray-700 leading-relaxed whitespace-pre-line">
                     {originalDescription}
                   </p>
