@@ -108,6 +108,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
       price_ils: book.price_ils,
       price_usd: book.price_usd,
       image_url: book.image_url,
+      weight: book.weight,
       quantity,
     };
 

@@ -131,9 +131,19 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const shippingCost = currency === 'ILS' ? selectedShippingOption.priceILS : selectedShippingOption.priceUSD;
   const orderTotal = itemsTotal + shippingCost;
 
+  const totalWeightGrams = useMemo(
+    () => cartItems.reduce((sum, item) => sum + (item.weight ?? 0) * item.quantity, 0),
+    [cartItems],
+  );
+
   const formatPrice = (value: number) => {
     const symbol = currency === 'ILS' ? '₪' : '$';
     return `${symbol}${value.toFixed(2)}`;
+  };
+
+  const formatWeight = (grams?: number | null) => {
+    if (!grams || grams <= 0) return t('cart.weight.unknown');
+    return `${(grams / 1000).toFixed(3)} ${t('cart.weight.kg')}`;
   };
 
   const isRTL = language === 'he';
@@ -192,6 +202,12 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                             {language === 'he' ? item.title_he : item.title_en}
                           </h3>
                           <p className="text-yellow-700 font-bold">{formatPrice(currency === 'ILS' ? item.price_ils : item.price_usd)}</p>
+                          <p className="text-sm text-gray-600">
+                            {t('cart.weight.perUnit')}: {formatWeight(item.weight)}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {t('cart.weight.totalItem')}: {formatWeight((item.weight ?? 0) * item.quantity)}
+                          </p>
                           <div className="flex items-center gap-3">
                             <label className="text-sm text-gray-600">{t('cart.quantity')}</label>
                             <div className="flex items-center border rounded-lg">
@@ -352,6 +368,12 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                   <div className="flex items-center justify-between text-gray-700">
                     <span>{t('cart.items.total')}</span>
                     <span className="font-semibold">{formatPrice(itemsTotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.weight.totalCart')}</span>
+                    <span className="font-semibold">
+                      {totalWeightGrams > 0 ? formatWeight(totalWeightGrams) : t('cart.weight.missingSummary')}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-gray-700">
                     <span>{t('cart.shipping.cost')}</span>
