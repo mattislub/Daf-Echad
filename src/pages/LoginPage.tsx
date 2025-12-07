@@ -3,6 +3,7 @@ import { ArrowRight, Home, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-reac
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
+import { sendAccountAccessEmail } from '../services/api';
 
 interface LoginPageProps {
   onNavigate?: (page: string) => void;
@@ -13,12 +14,32 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
   const isRTL = language === 'he';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [requestError, setRequestError] = useState('');
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!email || !password) return;
 
     console.info('Login attempt', { email });
+  };
+
+  const handleAccountRequest = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!accountEmail) return;
+
+    setRequestStatus('loading');
+    setRequestError('');
+
+    try {
+      await sendAccountAccessEmail({ email: accountEmail, language });
+      setRequestStatus('success');
+    } catch (error) {
+      setRequestStatus('error');
+      setRequestError(error instanceof Error ? error.message : t('login.accountRequestError'));
+    }
   };
 
   return (
@@ -46,7 +67,7 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            <div className="md:col-span-3">
+            <div className="md:col-span-3 space-y-4">
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 space-y-6">
                 <div className="space-y-2">
                   <h2 className="text-xl font-semibold text-gray-900">{t('login.title')}</h2>
@@ -125,12 +146,12 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       type="button"
-                    onClick={() => onNavigate?.('catalog')}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100"
-                  >
-                    <Home className="w-4 h-4" />
-                    {t('nav.books')}
-                  </button>
+                      onClick={() => onNavigate?.('catalog')}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100"
+                    >
+                      <Home className="w-4 h-4" />
+                      {t('nav.books')}
+                    </button>
                     <button
                       type="button"
                       onClick={() => onNavigate?.('account')}
@@ -141,6 +162,62 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
                     </button>
                   </div>
                 </form>
+              </div>
+
+              <div className="bg-white border border-yellow-100 rounded-2xl shadow-sm p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-yellow-50 border border-yellow-100 flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-yellow-700" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-yellow-800">{t('login.accountRequestTitle')}</p>
+                    <p className="text-gray-700">{t('login.accountRequestDescription')}</p>
+                  </div>
+                </div>
+
+                <form className="grid grid-cols-1 md:grid-cols-[1.2fr,auto] gap-3" onSubmit={handleAccountRequest}>
+                  <div className="relative">
+                    <Mail
+                      className={`w-4 h-4 text-gray-400 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2`}
+                    />
+                    <input
+                      type="email"
+                      value={accountEmail}
+                      onChange={(event) => {
+                        setAccountEmail(event.target.value);
+                        if (requestStatus !== 'idle') {
+                          setRequestStatus('idle');
+                          setRequestError('');
+                        }
+                      }}
+                      className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-yellow-500 focus:ring-yellow-200 ${
+                        isRTL ? 'pr-10' : 'pl-10'
+                      }`}
+                      placeholder={t('login.accountRequestPlaceholder')}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!accountEmail || requestStatus === 'loading'}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-yellow-700 rounded-lg hover:bg-yellow-800 disabled:opacity-60"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {requestStatus === 'loading' ? t('login.accountRequestWorking') : t('login.accountRequestSubmit')}
+                  </button>
+                </form>
+
+                {requestStatus === 'success' && (
+                  <p className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                    {t('login.accountRequestSuccess')}
+                  </p>
+                )}
+
+                {requestStatus === 'error' && (
+                  <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    {requestError || t('login.accountRequestError')}
+                  </p>
+                )}
               </div>
             </div>
 
