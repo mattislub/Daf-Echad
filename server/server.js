@@ -17,6 +17,7 @@ import {
   fetchSizes,
   loadBookReferenceData,
 } from './data-loaders.js';
+import { mailDefaults, sendEmail } from './email.js';
 
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
@@ -376,6 +377,36 @@ app.use((err, req, res, next) => {
   next(err);
 });
 app.use(express.json());
+
+app.post('/api/email/send', async (req, res) => {
+  const { to, subject, text, html, bcc } = req.body ?? {};
+
+  if (!to || !subject || (!text && !html)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required email fields',
+    });
+  }
+
+  try {
+    await sendEmail({ to, subject, text, html, bcc });
+    res.json({
+      status: 'ok',
+      message: 'Email sent',
+      defaults: {
+        charset: mailDefaults.charset,
+        from: mailDefaults.from,
+        bcc: mailDefaults.bcc,
+      },
+    });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
 
 app.get('/api/db-health', async (_req, res) => {
   try {
