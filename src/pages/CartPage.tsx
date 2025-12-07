@@ -31,6 +31,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsError, setShowTermsError] = useState(false);
+  const [sendingOrder, setSendingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   const shippingOptions: ShippingOption[] = useMemo(
     () => [
@@ -144,6 +146,95 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const formatWeight = (grams?: number | null) => {
     if (!grams || grams <= 0) return t('cart.weight.unknown');
     return `${(grams / 1000).toFixed(3)} ${t('cart.weight.kg')}`;
+  };
+
+  const sendOrderEmail = async () => {
+    const storeEmail = 'info@dafechad.com';
+    const storeLogoUrl = 'https://dafechad.com/logo.png';
+
+    const subject = language === 'he' ? 'אישור קבלת הזמנה חדשה' : 'New Daf Echad order received';
+    const thankYouLine = language === 'he' ? 'תודה שהזמנתם מדף אחד!' : 'Thank you for ordering from Daf Echad!';
+    const introLine =
+      language === 'he'
+        ? 'קיבלנו את ההזמנה שלכם וניצור קשר לאישור המשלוח והחיוב.'
+        : 'We received your order and will confirm delivery and payment soon.';
+
+    const shippingDescription = `${selectedShippingOption.label[language]} - ${selectedShippingOption.method[language]}`;
+    const paymentDescription = paymentMethod === 'card' ? t('cart.payment.card') : t('cart.payment.cash');
+    const weightSummary =
+      totalWeightGrams > 0 ? formatWeight(totalWeightGrams) : t('cart.weight.missingSummary');
+
+    const itemLines = cartItems
+      .map((item, index) => {
+        const title = language === 'he' ? item.title_he : item.title_en;
+        const lineTotal = formatPrice(
+          (currency === 'ILS' ? item.price_ils : item.price_usd) * item.quantity,
+        );
+        return `${index + 1}. ${title} × ${item.quantity} – ${lineTotal}`;
+      })
+      .join('\n');
+
+    const textBody = [
+      thankYouLine,
+      introLine,
+      '',
+      language === 'he' ? 'סיכום הזמנה:' : 'Order summary:',
+      itemLines,
+      '',
+      `${language === 'he' ? 'משלוח' : 'Shipping'}: ${shippingDescription}`,
+      `${language === 'he' ? 'תשלום' : 'Payment'}: ${paymentDescription}`,
+      `${language === 'he' ? 'סה"כ' : 'Total'}: ${formatPrice(orderTotal)}`,
+      `${language === 'he' ? 'משקל משוער' : 'Estimated weight'}: ${weightSummary}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const htmlItems = cartItems
+      .map((item) => {
+        const title = language === 'he' ? item.title_he : item.title_en;
+        const lineTotal = formatPrice(
+          (currency === 'ILS' ? item.price_ils : item.price_usd) * item.quantity,
+        );
+        const itemWeight = item.weight
+          ? formatWeight((item.weight ?? 0) * item.quantity)
+          : t('cart.weight.unknown');
+        return `<li style="margin-bottom:8px;"><strong>${title}</strong> × ${item.quantity} - ${lineTotal}<br /><span style="color:#4a5568; font-size:12px;">${t('cart.weight.totalItem')}: ${itemWeight}</span></li>`;
+      })
+      .join('');
+
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; color: #1a202c; background: #f7fafc; padding: 24px;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <img src="${storeLogoUrl}" alt="${language === 'he' ? 'דף אחד' : 'Daf Echad'}" style="height: 72px; margin-bottom: 12px;" />
+            <h2 style="margin: 0; color: #b7791f;">${thankYouLine}</h2>
+            <p style="margin: 4px 0 0; color: #4a5568;">${introLine}</p>
+          </div>
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 16px;">
+            <h3 style="margin: 0 0 8px;">${language === 'he' ? 'סיכום הזמנה' : 'Order summary'}</h3>
+            <ul style="padding-left: 18px; margin: 0 0 12px; line-height: 1.6;">${htmlItems}</ul>
+            <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משלוח:' : 'Shipping:'}</strong> ${shippingDescription}</p>
+            <p style="margin: 6px 0;"><strong>${language === 'he' ? 'תשלום:' : 'Payment:'}</strong> ${paymentDescription}</p>
+            <p style="margin: 6px 0;"><strong>${language === 'he' ? 'סה"כ להזמנה:' : 'Order total:'}</strong> ${formatPrice(orderTotal)}</p>
+            <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משקל משוער:' : 'Estimated weight:'}</strong> ${weightSummary}</p>
+          </div>
+          <div style="margin-top: 16px; background: #fffbeb; border-radius: 10px; padding: 12px; color: #744210;">
+            ${language === 'he' ? 'תודה שבחרתם בדף אחד! נשוב אליכם לאישור סופי של המשלוח והתשלום.' : 'Thank you for choosing Daf Echad! We will follow up to finalize delivery and payment details.'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const response = await fetch('/api/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: storeEmail, subject, text: textBody, html: htmlBody }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || 'Failed to send order email');
+    }
   };
 
   const isRTL = language === 'he';
@@ -414,18 +505,45 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                   )}
                 </div>
                 <button
-                  className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition"
-                  onClick={() => {
+                  className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                  disabled={sendingOrder}
+                  onClick={async () => {
                     if (!termsAccepted) {
                       setShowTermsError(true);
                       setShowConfirmation(false);
                       return;
                     }
-                    setShowConfirmation(true);
+
+                    setSendingOrder(true);
+                    setShowConfirmation(false);
+                    setOrderError(null);
+
+                    try {
+                      await sendOrderEmail();
+                      setShowConfirmation(true);
+                    } catch (error) {
+                      console.error('Order email failed', error);
+                      setOrderError(
+                        language === 'he'
+                          ? 'שליחת המייל נכשלה. בבקשה נסו שוב.'
+                          : 'Could not send the order email. Please try again.',
+                      );
+                    } finally {
+                      setSendingOrder(false);
+                    }
                   }}
                 >
-                  {t('cart.checkout')}
+                  {sendingOrder
+                    ? language === 'he'
+                      ? 'שולח את פרטי ההזמנה...'
+                      : 'Sending order details...'
+                    : t('cart.checkout')}
                 </button>
+                {orderError && (
+                  <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                    {orderError}
+                  </div>
+                )}
                 {showConfirmation && (
                   <div className="mt-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
                     {t('cart.checkout.confirmation')}
