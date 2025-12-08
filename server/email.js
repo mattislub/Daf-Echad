@@ -11,6 +11,63 @@ const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'דף אחד - מידע';
 const MAIL_BCC_ADDRESS = process.env.MAIL_BCC_ADDRESS || 'dafechadout@gmail.com';
 const MAIL_BCC_NAME = process.env.MAIL_BCC_NAME || 'דף אחד - עותק';
 
+const BRAND_COLORS = {
+  primary: '#b7791f',
+  muted: '#4a5568',
+  background: '#f7fafc',
+  card: '#ffffff',
+  border: '#e2e8f0',
+};
+
+function escapeHtml(value = '') {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatPlaintextToHtml(value = '') {
+  const trimmed = value.trim();
+  if (!trimmed) return '<p style="margin:0;">&nbsp;</p>';
+
+  return trimmed
+    .split(/\r?\n\r?\n/)
+    .map((paragraph) => `<p style="margin: 0 0 12px; line-height: 1.6;">${escapeHtml(paragraph).replace(/\r?\n/g, '<br />')}</p>`)
+    .join('');
+}
+
+function buildStyledHtml({ subject, bodyHtml, bodyText }) {
+  const content = bodyHtml || formatPlaintextToHtml(bodyText);
+  const headerTitle = escapeHtml(MAIL_FROM_NAME || 'דף אחד');
+  const encodedSubject = escapeHtml(subject || '');
+
+  return `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; background:${BRAND_COLORS.background}; padding:24px; color:${BRAND_COLORS.muted};">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px; margin:0 auto; background:${BRAND_COLORS.card}; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08); border:1px solid ${BRAND_COLORS.border}; overflow:hidden;">
+        <tr>
+          <td style="background:${BRAND_COLORS.primary}; color:#fff; padding:18px 22px;">
+            <div style="font-size:18px; font-weight:700;">${headerTitle}</div>
+            ${encodedSubject ? `<div style="font-size:14px; opacity:0.9; margin-top:4px;">${encodedSubject}</div>` : ''}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 22px;">
+            ${content}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 22px; background:${BRAND_COLORS.background}; font-size:12px; color:${BRAND_COLORS.muted}; text-align:center;">
+            <div style="margin-bottom:6px;">${escapeHtml(MAIL_FROM_ADDRESS)}</div>
+            <div style="opacity:0.8;">תודה שבחרתם בדף אחד</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+}
+
 function formatAddress(address) {
   if (!address) return '';
   if (typeof address === 'string') return address;
@@ -163,8 +220,10 @@ function ensureBcc(bcc) {
 export async function sendEmail({ to, subject, text, html, bcc }) {
   if (!to) throw new Error('Missing email recipient');
 
+  const styledHtml = buildStyledHtml({ subject, bodyHtml: html, bodyText: text });
+
   const recipients = buildRecipients(to, ensureBcc(bcc));
-  const message = buildMessage({ to, subject, text, html, bcc: ensureBcc(bcc) });
+  const message = buildMessage({ to, subject, text, html: styledHtml, bcc: ensureBcc(bcc) });
 
   const socket = net.createConnection({ host: MAIL_HOST, port: MAIL_PORT });
   await new Promise((resolve, reject) => {
