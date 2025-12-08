@@ -174,6 +174,22 @@ export async function fetchCountries() {
   }));
 }
 
+export async function fetchCarriers() {
+  const rows = await runQuery(
+    'fetching carriers',
+    'SELECT ID, name, contact, telno, email, notes FROM carrier ORDER BY name',
+  );
+
+  return rows.map((row) => ({
+    id: String(row.ID ?? row.id ?? ''),
+    name: row.name ?? '',
+    contact: row.contact ?? '',
+    telno: row.telno ?? '',
+    email: row.email ?? '',
+    notes: row.notes ?? '',
+  }));
+}
+
 export async function fetchCustomers() {
   return runQuery(
     'fetching customers',

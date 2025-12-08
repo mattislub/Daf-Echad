@@ -27,6 +27,15 @@ interface Country {
   name: string;
 }
 
+interface Carrier {
+  id: string;
+  name: string;
+  contact: string;
+  telno: string;
+  email: string;
+  notes: string;
+}
+
 export default function CartPage({ onNavigate }: CartPageProps) {
   const { cartItems, updateQuantity, removeFromCart, getTotalPrice } = useCart();
   const { language, currency, t } = useLanguage();
@@ -36,6 +45,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [selectedCountry, setSelectedCountry] = useState('');
   const [countryLoading, setCountryLoading] = useState(false);
   const [countryError, setCountryError] = useState<string | null>(null);
+  const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [selectedCarrier, setSelectedCarrier] = useState('');
+  const [carrierLoading, setCarrierLoading] = useState(false);
+  const [carrierError, setCarrierError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -74,6 +87,38 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   useEffect(() => {
     void loadCountries();
   }, [loadCountries]);
+
+  const loadCarriers = useCallback(async () => {
+    setCarrierLoading(true);
+    setCarrierError(null);
+
+    try {
+      const response = await fetch('/api/carriers');
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch carriers');
+      }
+
+      const data: Carrier[] = await response.json();
+      setCarriers(data);
+
+      if (data.length > 0) {
+        const hasExistingSelection = data.some((carrier) => carrier.id === selectedCarrier);
+        setSelectedCarrier(hasExistingSelection ? selectedCarrier : data[0].id);
+      } else {
+        setSelectedCarrier('');
+      }
+    } catch (error) {
+      console.error('Failed to load carriers', error);
+      setCarrierError(t('cart.shipping.carrier.error'));
+    } finally {
+      setCarrierLoading(false);
+    }
+  }, [selectedCarrier, t]);
+
+  useEffect(() => {
+    void loadCarriers();
+  }, [loadCarriers]);
 
   const shippingOptions: ShippingOption[] = useMemo(
     () => [
@@ -173,6 +218,33 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     () => countries.find((country) => country.id === selectedCountry)?.name || '',
     [countries, selectedCountry],
   );
+  const selectedCarrierDetails = useMemo(
+    () => carriers.find((carrier) => carrier.id === selectedCarrier),
+    [carriers, selectedCarrier],
+  );
+  const selectedCarrierName = selectedCarrierDetails?.name ?? '';
+  const carrierDetails = useMemo(
+    () =>
+      selectedCarrierDetails
+        ? [
+            selectedCarrierDetails.contact
+              ? `${t('cart.shipping.carrier.contact')}: ${selectedCarrierDetails.contact}`
+              : '',
+            selectedCarrierDetails.telno
+              ? `${t('cart.shipping.carrier.phone')}: ${selectedCarrierDetails.telno}`
+              : '',
+            selectedCarrierDetails.email
+              ? `${t('cart.shipping.carrier.email')}: ${selectedCarrierDetails.email}`
+              : '',
+            selectedCarrierDetails.notes
+              ? `${t('cart.shipping.carrier.notes')}: ${selectedCarrierDetails.notes}`
+              : '',
+          ].filter(Boolean)
+        : [],
+    [selectedCarrierDetails, t],
+  );
+  const carrierDetailsLine = carrierDetails.join(' | ');
+  const carrierSummary = selectedCarrierName || t('cart.shipping.carrier.unknown');
 
   const itemsTotal = getTotalPrice(currency);
   const shippingCost = currency === 'ILS' ? selectedShippingOption.priceILS : selectedShippingOption.priceUSD;
@@ -228,6 +300,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       '',
       `${language === 'he' ? 'משלוח' : 'Shipping'}: ${shippingDescription}`,
       `${t('cart.shipping.country.summary')}: ${selectedCountryName || t('cart.shipping.country.unknown')}`,
+      `${t('cart.shipping.carrier.summary')}: ${carrierSummary}${carrierDetailsLine ? ` (${carrierDetailsLine})` : ''}`,
       `${language === 'he' ? 'תשלום' : 'Payment'}: ${paymentDescription}`,
       `${language === 'he' ? 'סה"כ' : 'Total'}: ${formatPrice(orderTotal)}`,
       `${language === 'he' ? 'משקל משוער' : 'Estimated weight'}: ${weightSummary}`,
@@ -263,6 +336,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             <p style="margin: 6px 0;"><strong>${t('cart.shipping.country.summary')}:</strong> ${
               selectedCountryName || t('cart.shipping.country.unknown')
             }</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.shipping.carrier.summary')}:</strong> ${carrierSummary}${
+      carrierDetailsLine ? `<br /><span style="color:#4a5568; font-size:12px;">${carrierDetailsLine}</span>` : ''
+    }</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'תשלום:' : 'Payment:'}</strong> ${paymentDescription}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'סה"כ להזמנה:' : 'Order total:'}</strong> ${formatPrice(orderTotal)}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משקל משוער:' : 'Estimated weight:'}</strong> ${weightSummary}</p>
@@ -445,6 +521,62 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                   )}
                 </div>
 
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="carrier-select" className="text-sm font-semibold text-gray-900">
+                      {t('cart.shipping.carrier')}
+                    </label>
+                    {carrierLoading && (
+                      <span className="text-xs text-gray-500">{t('cart.shipping.carrier.loading')}</span>
+                    )}
+                  </div>
+
+                  {carrierError ? (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      <span>{carrierError}</span>
+                      <button
+                        type="button"
+                        onClick={() => void loadCarriers()}
+                        className="font-semibold hover:underline"
+                      >
+                        {t('cart.shipping.carrier.retry')}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        id="carrier-select"
+                        value={selectedCarrier}
+                        onChange={(event) => setSelectedCarrier(event.target.value)}
+                        disabled={carrierLoading || carriers.length === 0}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
+                      >
+                        <option value="" disabled>
+                          {t('cart.shipping.carrier.placeholder')}
+                        </option>
+                        {carriers.map((carrier) => (
+                          <option key={carrier.id} value={carrier.id}>
+                            {carrier.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {!carrierLoading && carriers.length === 0 && (
+                        <p className="text-sm text-gray-500">{t('cart.shipping.carrier.empty')}</p>
+                      )}
+
+                      {selectedCarrierDetails && (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 space-y-1">
+                          <p className="font-semibold text-gray-900">{selectedCarrierDetails.name}</p>
+                          {carrierDetails.map((detail) => (
+                            <p key={detail}>{detail}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   {shippingOptions.map((option) => (
                     <label
@@ -565,6 +697,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                   <div className="flex items-center justify-between text-gray-700">
                     <span>{t('cart.shipping.country.summary')}</span>
                     <span className="font-semibold">{selectedCountryName || t('cart.shipping.country.unknown')}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.shipping.carrier.summary')}</span>
+                    <span className="font-semibold">{selectedCarrierName || t('cart.shipping.carrier.unknown')}</span>
                   </div>
                   <div className="flex items-center justify-between text-gray-700">
                     <span>{t('cart.shipping.cost')}</span>

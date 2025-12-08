@@ -19,6 +19,7 @@ import {
   fetchSizes,
   loadBookReferenceData,
   fetchCustomerCredits,
+  fetchCarriers,
 } from './data-loaders.js';
 import { mailDefaults, sendEmail } from './email.js';
 
@@ -823,6 +824,31 @@ app.get('/api/authors', async (_req, res) => {
 
   } catch (error) {
     console.error('Error fetching authors:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/carriers', async (_req, res) => {
+  try {
+    const carriers = await fetchCarriers();
+
+    const normalizedCarriers = carriers
+      .map((carrier) => ({
+        id: carrier.id,
+        name: carrier.name.trim(),
+        contact: carrier.contact?.trim() ?? '',
+        telno: carrier.telno?.trim() ?? '',
+        email: carrier.email?.trim() ?? '',
+        notes: carrier.notes?.trim() ?? '',
+      }))
+      .filter((carrier) => carrier.id && carrier.name);
+
+    res.json(normalizedCarriers);
+  } catch (error) {
+    console.error('Error fetching carriers:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
