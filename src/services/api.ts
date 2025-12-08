@@ -1,9 +1,9 @@
 import { Author, Book, Category, Publisher } from '../types/catalog';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-if (!API_BASE_URL) {
-  console.warn('VITE_API_BASE_URL is not defined. API requests will fail.');
+if (!import.meta.env.VITE_API_BASE_URL) {
+  console.info('VITE_API_BASE_URL is not defined. Defaulting to /api.');
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
