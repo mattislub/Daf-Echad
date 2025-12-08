@@ -17,6 +17,7 @@ import {
   fetchPublishers,
   fetchSizes,
   loadBookReferenceData,
+  fetchCustomerCredits,
 } from './data-loaders.js';
 import { mailDefaults, sendEmail } from './email.js';
 
@@ -495,6 +496,73 @@ app.get('/api/customers', async (_req, res) => {
     res.json(normalizedCustomers);
   } catch (error) {
     console.error('Error fetching customers:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/customers/:id/credit', async (req, res) => {
+  const customerId = req.params.id;
+
+  if (!customerId) {
+    return res.status(400).json({ status: 'error', message: 'Customer ID is required' });
+  }
+
+  try {
+    const rows = await fetchCustomerCredits(customerId);
+    const normalizedRows = rows
+      .map((row) => ({
+        id: row.ID ? String(row.ID) : row.id ? String(row.id) : '',
+        customerId: row.custid ? String(row.custid) : '',
+        date: row.date ? String(row.date) : '',
+        code: row.ccode ? String(row.ccode) : '',
+        description: row.cdesc ? String(row.cdesc) : '',
+        amount: row.amt !== undefined && row.amt !== null ? Number(row.amt) : 0,
+        orderId: row.usedordid ? String(row.usedordid) : '',
+        stamp: row.stamp ? String(row.stamp) : '',
+      }))
+      .filter((entry) => entry.id !== '' || entry.customerId !== '');
+
+    const chronological = [...normalizedRows].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      const idA = Number.parseInt(a.id, 10) || 0;
+      const idB = Number.parseInt(b.id, 10) || 0;
+
+      if (dateA !== dateB) return dateA - dateB;
+      return idA - idB;
+    });
+
+    let runningBalance = 0;
+    const withRunningBalance = chronological.map((entry) => {
+      runningBalance += entry.amount;
+      return { ...entry, runningBalance };
+    });
+
+    const transactions = [...withRunningBalance].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      const idA = Number.parseInt(a.id, 10) || 0;
+      const idB = Number.parseInt(b.id, 10) || 0;
+
+      if (dateA !== dateB) return dateB - dateA;
+      return idB - idA;
+    });
+
+    const totalCredit = withRunningBalance.length
+      ? withRunningBalance[withRunningBalance.length - 1].runningBalance
+      : 0;
+
+    res.json({
+      totalCredit,
+      count: transactions.length,
+      updatedAt: transactions[0]?.stamp ?? transactions[0]?.date ?? null,
+      transactions,
+    });
+  } catch (error) {
+    console.error('Error fetching customer credit history:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',

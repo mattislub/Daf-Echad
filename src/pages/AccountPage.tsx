@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   CreditCard,
@@ -16,6 +16,7 @@ import {
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
+import { CustomerCreditEntry, CustomerCreditResponse, getCustomerCredit } from '../services/api';
 
 interface AccountPageProps {
   onNavigate?: (page: string) => void;
@@ -45,16 +46,20 @@ type TabId = (typeof tabOrder)[number];
 export default function AccountPage({ onNavigate }: AccountPageProps) {
   const { language, currency, t } = useLanguage();
   const isRTL = language === 'he';
+  const customerId = '1045';
   const [trackingNumber, setTrackingNumber] = useState('');
   const [courier, setCourier] = useState('');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [creditSummary, setCreditSummary] = useState<CustomerCreditResponse | null>(null);
+  const [creditError, setCreditError] = useState<string | null>(null);
+  const [isCreditLoading, setIsCreditLoading] = useState(false);
 
   const customerProfile = {
     name: { he: 'אברהם כהן', en: 'Avraham Cohen' },
     email: 'avraham.cohen@example.com',
     phone: '+972-52-123-4567',
     city: { he: 'ירושלים', en: 'Jerusalem' },
-    id: 'CUST-1045',
+    id: `#${customerId}`,
     customerType: { he: 'לקוח פרטי', en: 'Personal customer' },
     languagePreference: { he: 'עברית', en: 'Hebrew' },
   } as const;
@@ -121,7 +126,43 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     [t],
   );
 
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat(language === 'he' ? 'he-IL' : 'en-US', {
+      style: 'currency',
+      currency: currency === 'ILS' ? 'ILS' : 'USD',
+      minimumFractionDigits: 2,
+    }).format(value);
+
+  const formatDate = (value?: string) => {
+    if (!value) return '-';
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return parsed.toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US');
+  };
+
   const formatTotal = (order: OrderItem) => (currency === 'ILS' ? `₪${order.totalILS}` : `$${order.totalUSD}`);
+
+  const loadCustomerCredit = useCallback(async () => {
+    setIsCreditLoading(true);
+    setCreditError(null);
+
+    try {
+      const creditData = await getCustomerCredit(customerId);
+      setCreditSummary(creditData);
+    } catch (error) {
+      console.error('Failed to load credit history', error);
+      setCreditError(t('account.creditLoadError'));
+      setCreditSummary(null);
+    } finally {
+      setIsCreditLoading(false);
+    }
+  }, [customerId, t]);
+
+  useEffect(() => {
+    loadCustomerCredit();
+  }, [loadCustomerCredit]);
 
   const handleTrackSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -147,7 +188,7 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     },
   ];
 
-  const creditValue = currency === 'ILS' ? '₪220' : '$60';
+  const creditValue = creditSummary ? formatCurrency(creditSummary.totalCredit) : t('account.creditLoading');
   const tierLabel = language === 'he' ? 'חבר זהב' : 'Gold member';
   const tierDescription =
     language === 'he' ? 'משלוח מועדף והטבות קבועות' : 'Priority shipping and member rewards';
@@ -163,6 +204,49 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
 
   const nextDelivery = orders[0];
   const pickupOrder = orders.find((order) => order.status.en === 'Awaiting pickup');
+
+  const renderCreditRows = (transactions: CustomerCreditEntry[]) => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full border border-gray-100 rounded-lg overflow-hidden">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('account.date')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('account.creditCode')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('account.creditDescriptionLabel')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('account.creditOrderId')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('account.creditAmount')}
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('account.creditRunningBalance')}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 bg-white">
+          {transactions.map((entry) => (
+            <tr key={entry.id} className="hover:bg-yellow-50/40">
+              <td className="px-4 py-3 text-sm text-gray-700">{formatDate(entry.date)}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{entry.code || '-'}</td>
+              <td className="px-4 py-3 text-sm text-gray-900">{entry.description || '-'}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{entry.orderId || '-'}</td>
+              <td className="px-4 py-3 text-sm font-semibold text-gray-900">{formatCurrency(entry.amount)}</td>
+              <td className="px-4 py-3 text-sm font-semibold text-yellow-700">
+                {formatCurrency(entry.runningBalance)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -186,7 +270,11 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
               <p className="font-semibold text-gray-900">{creditValue}</p>
             </div>
           </div>
-          <p className="text-sm text-gray-600">{t('account.creditDescription')}</p>
+          <p className="text-sm text-gray-600">
+            {creditSummary?.updatedAt
+              ? `${t('account.creditLastUpdated')} ${formatDate(creditSummary.updatedAt)}`
+              : t('account.creditDescription')}
+          </p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
@@ -280,6 +368,37 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-gray-500 uppercase tracking-wide">{t('account.storeCredit')}</p>
+            <h3 className="text-lg font-semibold text-gray-900">{t('account.creditHistoryTitle')}</h3>
+            <p className="text-sm text-gray-600">{t('account.creditHistoryDescription')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={loadCustomerCredit}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100"
+            disabled={isCreditLoading}
+          >
+            {t('account.refresh')}
+          </button>
+        </div>
+
+        {isCreditLoading && <p className="text-sm text-gray-600">{t('account.creditLoading')}</p>}
+        {creditError && (
+          <p className="text-sm text-red-600" role="alert">
+            {creditError}
+          </p>
+        )}
+        {!isCreditLoading && !creditError && creditSummary?.transactions?.length === 0 && (
+          <p className="text-sm text-gray-600">{t('account.noCreditEntries')}</p>
+        )}
+        {!isCreditLoading && !creditError && creditSummary?.transactions?.length
+          ? renderCreditRows(creditSummary.transactions)
+          : null}
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">

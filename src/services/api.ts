@@ -1,5 +1,24 @@
 import { Author, Book, Category, Publisher } from '../types/catalog';
 
+export interface CustomerCreditEntry {
+  id: string;
+  customerId: string;
+  date: string;
+  code: string;
+  description: string;
+  amount: number;
+  orderId: string;
+  stamp?: string;
+  runningBalance: number;
+}
+
+export interface CustomerCreditResponse {
+  totalCredit: number;
+  count: number;
+  updatedAt?: string | null;
+  transactions: CustomerCreditEntry[];
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 if (!import.meta.env.VITE_API_BASE_URL) {
@@ -30,6 +49,10 @@ export async function getPublishers(): Promise<Publisher[]> {
 
 export async function getAuthors(): Promise<Author[]> {
   return fetchJson<Author[]>('/authors');
+}
+
+export async function getCustomerCredit(customerId: string): Promise<CustomerCreditResponse> {
+  return fetchJson<CustomerCreditResponse>(`/customers/${customerId}/credit`);
 }
 
 export async function getBookById(bookId: string): Promise<Book | null> {
