@@ -6,6 +6,7 @@ import {
   fetchAuthors,
   fetchBindings,
   fetchCategories,
+  fetchCountries,
   fetchColors,
   fetchCustomers,
   fetchDiscounts,
@@ -754,6 +755,24 @@ app.get('/api/authors', async (_req, res) => {
 
   } catch (error) {
     console.error('Error fetching authors:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/countries', async (_req, res) => {
+  try {
+    const countries = await fetchCountries();
+
+    const normalizedCountries = countries
+      .map((country) => ({ id: country.id ? String(country.id) : '', name: country.name?.trim() ?? '' }))
+      .filter((country) => country.id && country.name);
+
+    res.json(normalizedCountries);
+  } catch (error) {
+    console.error('Error fetching countries:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
