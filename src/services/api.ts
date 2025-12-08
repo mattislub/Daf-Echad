@@ -1,4 +1,5 @@
 import { Author, Book, Category, Publisher } from '../types/catalog';
+import { Carrier } from '../types/shipping';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -26,6 +27,10 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getPublishers(): Promise<Publisher[]> {
   return fetchJson<Publisher[]>('/publishers');
+}
+
+export async function getCarriers(): Promise<Carrier[]> {
+  return fetchJson<Carrier[]>('/carriers');
 }
 
 export async function getAuthors(): Promise<Author[]> {

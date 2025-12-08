@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CreditCard, Globe2, Package, Trash2, Truck, Wallet } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { getCarriers } from '../services/api';
+import { Carrier } from '../types/shipping';
 
 interface CartPageProps {
   onNavigate?: (page: string) => void;
@@ -27,6 +29,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const { language, currency, t } = useLanguage();
 
   const [selectedShipping, setSelectedShipping] = useState<string>('israel-standard');
+  const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [selectedCarrierId, setSelectedCarrierId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -127,11 +131,35 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     [],
   );
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCarriers() {
+      try {
+        const carrierResults = await getCarriers();
+
+        if (!isMounted) return;
+
+        setCarriers(carrierResults);
+        setSelectedCarrierId((current) => current || carrierResults[0]?.id || '');
+      } catch (error) {
+        console.error('Failed to load carriers', error);
+      }
+    }
+
+    loadCarriers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const selectedShippingOption = shippingOptions.find((option) => option.id === selectedShipping) || shippingOptions[0];
 
   const itemsTotal = getTotalPrice(currency);
   const shippingCost = currency === 'ILS' ? selectedShippingOption.priceILS : selectedShippingOption.priceUSD;
   const orderTotal = itemsTotal + shippingCost;
+  const selectedCarrier = carriers.find((carrier) => carrier.id === selectedCarrierId) ?? null;
 
   const totalWeightGrams = useMemo(
     () => cartItems.reduce((sum, item) => sum + (item.weight ?? 0) * item.quantity, 0),
@@ -160,6 +188,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
         : 'We received your order and will confirm delivery and payment soon.';
 
     const shippingDescription = `${selectedShippingOption.label[language]} - ${selectedShippingOption.method[language]}`;
+    const carrierDescription = selectedCarrier
+      ? `${selectedCarrier.name}${selectedCarrier.contact ? ` – ${selectedCarrier.contact}` : ''}`
+      : t('cart.shipping.carrierNotSelected');
     const paymentDescription = paymentMethod === 'card' ? t('cart.payment.card') : t('cart.payment.cash');
     const weightSummary =
       totalWeightGrams > 0 ? formatWeight(totalWeightGrams) : t('cart.weight.missingSummary');
@@ -182,6 +213,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       itemLines,
       '',
       `${language === 'he' ? 'משלוח' : 'Shipping'}: ${shippingDescription}`,
+      `${t('cart.shipping.carrierLabel')}: ${carrierDescription}`,
       `${language === 'he' ? 'תשלום' : 'Payment'}: ${paymentDescription}`,
       `${language === 'he' ? 'סה"כ' : 'Total'}: ${formatPrice(orderTotal)}`,
       `${language === 'he' ? 'משקל משוער' : 'Estimated weight'}: ${weightSummary}`,
@@ -214,6 +246,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             <h3 style="margin: 0 0 8px;">${language === 'he' ? 'סיכום הזמנה' : 'Order summary'}</h3>
             <ul style="padding-left: 18px; margin: 0 0 12px; line-height: 1.6;">${htmlItems}</ul>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משלוח:' : 'Shipping:'}</strong> ${shippingDescription}</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.shipping.carrierLabel')}:</strong> ${carrierDescription}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'תשלום:' : 'Payment:'}</strong> ${paymentDescription}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'סה"כ להזמנה:' : 'Order total:'}</strong> ${formatPrice(orderTotal)}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משקל משוער:' : 'Estimated weight:'}</strong> ${weightSummary}</p>
@@ -397,6 +430,53 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     </label>
                   ))}
                 </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-gray-900">{t('cart.shipping.carrierLabel')}</p>
+                  <p className="text-sm text-gray-600">{t('cart.shipping.carrierDescription')}</p>
+
+                  {carriers.length > 0 ? (
+                    <select
+                      value={selectedCarrierId}
+                      onChange={(event) => setSelectedCarrierId(event.target.value)}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-yellow-600 focus:ring-yellow-600"
+                    >
+                      {carriers.map((carrier) => (
+                        <option key={carrier.id} value={carrier.id}>
+                          {carrier.name}
+                          {carrier.contact ? ` – ${carrier.contact}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-sm text-gray-500">{t('cart.shipping.noCarriersAvailable')}</p>
+                  )}
+
+                  {selectedCarrier && (
+                    <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
+                      {selectedCarrier.contact && (
+                        <p>
+                          <span className="font-medium">{t('cart.shipping.carrierContact')}:</span> {selectedCarrier.contact}
+                        </p>
+                      )}
+                      {selectedCarrier.phone && (
+                        <p>
+                          <span className="font-medium">{t('cart.shipping.carrierPhone')}:</span> {selectedCarrier.phone}
+                        </p>
+                      )}
+                      {selectedCarrier.email && (
+                        <p>
+                          <span className="font-medium">{t('cart.shipping.carrierEmail')}:</span> {selectedCarrier.email}
+                        </p>
+                      )}
+                      {selectedCarrier.notes && (
+                        <p>
+                          <span className="font-medium">{t('cart.shipping.carrierNotes')}:</span> {selectedCarrier.notes}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
@@ -464,6 +544,12 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     <span>{t('cart.weight.totalCart')}</span>
                     <span className="font-semibold">
                       {totalWeightGrams > 0 ? formatWeight(totalWeightGrams) : t('cart.weight.missingSummary')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.shipping.carrierLabel')}</span>
+                    <span className="font-semibold">
+                      {selectedCarrier ? selectedCarrier.name : t('cart.shipping.carrierNotSelected')}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-gray-700">

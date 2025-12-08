@@ -180,6 +180,10 @@ discpct, discval, multple, sponsorid, active, public, filename FROM disce`
   );
 }
 
+export async function fetchCarriers() {
+  return runQuery('fetching carriers', 'SELECT ID, name, contact, telno, email, notes FROM carrier');
+}
+
 export async function fetchBindings() {
   const rows = await runQuery('fetching bindings', 'SELECT ID, name, type, material FROM binding');
 

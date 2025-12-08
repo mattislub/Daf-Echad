@@ -13,3 +13,5 @@ export interface CartItem {
 
 export type Language = 'he' | 'en';
 export type Currency = 'ILS' | 'USD';
+
+export * from './shipping';

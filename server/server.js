@@ -5,6 +5,7 @@ import { DATABASE_NAME, getServerTime, testConnection, pool } from './db.js';
 import {
   fetchAuthors,
   fetchBindings,
+  fetchCarriers,
   fetchCategories,
   fetchColors,
   fetchCustomers,
@@ -183,6 +184,21 @@ function mapLanguageValue(languageCode, languageMap = new Map()) {
   const mappedValue = languageMap.get(normalizedCode);
 
   return mappedValue ?? normalizedCode;
+}
+
+function mapCarrierRow(row) {
+  const id = row.ID ?? row.id;
+
+  if (!id) return null;
+
+  return {
+    id: String(id),
+    name: row.name ?? '',
+    contact: row.contact ?? '',
+    phone: row.telno ?? row.phone ?? '',
+    email: row.email ?? '',
+    notes: row.notes ?? '',
+  };
 }
 
 function mapCustomerRow(row, languageMap = new Map()) {
@@ -510,6 +526,23 @@ app.get('/api/discounts', async (_req, res) => {
     res.json(normalizedDiscounts);
   } catch (error) {
     console.error('Error fetching discounts:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/carriers', async (_req, res) => {
+  try {
+    const carriers = await fetchCarriers();
+    const normalizedCarriers = carriers
+      .map((row) => mapCarrierRow(row))
+      .filter((carrier) => carrier !== null);
+
+    res.json(normalizedCarriers);
+  } catch (error) {
+    console.error('Error fetching carriers:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
