@@ -165,6 +165,15 @@ export async function fetchLanguages() {
   }));
 }
 
+export async function fetchCountries() {
+  const rows = await runQuery('fetching countries', 'SELECT ID, name FROM country ORDER BY name');
+
+  return rows.map((row) => ({
+    id: String(row.ID ?? row.id ?? ''),
+    name: row.name ?? '',
+  }));
+}
+
 export async function fetchCustomers() {
   return runQuery(
     'fetching customers',

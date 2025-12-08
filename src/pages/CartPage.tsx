@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CreditCard, Globe2, Package, Trash2, Truck, Wallet } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -22,17 +22,58 @@ interface ShippingOption {
   worldwide?: boolean;
 }
 
+interface Country {
+  id: string;
+  name: string;
+}
+
 export default function CartPage({ onNavigate }: CartPageProps) {
   const { cartItems, updateQuantity, removeFromCart, getTotalPrice } = useCart();
   const { language, currency, t } = useLanguage();
 
   const [selectedShipping, setSelectedShipping] = useState<string>('israel-standard');
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [countryLoading, setCountryLoading] = useState(false);
+  const [countryError, setCountryError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsError, setShowTermsError] = useState(false);
   const [sendingOrder, setSendingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+
+  const loadCountries = useCallback(async () => {
+    setCountryLoading(true);
+    setCountryError(null);
+
+    try {
+      const response = await fetch('/api/countries');
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch countries');
+      }
+
+      const data: Country[] = await response.json();
+      setCountries(data);
+
+      if (data.length > 0) {
+        const hasExistingSelection = data.some((country) => country.id === selectedCountry);
+        setSelectedCountry(hasExistingSelection ? selectedCountry : data[0].id);
+      } else {
+        setSelectedCountry('');
+      }
+    } catch (error) {
+      console.error('Failed to load countries', error);
+      setCountryError(t('cart.shipping.country.error'));
+    } finally {
+      setCountryLoading(false);
+    }
+  }, [selectedCountry, t]);
+
+  useEffect(() => {
+    void loadCountries();
+  }, [loadCountries]);
 
   const shippingOptions: ShippingOption[] = useMemo(
     () => [
@@ -128,6 +169,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   );
 
   const selectedShippingOption = shippingOptions.find((option) => option.id === selectedShipping) || shippingOptions[0];
+  const selectedCountryName = useMemo(
+    () => countries.find((country) => country.id === selectedCountry)?.name || '',
+    [countries, selectedCountry],
+  );
 
   const itemsTotal = getTotalPrice(currency);
   const shippingCost = currency === 'ILS' ? selectedShippingOption.priceILS : selectedShippingOption.priceUSD;
@@ -182,6 +227,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       itemLines,
       '',
       `${language === 'he' ? 'משלוח' : 'Shipping'}: ${shippingDescription}`,
+      `${t('cart.shipping.country.summary')}: ${selectedCountryName || t('cart.shipping.country.unknown')}`,
       `${language === 'he' ? 'תשלום' : 'Payment'}: ${paymentDescription}`,
       `${language === 'he' ? 'סה"כ' : 'Total'}: ${formatPrice(orderTotal)}`,
       `${language === 'he' ? 'משקל משוער' : 'Estimated weight'}: ${weightSummary}`,
@@ -214,6 +260,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             <h3 style="margin: 0 0 8px;">${language === 'he' ? 'סיכום הזמנה' : 'Order summary'}</h3>
             <ul style="padding-left: 18px; margin: 0 0 12px; line-height: 1.6;">${htmlItems}</ul>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משלוח:' : 'Shipping:'}</strong> ${shippingDescription}</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.shipping.country.summary')}:</strong> ${
+              selectedCountryName || t('cart.shipping.country.unknown')
+            }</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'תשלום:' : 'Payment:'}</strong> ${paymentDescription}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'סה"כ להזמנה:' : 'Order total:'}</strong> ${formatPrice(orderTotal)}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משקל משוער:' : 'Estimated weight:'}</strong> ${weightSummary}</p>
@@ -349,6 +398,53 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
                 <p className="text-gray-600">{t('cart.shipping.description')}</p>
 
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="country-select" className="text-sm font-semibold text-gray-900">
+                      {t('cart.shipping.country')}
+                    </label>
+                    {countryLoading && (
+                      <span className="text-xs text-gray-500">{t('cart.shipping.country.loading')}</span>
+                    )}
+                  </div>
+
+                  {countryError ? (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      <span>{countryError}</span>
+                      <button
+                        type="button"
+                        onClick={() => void loadCountries()}
+                        className="font-semibold hover:underline"
+                      >
+                        {t('cart.shipping.country.retry')}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        id="country-select"
+                        value={selectedCountry}
+                        onChange={(event) => setSelectedCountry(event.target.value)}
+                        disabled={countryLoading || countries.length === 0}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
+                      >
+                        <option value="" disabled>
+                          {t('cart.shipping.country.placeholder')}
+                        </option>
+                        {countries.map((country) => (
+                          <option key={country.id} value={country.id}>
+                            {country.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {!countryLoading && countries.length === 0 && (
+                        <p className="text-sm text-gray-500">{t('cart.shipping.country.empty')}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   {shippingOptions.map((option) => (
                     <label
@@ -465,6 +561,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     <span className="font-semibold">
                       {totalWeightGrams > 0 ? formatWeight(totalWeightGrams) : t('cart.weight.missingSummary')}
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.shipping.country.summary')}</span>
+                    <span className="font-semibold">{selectedCountryName || t('cart.shipping.country.unknown')}</span>
                   </div>
                   <div className="flex items-center justify-between text-gray-700">
                     <span>{t('cart.shipping.cost')}</span>
