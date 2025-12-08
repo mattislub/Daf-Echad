@@ -189,6 +189,14 @@ discpct, discval, multple, sponsorid, active, public, filename FROM disce`
   );
 }
 
+export async function fetchCustomerCredits(customerId) {
+  return runQuery(
+    'fetching customer credit history',
+    'SELECT ID, custid, date, ccode, cdesc, amt, usedordid, stamp FROM custcr WHERE custid = ? ORDER BY date DESC, ID DESC',
+    [customerId]
+  );
+}
+
 export async function fetchBindings() {
   const rows = await runQuery('fetching bindings', 'SELECT ID, name, type, material FROM binding');
 
