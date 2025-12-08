@@ -9,6 +9,9 @@ interface LoginPageProps {
   onNavigate?: (page: string) => void;
 }
 
+const hebrewCharRegex = /\p{Script=Hebrew}/u;
+const detectTextDirection = (value: string) => (hebrewCharRegex.test(value) ? 'rtl' : 'ltr');
+
 export default function LoginPage({ onNavigate }: LoginPageProps) {
   const { language, t } = useLanguage();
   const isRTL = language === 'he';
@@ -17,6 +20,9 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
   const [accountEmail, setAccountEmail] = useState('');
   const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [requestError, setRequestError] = useState('');
+
+  const emailDirection = email ? detectTextDirection(email) : isRTL ? 'rtl' : 'ltr';
+  const accountEmailDirection = accountEmail ? detectTextDirection(accountEmail) : isRTL ? 'rtl' : 'ltr';
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -80,7 +86,11 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
                       {t('login.email')}
                     </label>
                     <div className="relative">
-                      <Mail className={`w-5 h-5 text-gray-400 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2`} />
+                      <Mail
+                        className={`w-5 h-5 text-gray-400 absolute ${
+                          emailDirection === 'rtl' ? 'right-3' : 'left-3'
+                        } top-1/2 -translate-y-1/2`}
+                      />
                       <input
                         id="email"
                         name="email"
@@ -88,8 +98,9 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
                         autoComplete="email"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
+                        dir={emailDirection}
                         className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-yellow-500 focus:ring-yellow-200 ${
-                          isRTL ? 'pr-10' : 'pl-10'
+                          emailDirection === 'rtl' ? 'pr-10' : 'pl-10'
                         }`}
                         placeholder="name@email.com"
                       />
@@ -178,7 +189,9 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
                 <form className="grid grid-cols-1 md:grid-cols-[1.2fr,auto] gap-3" onSubmit={handleAccountRequest}>
                   <div className="relative">
                     <Mail
-                      className={`w-4 h-4 text-gray-400 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2`}
+                      className={`w-4 h-4 text-gray-400 absolute ${
+                        accountEmailDirection === 'rtl' ? 'right-3' : 'left-3'
+                      } top-1/2 -translate-y-1/2`}
                     />
                     <input
                       type="email"
@@ -190,8 +203,9 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
                           setRequestError('');
                         }
                       }}
+                      dir={accountEmailDirection}
                       className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-yellow-500 focus:ring-yellow-200 ${
-                        isRTL ? 'pr-10' : 'pl-10'
+                        accountEmailDirection === 'rtl' ? 'pr-10' : 'pl-10'
                       }`}
                       placeholder={t('login.accountRequestPlaceholder')}
                     />
