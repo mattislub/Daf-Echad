@@ -8,6 +8,7 @@ import {
   fetchCategories,
   fetchColors,
   fetchCustomers,
+  fetchDiscounts,
   fetchItemCategoryMap,
   fetchItemKeywords,
   fetchItemPrices,
@@ -224,6 +225,47 @@ function mapSizeValue(sizeCode, sizeMap = new Map()) {
   const mappedValue = sizeMap.get(normalizedCode);
 
   return mappedValue ?? normalizedCode;
+}
+
+function toNumberOrNull(value) {
+  if (value === undefined || value === null || value === '') return null;
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function toIsoDateString(value) {
+  if (!value) return null;
+
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString();
+}
+
+function mapDiscountRow(row) {
+  return {
+    id: row.ID ? String(row.ID) : '',
+    code: row.code ?? '',
+    name: row.name ?? '',
+    valid_from: toIsoDateString(row.dfrom),
+    valid_to: toIsoDateString(row.dto),
+    max_count: toNumberOrNull(row.maxcnt),
+    max_value: toNumberOrNull(row.maxval),
+    item_id: row.itemid ? String(row.itemid) : null,
+    publisher_id: row.publishid ? String(row.publishid) : null,
+    category_id: row.catid ? String(row.catid) : null,
+    author_id: row.authorid ? String(row.authorid) : null,
+    customer_id: row.custid ? String(row.custid) : null,
+    order_priority: toNumberOrNull(row.order1),
+    minimum_order: toNumberOrNull(row.minord),
+    shipping_charge: toNumberOrNull(row.shipchg),
+    discount_percent: toNumberOrNull(row.discpct),
+    discount_value: toNumberOrNull(row.discval),
+    multiple: normalizeBoolean(row.multple),
+    sponsor_id: row.sponsorid ? String(row.sponsorid) : null,
+    active: normalizeBoolean(row.active),
+    public: normalizeBoolean(row.public),
+    filename: row.filename ?? '',
+  };
 }
 
 function mapItemRowToBook(
@@ -453,6 +495,21 @@ app.get('/api/customers', async (_req, res) => {
     res.json(normalizedCustomers);
   } catch (error) {
     console.error('Error fetching customers:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/discounts', async (_req, res) => {
+  try {
+    const discounts = await fetchDiscounts();
+    const normalizedDiscounts = discounts.map((row) => mapDiscountRow(row));
+
+    res.json(normalizedDiscounts);
+  } catch (error) {
+    console.error('Error fetching discounts:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
