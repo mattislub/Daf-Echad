@@ -172,6 +172,14 @@ export async function fetchCustomers() {
   );
 }
 
+export async function fetchDiscounts() {
+  return runQuery(
+    'fetching discounts',
+    `SELECT ID, code, name, dfrom, dto, maxcnt, maxval, itemid, publishid, catid, authorid, custid, order1, minord, shipchg,
+discpct, discval, multple, sponsorid, active, public, filename FROM disce`
+  );
+}
+
 export async function fetchBindings() {
   const rows = await runQuery('fetching bindings', 'SELECT ID, name, type, material FROM binding');
 
