@@ -19,6 +19,17 @@ import {
 } from './data-loaders.js';
 import { mailDefaults, sendEmail } from './email.js';
 
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+].join('; ');
+
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
@@ -365,6 +376,11 @@ const RELATED_ITEM_TABLES = [
   'temppri',
 ];
 
+app.use((_, res, next) => {
+  res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  next();
+});
+
 app.use(cors());
 
 app.use((err, req, res, next) => {
@@ -406,6 +422,10 @@ app.post('/api/email/send', async (req, res) => {
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
+});
+
+app.get(['/api', '/api/'], (_req, res) => {
+  res.json({ status: 'ok' });
 });
 
 app.get('/api/db-health', async (_req, res) => {
