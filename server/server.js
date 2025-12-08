@@ -8,6 +8,7 @@ import {
   fetchCategories,
   fetchColors,
   fetchCustomers,
+  fetchCustomerCredits,
   fetchItemCategoryMap,
   fetchItemKeywords,
   fetchItemPrices,
@@ -201,6 +202,21 @@ function mapCustomerRow(row, languageMap = new Map()) {
     username: row.username ?? '',
     password: row.pass ?? '',
     stamp: row.stamp ?? row.setup ?? defaultDate,
+  };
+}
+
+function mapCustomerCreditRow(row) {
+  const defaultDate = new Date().toISOString();
+
+  return {
+    id: row.ID ? String(row.ID) : '',
+    customer_id: row.custid ? String(row.custid) : '',
+    date: row.date ? new Date(row.date).toISOString() : null,
+    code: row.ccode ?? '',
+    description: row.cdesc ?? '',
+    amount: typeof row.amt === 'number' ? row.amt : Number(row.amt) || 0,
+    order_id: row.usedordid ? String(row.usedordid) : null,
+    stamp: row.stamp ?? row.date ?? defaultDate,
   };
 }
 
@@ -453,6 +469,32 @@ app.get('/api/customers', async (_req, res) => {
     res.json(normalizedCustomers);
   } catch (error) {
     console.error('Error fetching customers:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/customers/:id/credits', async (req, res) => {
+  const customerId = req.params.id;
+
+  if (!customerId) {
+    return res.status(400).json({ status: 'error', message: 'Customer ID is required' });
+  }
+
+  try {
+    const creditRows = await fetchCustomerCredits(customerId);
+    const credits = creditRows.map((row) => mapCustomerCreditRow(row));
+    const totalAmount = credits.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+
+    res.json({
+      customer_id: String(customerId),
+      total_amount: totalAmount,
+      entries: credits,
+    });
+  } catch (error) {
+    console.error(`Error fetching credits for customer ${customerId}:`, error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',

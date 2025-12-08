@@ -172,6 +172,16 @@ export async function fetchCustomers() {
   );
 }
 
+export async function fetchCustomerCredits(customerId) {
+  if (!customerId) return [];
+
+  return runQuery(
+    'fetching customer credits',
+    'SELECT ID, custid, date, ccode, cdesc, amt, usedordid, stamp FROM custcr WHERE custid = ?',
+    [customerId]
+  );
+}
+
 export async function fetchBindings() {
   const rows = await runQuery('fetching bindings', 'SELECT ID, name, type, material FROM binding');
 
