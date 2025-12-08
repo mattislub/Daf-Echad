@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import fs from 'node:fs';
+import path from 'node:path';
 import { DATABASE_NAME, getServerTime, testConnection, pool } from './db.js';
 import {
   fetchAuthors,
@@ -420,6 +422,10 @@ const RELATED_ITEM_TABLES = [
   'temppri',
 ];
 
+const REQUEST_LOG_FILE = path.resolve(process.cwd(), 'server', 'request-logs.log');
+fs.mkdirSync(path.dirname(REQUEST_LOG_FILE), { recursive: true });
+const requestLogStream = fs.createWriteStream(REQUEST_LOG_FILE, { flags: 'a' });
+
 app.use((_, res, next) => {
   res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   next();
@@ -437,6 +443,32 @@ app.use((err, req, res, next) => {
   next(err);
 });
 app.use(express.json());
+
+app.use((req, res, next) => {
+  const startTime = Date.now();
+
+  res.on('finish', () => {
+    const durationMs = Date.now() - startTime;
+
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+      method: req.method,
+      url: req.originalUrl,
+      path: req.path,
+      query: req.query,
+      body: req.body,
+      userAgent: req.get('user-agent') || '',
+      referer: req.get('referer') || '',
+      status: res.statusCode,
+      durationMs,
+    };
+
+    requestLogStream.write(`${JSON.stringify(logEntry)}\n`);
+  });
+
+  next();
+});
 
 app.post('/api/email/send', async (req, res) => {
   const { to, subject, text, html, bcc } = req.body ?? {};
