@@ -13,7 +13,6 @@ import {
   FileText,
   Mail,
   ShieldCheck,
-  CreditCard,
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
@@ -270,13 +269,6 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
           >
             <FileText className="w-4 h-4" />
             <span>{t('nav.terms')}</span>
-          </button>
-          <button
-            onClick={() => onNavigate?.('charge')}
-            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>{t('nav.charge')}</span>
           </button>
           <button
             onClick={() => onNavigate?.('admin')}
