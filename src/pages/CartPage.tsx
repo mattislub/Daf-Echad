@@ -55,6 +55,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [showTermsError, setShowTermsError] = useState(false);
   const [sendingOrder, setSendingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentRedirecting, setPaymentRedirecting] = useState(false);
 
   const loadCountries = useCallback(async () => {
     setCountryLoading(true);
@@ -265,7 +267,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     return `${(grams / 1000).toFixed(3)} ${t('cart.weight.kg')}`;
   };
 
-  const sendOrderEmail = async () => {
+  const sendOrderEmail = async (orderId: string) => {
     const storeEmail = 'info@dafechad.com';
     const storeLogoUrl = 'https://dafechad.com/logo.png';
 
@@ -275,6 +277,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       language === 'he'
         ? 'קיבלנו את ההזמנה שלכם וניצור קשר לאישור המשלוח והחיוב.'
         : 'We received your order and will confirm delivery and payment soon.';
+    const orderIdLine =
+      language === 'he'
+        ? `מספר הזמנה: ${orderId}`
+        : `Order ID: ${orderId}`;
 
     const shippingDescription = `${selectedShippingOption.label[language]} - ${selectedShippingOption.method[language]}`;
     const paymentDescription = paymentMethod === 'card' ? t('cart.payment.card') : t('cart.payment.cash');
@@ -294,6 +300,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     const textBody = [
       thankYouLine,
       introLine,
+      orderIdLine,
       '',
       language === 'he' ? 'סיכום הזמנה:' : 'Order summary:',
       itemLines,
@@ -331,6 +338,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
           </div>
           <div style="border-top: 1px solid #e2e8f0; padding-top: 16px;">
             <h3 style="margin: 0 0 8px;">${language === 'he' ? 'סיכום הזמנה' : 'Order summary'}</h3>
+            <p style="margin: 6px 0; color:#4a5568;"><strong>${
+              language === 'he' ? 'מספר הזמנה:' : 'Order ID:'
+            }</strong> ${orderId}</p>
             <ul style="padding-left: 18px; margin: 0 0 12px; line-height: 1.6;">${htmlItems}</ul>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משלוח:' : 'Shipping:'}</strong> ${shippingDescription}</p>
             <p style="margin: 6px 0;"><strong>${t('cart.shipping.country.summary')}:</strong> ${
@@ -359,6 +369,52 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       throw new Error(data.message || 'Failed to send order email');
+    }
+  };
+
+  const startZCreditCheckout = async ({ orderId, description }: { orderId: string; description: string }) => {
+    const itemsTotalILS = getTotalPrice('ILS');
+    const orderTotalILS = itemsTotalILS + selectedShippingOption.priceILS;
+
+    if (!Number.isFinite(orderTotalILS) || orderTotalILS <= 0) {
+      setPaymentError(t('cart.checkout.paymentError'));
+      return;
+    }
+
+    setPaymentError(null);
+    setPaymentRedirecting(true);
+
+    try {
+      const response = await fetch('/api/zcredit/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: orderTotalILS,
+          description,
+          orderId,
+          installments: 1,
+          customerEmail: '',
+          customerName: '',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to start payment');
+      }
+
+      const data = (await response.json()) as { checkoutUrl?: string };
+
+      if (!data.checkoutUrl) {
+        throw new Error('Missing checkout URL');
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      console.error('ZCredit checkout error', error);
+      setPaymentError(t('cart.checkout.paymentError'));
+    } finally {
+      setPaymentRedirecting(false);
     }
   };
 
@@ -742,7 +798,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
                 <button
                   className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
-                  disabled={sendingOrder}
+                  disabled={sendingOrder || paymentRedirecting}
                   onClick={async () => {
                     if (!termsAccepted) {
                       setShowTermsError(true);
@@ -753,10 +809,18 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     setSendingOrder(true);
                     setShowConfirmation(false);
                     setOrderError(null);
+                    setPaymentError(null);
+
+                    const orderId = `ORD-${Date.now()}`;
+                    const shippingSummary = `${selectedShippingOption.label[language]} · ${selectedShippingOption.method[language]} · ${selectedCountryName || t('cart.shipping.country.unknown')}`;
 
                     try {
-                      await sendOrderEmail();
+                      await sendOrderEmail(orderId);
                       setShowConfirmation(true);
+
+                      if (paymentMethod === 'card') {
+                        await startZCreditCheckout({ orderId, description: shippingSummary });
+                      }
                     } catch (error) {
                       console.error('Order email failed', error);
                       setOrderError(
@@ -769,15 +833,22 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     }
                   }}
                 >
-                  {sendingOrder
-                    ? language === 'he'
-                      ? 'שולח את פרטי ההזמנה...'
-                      : 'Sending order details...'
-                    : t('cart.checkout')}
+                  {paymentRedirecting
+                    ? t('cart.checkout.redirecting')
+                    : sendingOrder
+                      ? language === 'he'
+                        ? 'שולח את פרטי ההזמנה...'
+                        : 'Sending order details...'
+                      : t('cart.checkout')}
                 </button>
                 {orderError && (
                   <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
                     {orderError}
+                  </div>
+                )}
+                {paymentError && (
+                  <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                    {paymentError}
                   </div>
                 )}
                 {showConfirmation && (

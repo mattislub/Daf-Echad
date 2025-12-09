@@ -36,6 +36,11 @@ const CONTENT_SECURITY_POLICY = [
   "base-uri 'self'",
 ].join('; ');
 
+const ZCREDIT_BASE_URL = (process.env.ZCREDIT_BASE_URL || '').trim();
+const ZCREDIT_TERMINAL = (process.env.ZCREDIT_TERMINAL || '').trim();
+const ZCREDIT_PASSWORD = (process.env.ZCREDIT_PASSWORD || '').trim();
+const ZCREDIT_KEY = (process.env.ZCREDIT_KEY || '').trim();
+
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
@@ -45,6 +50,15 @@ function normalizeBoolean(value) {
   }
 
   return false;
+}
+
+function trimTrailingSlash(url = '') {
+  return url.replace(/\/+$/, '');
+}
+
+function buildZCreditCreateSessionUrl(baseUrl = '') {
+  const sanitizedBase = trimTrailingSlash(baseUrl);
+  return sanitizedBase ? `${sanitizedBase}/WebCheckout/CreateSession` : '';
 }
 
 function buildDimensions({ length, width, depth, size }) {
@@ -469,6 +483,140 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+app.post('/api/zcredit/create-checkout', async (req, res) => {
+  const {
+    amount,
+    description,
+    customerName,
+    customerEmail,
+    orderId,
+    successUrl,
+    cancelUrl,
+    callbackUrl,
+    installments,
+  } = req.body ?? {};
+
+  const numericAmount = Number(amount);
+
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ status: 'error', message: 'Amount is required and must be greater than zero' });
+  }
+
+  const endpoint = buildZCreditCreateSessionUrl(ZCREDIT_BASE_URL);
+  const missingConfig = [];
+
+  if (!endpoint) missingConfig.push('ZCREDIT_BASE_URL');
+  if (!ZCREDIT_KEY) missingConfig.push('ZCREDIT_KEY');
+  if (!ZCREDIT_TERMINAL) missingConfig.push('ZCREDIT_TERMINAL');
+  if (!ZCREDIT_PASSWORD) missingConfig.push('ZCREDIT_PASSWORD');
+
+  if (missingConfig.length) {
+    return res.status(500).json({
+      status: 'error',
+      message: `Missing ZCredit configuration: ${missingConfig.join(', ')}`,
+    });
+  }
+
+  const uniqueOrderId = orderId || `ORD-${Date.now()}`;
+  const installmentsCount = Math.max(1, Number.isFinite(Number(installments)) ? Number(installments) : 1);
+
+  const payload = {
+    Key: ZCREDIT_KEY,
+    TerminalNumber: ZCREDIT_TERMINAL,
+    User: ZCREDIT_TERMINAL,
+    Password: ZCREDIT_PASSWORD,
+    Local: 'He',
+    UniqueId: uniqueOrderId,
+    SuccessUrl: successUrl || '',
+    CancelUrl: cancelUrl || '',
+    CallbackUrl: callbackUrl || '',
+    PaymentType: 'regular',
+    ShowCart: 'false',
+    Installments: {
+      Type: 'regular',
+      MinQuantity: String(installmentsCount),
+      MaxQuantity: String(installmentsCount),
+    },
+    Customer: {
+      Email: customerEmail || '',
+      Name: customerName || '',
+      PhoneNumber: '',
+    },
+    CartItems: [
+      {
+        Amount: numericAmount.toFixed(2),
+        Currency: 'ILS',
+        Name: description || `Order ${uniqueOrderId}`,
+        Description: description || `Order ${uniqueOrderId}`,
+        Quantity: 1,
+        IsTaxFree: 'false',
+        AdjustAmount: 'false',
+        Image: '',
+      },
+    ],
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    console.log('Creating ZCredit session via', endpoint);
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    const rawText = await response.text();
+    let data;
+
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch (error) {
+      data = null;
+    }
+
+    if (!response.ok) {
+      return res.status(502).json({
+        status: 'error',
+        message: 'ZCredit rejected the request',
+        httpStatus: response.status,
+        raw: rawText?.slice(0, 1000) ?? '',
+      });
+    }
+
+    const sessionUrl = data?.Data?.SessionUrl || data?.SessionUrl || '';
+
+    if (!sessionUrl) {
+      return res.status(502).json({
+        status: 'error',
+        message: 'ZCredit did not return a checkout URL',
+        raw: rawText?.slice(0, 1000) ?? '',
+      });
+    }
+
+    return res.json({ status: 'ok', checkoutUrl: sessionUrl, orderId: uniqueOrderId });
+  } catch (error) {
+    const isAbortError = error instanceof Error && error.name === 'AbortError';
+    const message = isAbortError ? 'ZCredit request timed out' : 'Failed to create ZCredit checkout session';
+
+    console.error(message, error);
+
+    return res.status(500).json({
+      status: 'error',
+      message,
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 });
 
 app.post('/api/email/send', async (req, res) => {

@@ -38,6 +38,14 @@ This project is a Vite + React frontend. A lightweight Node/Express API was adde
 - `MAIL_FROM_NAME`: Display name for the `From` header (`דף אחד - מידע` by default).
 - `MAIL_BCC_ADDRESS`: Default BCC address applied to every email (`dafechadout@gmail.com` by default).
 - `MAIL_BCC_NAME`: Display name for the default BCC recipient (`דף אחד - עותק` by default).
+- `ZCREDIT_BASE_URL`: Base URL for the ZCredit WebCheckout API (for example, `https://pci.zcredit.co.il/zCreditWS/`).
+- `ZCREDIT_TERMINAL`: Terminal number supplied by ZCredit.
+- `ZCREDIT_PASSWORD`: Terminal password supplied by ZCredit.
+- `ZCREDIT_KEY`: WebCheckout key supplied by ZCredit.
+
+## ZCredit checkout
+
+`POST /api/zcredit/create-checkout` accepts payment details and returns a ZCredit WebCheckout URL that can be loaded in an iframe.
 
 ## Health check
 
