@@ -17,6 +17,7 @@ import ContactPage from './pages/ContactPage';
 import PoliciesPage from './pages/PoliciesPage';
 import TermsPage from './pages/TermsPage';
 import AdminPage from './pages/AdminPage';
+import CreditChargePage from './pages/CreditChargePage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
@@ -282,6 +283,12 @@ function App() {
           setPendingSlug(null);
           setCatalogFiltersFromUrl([]);
           break;
+        case 'charge':
+          setCurrentPage('charge');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
+          break;
         default:
           setCurrentPage('home');
           setSelectedBookId(null);
@@ -389,6 +396,7 @@ function AppContent({
       {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
       {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
       {currentPage === 'admin' && <AdminPage onNavigate={onNavigate} />}
+      {currentPage === 'charge' && <CreditChargePage onNavigate={onNavigate} />}
     </>
   );
 }
