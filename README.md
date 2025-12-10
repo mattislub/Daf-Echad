@@ -29,6 +29,7 @@ This project is a Vite + React frontend. A lightweight Node/Express API was adde
 - `MYSQL_DATABASE`: Name of the database to use.
 - `MYSQL_SSL`: Set to `true` to enable TLS (disables certificate verification for convenience).
 - `VITE_API_BASE_URL`: Base URL the frontend uses to contact the API (defaults to `/api`).
+- `VITE_STORE_EMAIL`: Address that receives order notifications (`dafechadout@gmail.com` by default).
 - `MAIL_CHARSET`: Character set for outgoing mail (defaults to `UTF-8`).
 - `MAIL_HOST`: SMTP host for sending email (defaults to `dafechad.com`).
 - `MAIL_PORT`: SMTP port for sending email (defaults to `587`).
