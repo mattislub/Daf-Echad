@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CreditCard, Globe2, Package, Trash2, Truck, Wallet } from 'lucide-react';
+import {
+  ArrowRight,
+  CreditCard,
+  Globe2,
+  Package,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  Truck,
+  Wallet,
+} from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
@@ -418,17 +428,78 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     }
   };
 
+  const handleCheckout = async (methodOverride?: 'card' | 'cash') => {
+    const method = methodOverride ?? paymentMethod;
+
+    if (!termsAccepted) {
+      setShowTermsError(true);
+      setShowConfirmation(false);
+      setPaymentMethod(method);
+      return;
+    }
+
+    setPaymentMethod(method);
+    setSendingOrder(true);
+    setShowConfirmation(false);
+    setOrderError(null);
+    setPaymentError(null);
+
+    const orderId = `ORD-${Date.now()}`;
+    const shippingSummary = `${selectedShippingOption.label[language]} · ${selectedShippingOption.method[language]} · ${selectedCountryName || t('cart.shipping.country.unknown')}`;
+
+    try {
+      await sendOrderEmail(orderId);
+      setShowConfirmation(true);
+
+      if (method === 'card') {
+        await startZCreditCheckout({ orderId, description: shippingSummary });
+      }
+    } catch (error) {
+      console.error('Order email failed', error);
+      setOrderError(
+        language === 'he'
+          ? 'שליחת המייל נכשלה. בבקשה נסו שוב.'
+          : 'Could not send the order email. Please try again.',
+      );
+    } finally {
+      setSendingOrder(false);
+    }
+  };
+
   const isRTL = language === 'he';
 
   return (
-    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-yellow-50/40" dir={isRTL ? 'rtl' : 'ltr'}>
       <Header onNavigate={onNavigate} />
 
       <main className="container mx-auto px-4 py-8">
-        <div className="flex flex-col gap-2 mb-8">
+        <div className="flex flex-col gap-3 mb-8">
           <p className="text-sm text-yellow-700 font-semibold">{t('cart.delivery.worldwide')}</p>
           <h1 className="text-3xl font-bold text-gray-900">{t('cart.title')}</h1>
           <p className="text-gray-600">{t('cart.subtitle')}</p>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="flex items-center gap-3 rounded-xl border border-yellow-100 bg-white/70 px-4 py-3 shadow-sm">
+              <Truck className="w-5 h-5 text-yellow-700" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{t('cart.delivery.multi')}</p>
+                <p className="text-xs text-gray-600">{t('cart.shipping.description')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-yellow-100 bg-white/70 px-4 py-3 shadow-sm">
+              <ShieldCheck className="w-5 h-5 text-yellow-700" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{t('cart.checkout.secure')}</p>
+                <p className="text-xs text-gray-600">{t('cart.order.note')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-yellow-100 bg-white/70 px-4 py-3 shadow-sm">
+              <Sparkles className="w-5 h-5 text-yellow-700" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{t('cart.checkout.tip')}</p>
+                <p className="text-xs text-gray-600">{t('cart.checkout.cardCtaDescription')}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {cartItems.length === 0 ? (
@@ -444,7 +515,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
@@ -520,7 +591,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
+              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
                 <div className="flex items-center gap-2">
                   <Truck className="w-5 h-5 text-yellow-700" />
                   <div>
@@ -683,7 +754,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
+              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-yellow-700" />
                   <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
@@ -707,6 +778,18 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                       </div>
                       <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
                       <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
+                      <div className="mt-3 flex flex-wrap gap-3 items-center">
+                        <button
+                          type="button"
+                          onClick={() => void handleCheckout('card')}
+                          disabled={sendingOrder || paymentRedirecting}
+                          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                        >
+                          {t('cart.checkout.cardCta')}
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
+                      </div>
                     </div>
                   </label>
 
@@ -734,7 +817,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="bg-white/90 backdrop-blur border border-yellow-100 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <Package className="w-5 h-5 text-yellow-700" />
                   <h2 className="text-lg font-semibold text-gray-900">{t('cart.summary')}</h2>
@@ -799,39 +882,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 <button
                   className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
                   disabled={sendingOrder || paymentRedirecting}
-                  onClick={async () => {
-                    if (!termsAccepted) {
-                      setShowTermsError(true);
-                      setShowConfirmation(false);
-                      return;
-                    }
-
-                    setSendingOrder(true);
-                    setShowConfirmation(false);
-                    setOrderError(null);
-                    setPaymentError(null);
-
-                    const orderId = `ORD-${Date.now()}`;
-                    const shippingSummary = `${selectedShippingOption.label[language]} · ${selectedShippingOption.method[language]} · ${selectedCountryName || t('cart.shipping.country.unknown')}`;
-
-                    try {
-                      await sendOrderEmail(orderId);
-                      setShowConfirmation(true);
-
-                      if (paymentMethod === 'card') {
-                        await startZCreditCheckout({ orderId, description: shippingSummary });
-                      }
-                    } catch (error) {
-                      console.error('Order email failed', error);
-                      setOrderError(
-                        language === 'he'
-                          ? 'שליחת המייל נכשלה. בבקשה נסו שוב.'
-                          : 'Could not send the order email. Please try again.',
-                      );
-                    } finally {
-                      setSendingOrder(false);
-                    }
-                  }}
+                  onClick={() => void handleCheckout()}
                 >
                   {paymentRedirecting
                     ? t('cart.checkout.redirecting')
