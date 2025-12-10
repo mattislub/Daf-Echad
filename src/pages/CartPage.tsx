@@ -278,7 +278,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   };
 
   const sendOrderEmail = async (orderId: string) => {
-    const storeEmail = 'info@dafechad.com';
+    const storeEmail = import.meta.env.VITE_STORE_EMAIL || 'dafechadout@gmail.com';
     const storeLogoUrl = 'https://dafechad.com/logo.png';
 
     const subject = language === 'he' ? 'אישור קבלת הזמנה חדשה' : 'New Daf Echad order received';
