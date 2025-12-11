@@ -621,13 +621,13 @@ export default function CartPage({ onNavigate }: CartPageProps) {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-              {currentStep === 0 && (
-                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
-                      <h2 className="text-xl font-semibold text-gray-900">{t('cart.items')}</h2>
-                    </div>
+                {currentStep === 0 && (
+                  <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
+                        <h2 className="text-xl font-semibold text-gray-900">{t('cart.items')}</h2>
+                      </div>
                     <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
                       {cartItems.length}
                     </span>
