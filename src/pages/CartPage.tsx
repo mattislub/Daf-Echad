@@ -1046,141 +1046,51 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     <CreditCard className="w-5 h-5 text-yellow-700" />
                     <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
                   </div>
+
                   <div className="space-y-3">
-                  <label
-                    className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
-                      paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment-method"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-yellow-700" />
-                        <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
-                      </div>
-                      <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
-                      <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
-                      <div className="mt-3 flex flex-wrap gap-3 items-center">
-                        <button
-                          type="button"
-                          onClick={() => void handleCheckout('card')}
-                          disabled={sendingOrder || paymentRedirecting}
-                          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
-                        >
-                          {t('cart.checkout.cardCta')}
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                        <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            )}
+                    {/* CARD */}
+                    <label
+                      className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
+                        paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        value="card"
+                        checked={paymentMethod === 'card'}
+                        onChange={() => setPaymentMethod('card')}
+                        className="mt-1"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="w-4 h-4 text-yellow-700" />
+                          <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
+                        </div>
+                        <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
+                        <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
 
-              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-yellow-700" />
-                  <div>
-                    <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.customer.title')}</p>
-                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.customer.description')}</h2>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label htmlFor="customer-name" className="text-sm font-semibold text-gray-900">
-                      {t('cart.customer.name')}
+                        <div className="mt-3 flex flex-wrap gap-3 items-center">
+                          <button
+                            type="button"
+                            onClick={() => void handleCheckout('card')}
+                            disabled={sendingOrder || paymentRedirecting}
+                            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                          >
+                            {t('cart.checkout.cardCta')}
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                          <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
+                        </div>
+                      </div>
                     </label>
-                    <input
-                      id="customer-name"
-                      type="text"
-                      value={customerName}
-                      onChange={(event) => setCustomerName(event.target.value)}
-                      placeholder={t('cart.customer.namePlaceholder')}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="customer-email" className="text-sm font-semibold text-gray-900">
-                      {t('cart.customer.email')}
-                    </label>
-                    <input
-                      id="customer-email"
-                      type="email"
-                      value={customerEmail}
-                      onChange={(event) => setCustomerEmail(event.target.value)}
-                      placeholder={t('cart.customer.emailPlaceholder')}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label htmlFor="customer-phone" className="text-sm font-semibold text-gray-900">
-                      {t('cart.customer.phone')}
-                    </label>
-                    <input
-                      id="customer-phone"
-                      type="tel"
-                      value={customerPhone}
-                      onChange={(event) => setCustomerPhone(event.target.value)}
-                      placeholder={t('cart.customer.phonePlaceholder')}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                    />
-                  </div>
-                </div>
 
-                <p className="text-xs text-gray-600">{t('cart.customer.note')}</p>
-              </div>
-
-              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-yellow-700" />
-                  <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
-                </div>
-                <div className="space-y-3">
-                  <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
-                    paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="payment-method"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-yellow-700" />
-                        <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
-                      </div>
-                      <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
-                      <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
-                      <div className="mt-3 flex flex-wrap gap-3 items-center">
-                        <button
-                          type="button"
-                          onClick={() => void handleCheckout('card')}
-                          disabled={sendingOrder || paymentRedirecting}
-                          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
-                        >
-                          {t('cart.checkout.cardCta')}
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                        <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
-                      </div>
-                    </div>
-                  </label>
-
-                    <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
-                      paymentMethod === 'cash' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
-                    }`}>
+                    {/* CASH */}
+                    <label
+                      className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
+                        paymentMethod === 'cash' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="payment-method"
@@ -1199,7 +1109,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     </label>
                   </div>
                 </div>
-            
+              )}
 
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white/80 px-4 py-3 shadow-sm">
                 <div className="text-sm font-medium text-gray-700">{stepProgressText}</div>
