@@ -701,10 +701,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                         <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
                         <h2 className="text-xl font-semibold text-gray-900">{t('cart.items')}</h2>
                       </div>
-                    <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
-                      {cartItems.length}
-                    </span>
-                  </div>
+                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
+                        {cartItems.length}
+                      </span>
+                    </div>
 
                   <div className="space-y-4">
                     {cartItems.map((item) => (
@@ -1268,6 +1268,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             </div>
           </div>
         </div>
+
+          )}
 
       </main>
 
