@@ -77,6 +77,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerDetailsError, setCustomerDetailsError] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const loadCountries = useCallback(async () => {
     setCountryLoading(true);
@@ -235,7 +236,44 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     [],
   );
 
+  const steps = useMemo(
+    () => [
+      {
+        key: 'items',
+        title: t('cart.items'),
+        description: t('cart.subtitle'),
+        icon: Package,
+      },
+      {
+        key: 'shipping',
+        title: t('cart.shipping.title'),
+        description: t('cart.shipping.description'),
+        icon: Truck,
+      },
+      {
+        key: 'details',
+        title: t('cart.customer.title'),
+        description: t('cart.customer.subtitle'),
+        icon: User,
+      },
+      {
+        key: 'payment',
+        title: t('cart.payment.title'),
+        description: t('cart.checkout.tip'),
+        icon: CreditCard,
+      },
+    ],
+    [t],
+  );
+
   const selectedShippingOption = shippingOptions.find((option) => option.id === selectedShipping) || shippingOptions[0];
+  const goToStep = (stepIndex: number) => {
+    const clampedIndex = Math.min(Math.max(stepIndex, 0), steps.length - 1);
+    setCurrentStep(clampedIndex);
+  };
+
+  const goToNextStep = () => goToStep(currentStep + 1);
+  const goToPreviousStep = () => goToStep(currentStep - 1);
   const selectedCountryName = useMemo(
     () => countries.find((country) => country.id === selectedCountry)?.name || '',
     [countries, selectedCountry],
@@ -493,6 +531,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   };
 
   const isRTL = language === 'he';
+  const stepProgressText = isRTL
+    ? `שלב ${currentStep + 1} מתוך ${steps.length}`
+    : `Step ${currentStep + 1} of ${steps.length}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-yellow-50/40" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -539,406 +580,477 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
-                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.items')}</h2>
-                  </div>
-                  <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
-                    {cartItems.length}
-                  </span>
-                </div>
+          <div className="space-y-6">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = currentStep === index;
+                const isComplete = currentStep > index;
 
-                <div className="space-y-4">
-                  {cartItems.map((item) => (
+                return (
+                  <button
+                    key={step.key}
+                    type="button"
+                    onClick={() => goToStep(index)}
+                    className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition ${
+                      isActive
+                        ? 'border-yellow-600 bg-yellow-50 ring-2 ring-yellow-100'
+                        : 'border-gray-200 bg-white hover:border-yellow-500'
+                    }`}
+                  >
                     <div
-                      key={item.id}
-                      className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between border border-gray-100 rounded-lg p-4"
+                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                        isActive
+                          ? 'bg-yellow-600 text-white'
+                          : isComplete
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
+                      }`}
                     >
-                      <div className="flex items-start gap-4 flex-1">
-                        {item.image_url && (
-                          <img
-                            src={item.image_url}
-                            alt={language === 'he' ? item.title_he : item.title_en}
-                            className="w-20 h-24 object-cover rounded-md border"
-                          />
-                        )}
-                        <div className="space-y-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {language === 'he' ? item.title_he : item.title_en}
-                          </h3>
-                          <p className="text-yellow-700 font-bold">{formatPrice(currency === 'ILS' ? item.price_ils : item.price_usd)}</p>
-                          <p className="text-sm text-gray-600">
-                            {t('cart.weight.perUnit')}: {formatWeight(item.weight)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {t('cart.weight.totalItem')}: {formatWeight((item.weight ?? 0) * item.quantity)}
-                          </p>
-                          <div className="flex items-center gap-3">
-                            <label className="text-sm text-gray-600">{t('cart.quantity')}</label>
-                            <div className="flex items-center border rounded-lg">
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="px-3 py-1 text-lg font-bold hover:bg-gray-100"
-                              >
-                                -
-                              </button>
-                              <input
-                                type="number"
-                                min={1}
-                                max={99}
-                                value={item.quantity}
-                                onChange={(e) => updateQuantity(item.id, Math.max(1, Number(e.target.value) || 1))}
-                                className="w-16 text-center border-x py-1"
-                              />
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="px-3 py-1 text-lg font-bold hover:bg-gray-100"
-                              >
-                                +
-                              </button>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">{step.title}</p>
+                      <p className="text-xs text-gray-600">{step.description}</p>
+                    </div>
+                    {isComplete && <span className="text-lg font-semibold text-green-600">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+              {currentStep === 0 && (
+                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
+                      <h2 className="text-xl font-semibold text-gray-900">{t('cart.items')}</h2>
+                    </div>
+                    <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
+                      {cartItems.length}
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {cartItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between border border-gray-100 rounded-lg p-4"
+                      >
+                        <div className="flex items-start gap-4 flex-1">
+                          {item.image_url && (
+                            <img
+                              src={item.image_url}
+                              alt={language === 'he' ? item.title_he : item.title_en}
+                              className="w-20 h-24 object-cover rounded-md border"
+                            />
+                          )}
+                          <div className="space-y-2">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {language === 'he' ? item.title_he : item.title_en}
+                            </h3>
+                            <p className="text-yellow-700 font-bold">{formatPrice(currency === 'ILS' ? item.price_ils : item.price_usd)}</p>
+                            <p className="text-sm text-gray-600">
+                              {t('cart.weight.perUnit')}: {formatWeight(item.weight)}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {t('cart.weight.totalItem')}: {formatWeight((item.weight ?? 0) * item.quantity)}
+                            </p>
+                            <div className="flex items-center gap-3">
+                              <label className="text-sm text-gray-600">{t('cart.quantity')}</label>
+                              <div className="flex items-center border rounded-lg">
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  className="px-3 py-1 text-lg font-bold hover:bg-gray-100"
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={99}
+                                  value={item.quantity}
+                                  onChange={(e) => updateQuantity(item.id, Math.max(1, Number(e.target.value) || 1))}
+                                  className="w-16 text-center border-x py-1"
+                                />
+                                <button
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  className="px-3 py-1 text-lg font-bold hover:bg-gray-100"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
+
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {t('cart.remove')}
+                        </button>
                       </div>
-
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        {t('cart.remove')}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
-                <div className="flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-yellow-700" />
-                  <div>
-                    <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.shipping.worldwide')}</p>
-                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.shipping.title')}</h2>
+                    ))}
                   </div>
                 </div>
-                <p className="text-gray-600">{t('cart.shipping.description')}</p>
+              )}
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="country-select" className="text-sm font-semibold text-gray-900">
-                      {t('cart.shipping.country')}
-                    </label>
-                    {countryLoading && (
-                      <span className="text-xs text-gray-500">{t('cart.shipping.country.loading')}</span>
-                    )}
-                  </div>
-
-                  {countryError ? (
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                      <span>{countryError}</span>
-                      <button
-                        type="button"
-                        onClick={() => void loadCountries()}
-                        className="font-semibold hover:underline"
-                      >
-                        {t('cart.shipping.country.retry')}
-                      </button>
+              {currentStep === 1 && (
+                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-yellow-700" />
+                    <div>
+                      <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.shipping.worldwide')}</p>
+                      <h2 className="text-xl font-semibold text-gray-900">{t('cart.shipping.title')}</h2>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <select
-                        id="country-select"
-                        value={selectedCountry}
-                        onChange={(event) => setSelectedCountry(event.target.value)}
-                        disabled={countryLoading || countries.length === 0}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
-                      >
-                        <option value="" disabled>
-                          {t('cart.shipping.country.placeholder')}
-                        </option>
-                        {countries.map((country) => (
-                          <option key={country.id} value={country.id}>
-                            {country.name}
-                          </option>
-                        ))}
-                      </select>
+                  </div>
+                  <p className="text-gray-600">{t('cart.shipping.description')}</p>
 
-                      {!countryLoading && countries.length === 0 && (
-                        <p className="text-sm text-gray-500">{t('cart.shipping.country.empty')}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="country-select" className="text-sm font-semibold text-gray-900">
+                        {t('cart.shipping.country')}
+                      </label>
+                      {countryLoading && (
+                        <span className="text-xs text-gray-500">{t('cart.shipping.country.loading')}</span>
                       )}
                     </div>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="carrier-select" className="text-sm font-semibold text-gray-900">
-                      {t('cart.shipping.carrier')}
-                    </label>
-                    {carrierLoading && (
-                      <span className="text-xs text-gray-500">{t('cart.shipping.carrier.loading')}</span>
-                    )}
-                  </div>
-
-                  {carrierError ? (
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                      <span>{carrierError}</span>
-                      <button
-                        type="button"
-                        onClick={() => void loadCarriers()}
-                        className="font-semibold hover:underline"
-                      >
-                        {t('cart.shipping.carrier.retry')}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <select
-                        id="carrier-select"
-                        value={selectedCarrier}
-                        onChange={(event) => setSelectedCarrier(event.target.value)}
-                        disabled={carrierLoading || carriers.length === 0}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
-                      >
-                        <option value="" disabled>
-                          {t('cart.shipping.carrier.placeholder')}
-                        </option>
-                        {carriers.map((carrier) => (
-                          <option key={carrier.id} value={carrier.id}>
-                            {carrier.name}
-                          </option>
-                        ))}
-                      </select>
-
-                      {!carrierLoading && carriers.length === 0 && (
-                        <p className="text-sm text-gray-500">{t('cart.shipping.carrier.empty')}</p>
-                      )}
-
-                      {selectedCarrierDetails && (
-                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 space-y-1">
-                          <p className="font-semibold text-gray-900">{selectedCarrierDetails.name}</p>
-                          {carrierDetails.map((detail) => (
-                            <p key={detail}>{detail}</p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  {shippingOptions.map((option) => (
-                    <label
-                      key={option.id}
-                      className={`relative border rounded-lg p-4 cursor-pointer transition shadow-sm hover:border-yellow-600 ${
-                        selectedShipping === option.id ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="shipping-option"
-                        value={option.id}
-                        checked={selectedShipping === option.id}
-                        onChange={() => setSelectedShipping(option.id)}
-                        className="absolute opacity-0"
-                      />
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-gray-100">
-                          {option.worldwide ? <Globe2 className="w-5 h-5 text-yellow-700" /> : <Package className="w-5 h-5 text-yellow-700" />}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900">{option.label[language]}</h3>
-                            {option.worldwide && (
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">
-                                {t('cart.shipping.worldwide')}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600">{option.description[language]}</p>
-                          <div className="text-sm text-gray-700 flex flex-col gap-1">
-                            <span>{option.location[language]}</span>
-                            <span>{option.method[language]}</span>
-                            <span>
-                              {t('cart.shipping.weight')}: {option.weightRange}
-                            </span>
-                            <span>
-                              {t('cart.shipping.eta')}: {option.eta[language]}
-                            </span>
-                            <span className="font-semibold text-yellow-700">
-                              {formatPrice(currency === 'ILS' ? option.priceILS : option.priceUSD)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2">
-                  <User className="w-5 h-5 text-yellow-700" />
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.customer.title')}</h2>
-                    <p className="text-sm text-gray-600">{t('cart.customer.subtitle')}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
-                  <LogIn className="w-4 h-4 text-yellow-700" />
-                  <span className="font-semibold">{t('cart.customer.loginPrompt')}</span>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate?.('login')}
-                    className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-3 py-1.5 text-white font-semibold shadow hover:bg-yellow-700 transition"
-                  >
-                    {t('cart.customer.loginButton')}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <span className="text-xs text-gray-600">{t('cart.customer.orGuest')}</span>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <label htmlFor="customer-name" className="text-sm font-semibold text-gray-900">
-                      {t('cart.customer.name')}
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="customer-name"
-                        type="text"
-                        value={customerName}
-                        onChange={(event) => setCustomerName(event.target.value)}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                        placeholder={t('cart.customer.namePlaceholder')}
-                      />
-                      <User className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="customer-phone" className="text-sm font-semibold text-gray-900">
-                      {t('cart.customer.phone')}
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="customer-phone"
-                        type="tel"
-                        value={customerPhone}
-                        onChange={(event) => setCustomerPhone(event.target.value)}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                        placeholder={t('cart.customer.phonePlaceholder')}
-                      />
-                      <Phone className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="customer-email" className="text-sm font-semibold text-gray-900">
-                      {t('cart.customer.email')}
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="customer-email"
-                        type="email"
-                        value={customerEmail}
-                        onChange={(event) => setCustomerEmail(event.target.value)}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                        placeholder={t('cart.customer.emailPlaceholder')}
-                      />
-                      <Mail className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="customer-address" className="text-sm font-semibold text-gray-900">
-                      {t('cart.customer.address')}
-                    </label>
-                    <div className="relative">
-                      <textarea
-                        id="customer-address"
-                        value={customerAddress}
-                        onChange={(event) => setCustomerAddress(event.target.value)}
-                        rows={3}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                        placeholder={t('cart.customer.addressPlaceholder')}
-                      />
-                      <MapPin className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-gray-600">{t('cart.customer.helper')}</p>
-                {customerDetailsError && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {customerDetailsError}
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-yellow-700" />
-                  <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
-                </div>
-                <div className="space-y-3">
-                  <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
-                    paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="payment-method"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-yellow-700" />
-                        <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
-                      </div>
-                      <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
-                      <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
-                      <div className="mt-3 flex flex-wrap gap-3 items-center">
+                    {countryError ? (
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        <span>{countryError}</span>
                         <button
                           type="button"
-                          onClick={() => void handleCheckout('card')}
-                          disabled={sendingOrder || paymentRedirecting}
-                          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                          onClick={() => void loadCountries()}
+                          className="font-semibold hover:underline"
                         >
-                          {t('cart.checkout.cardCta')}
-                          <ArrowRight className="w-4 h-4" />
+                          {t('cart.shipping.country.retry')}
                         </button>
-                        <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
                       </div>
-                    </div>
-                  </label>
+                    ) : (
+                      <div className="space-y-2">
+                        <select
+                          id="country-select"
+                          value={selectedCountry}
+                          onChange={(event) => setSelectedCountry(event.target.value)}
+                          disabled={countryLoading || countries.length === 0}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
+                        >
+                          <option value="" disabled>
+                            {t('cart.shipping.country.placeholder')}
+                          </option>
+                          {countries.map((country) => (
+                            <option key={country.id} value={country.id}>
+                              {country.name}
+                            </option>
+                          ))}
+                        </select>
 
-                  <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
-                    paymentMethod === 'cash' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="payment-method"
-                      value="cash"
-                      checked={paymentMethod === 'cash'}
-                      onChange={() => setPaymentMethod('cash')}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-yellow-700" />
-                        <p className="font-semibold text-gray-900">{t('cart.payment.cash')}</p>
+                        {!countryLoading && countries.length === 0 && (
+                          <p className="text-sm text-gray-500">{t('cart.shipping.country.empty')}</p>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600">{t('cart.payment.cash.note')}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="carrier-select" className="text-sm font-semibold text-gray-900">
+                        {t('cart.shipping.carrier')}
+                      </label>
+                      {carrierLoading && (
+                        <span className="text-xs text-gray-500">{t('cart.shipping.carrier.loading')}</span>
+                      )}
                     </div>
-                  </label>
+
+                    {carrierError ? (
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        <span>{carrierError}</span>
+                        <button
+                          type="button"
+                          onClick={() => void loadCarriers()}
+                          className="font-semibold hover:underline"
+                        >
+                          {t('cart.shipping.carrier.retry')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <select
+                          id="carrier-select"
+                          value={selectedCarrier}
+                          onChange={(event) => setSelectedCarrier(event.target.value)}
+                          disabled={carrierLoading || carriers.length === 0}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
+                        >
+                          <option value="" disabled>
+                            {t('cart.shipping.carrier.placeholder')}
+                          </option>
+                          {carriers.map((carrier) => (
+                            <option key={carrier.id} value={carrier.id}>
+                              {carrier.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        {!carrierLoading && carriers.length === 0 && (
+                          <p className="text-sm text-gray-500">{t('cart.shipping.carrier.empty')}</p>
+                        )}
+
+                        {selectedCarrierDetails && (
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 space-y-1">
+                            <p className="font-semibold text-gray-900">{selectedCarrierDetails.name}</p>
+                            {carrierDetails.map((detail) => (
+                              <p key={detail}>{detail}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {shippingOptions.map((option) => (
+                      <label
+                        key={option.id}
+                        className={`relative border rounded-lg p-4 cursor-pointer transition shadow-sm hover:border-yellow-600 ${
+                          selectedShipping === option.id ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="shipping-option"
+                          value={option.id}
+                          checked={selectedShipping === option.id}
+                          onChange={() => setSelectedShipping(option.id)}
+                          className="absolute opacity-0"
+                        />
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-gray-100">
+                            {option.worldwide ? <Globe2 className="w-5 h-5 text-yellow-700" /> : <Package className="w-5 h-5 text-yellow-700" />}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900">{option.label[language]}</h3>
+                              {option.worldwide && (
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">
+                                  {t('cart.shipping.worldwide')}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{option.description[language]}</p>
+                            <div className="text-sm text-gray-700 flex flex-col gap-1">
+                              <span>{option.location[language]}</span>
+                              <span>{option.method[language]}</span>
+                              <span>
+                                {t('cart.shipping.weight')}: {option.weightRange}
+                              </span>
+                              <span>
+                                {t('cart.shipping.eta')}: {option.eta[language]}
+                              </span>
+                              <span className="font-semibold text-yellow-700">
+                                {formatPrice(currency === 'ILS' ? option.priceILS : option.priceUSD)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 2 && (
+                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <User className="w-5 h-5 text-yellow-700" />
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">{t('cart.customer.title')}</h2>
+                      <p className="text-sm text-gray-600">{t('cart.customer.subtitle')}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
+                    <LogIn className="w-4 h-4 text-yellow-700" />
+                    <span className="font-semibold">{t('cart.customer.loginPrompt')}</span>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate?.('login')}
+                      className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-3 py-1.5 text-white font-semibold shadow hover:bg-yellow-700 transition"
+                    >
+                      {t('cart.customer.loginButton')}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-gray-600">{t('cart.customer.orGuest')}</span>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="customer-name" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.name')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="customer-name"
+                          type="text"
+                          value={customerName}
+                          onChange={(event) => setCustomerName(event.target.value)}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.customer.namePlaceholder')}
+                        />
+                        <User className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="customer-phone" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.phone')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="customer-phone"
+                          type="tel"
+                          value={customerPhone}
+                          onChange={(event) => setCustomerPhone(event.target.value)}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.customer.phonePlaceholder')}
+                        />
+                        <Phone className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="customer-email" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.email')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="customer-email"
+                          type="email"
+                          value={customerEmail}
+                          onChange={(event) => setCustomerEmail(event.target.value)}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.customer.emailPlaceholder')}
+                        />
+                        <Mail className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="customer-address" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address')}
+                      </label>
+                      <div className="relative">
+                        <textarea
+                          id="customer-address"
+                          value={customerAddress}
+                          onChange={(event) => setCustomerAddress(event.target.value)}
+                          rows={3}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.customer.addressPlaceholder')}
+                        />
+                        <MapPin className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-600">{t('cart.customer.helper')}</p>
+                  {customerDetailsError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {customerDetailsError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-yellow-700" />
+                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
+                  </div>
+                  <div className="space-y-3">
+                    <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
+                      paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        value="card"
+                        checked={paymentMethod === 'card'}
+                        onChange={() => setPaymentMethod('card')}
+                        className="mt-1"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="w-4 h-4 text-yellow-700" />
+                          <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
+                        </div>
+                        <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
+                        <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
+                        <div className="mt-3 flex flex-wrap gap-3 items-center">
+                          <button
+                            type="button"
+                            onClick={() => void handleCheckout('card')}
+                            disabled={sendingOrder || paymentRedirecting}
+                            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                          >
+                            {t('cart.checkout.cardCta')}
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                          <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
+                        </div>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
+                      paymentMethod === 'cash' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        value="cash"
+                        checked={paymentMethod === 'cash'}
+                        onChange={() => setPaymentMethod('cash')}
+                        className="mt-1"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="w-4 h-4 text-yellow-700" />
+                          <p className="font-semibold text-gray-900">{t('cart.payment.cash')}</p>
+                        </div>
+                        <p className="text-sm text-gray-600">{t('cart.payment.cash.note')}</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white/80 px-4 py-3 shadow-sm">
+                <div className="text-sm font-medium text-gray-700">{stepProgressText}</div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={goToPreviousStep}
+                    disabled={currentStep === 0}
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-yellow-600 disabled:opacity-60"
+                  >
+                    {t('cart.steps.previous')}
+                  </button>
+                  {currentStep < steps.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={goToNextStep}
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition"
+                    >
+                      {t('cart.steps.next')}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1032,7 +1144,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
                 <button
                   className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
-                  disabled={sendingOrder || paymentRedirecting}
+                  disabled={sendingOrder || paymentRedirecting || currentStep < steps.length - 1}
                   onClick={() => void handleCheckout()}
                 >
                   {paymentRedirecting
@@ -1043,6 +1155,11 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                         : 'Sending order details...'
                       : t('cart.checkout')}
                 </button>
+                {currentStep < steps.length - 1 && (
+                  <div className="mt-3 text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                    {t('cart.steps.completeSteps')}
+                  </div>
+                )}
                 {orderError && (
                   <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
                     {orderError}
