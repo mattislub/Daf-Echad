@@ -19,14 +19,27 @@ export interface CustomerCreditResponse {
   transactions: CustomerCreditEntry[];
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+function normalizeApiBaseUrl(baseUrl?: string): string {
+  if (!baseUrl) return '/api';
+
+  const trimmed = baseUrl.trim().replace(/\/+$/, '');
+
+  return trimmed || '/api';
+}
+
+export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 if (!import.meta.env.VITE_API_BASE_URL) {
   console.info('VITE_API_BASE_URL is not defined. Defaulting to /api.');
 }
 
+export function buildApiUrl(path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+  const response = await fetch(buildApiUrl(path));
 
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status} ${response.statusText}`);
@@ -77,7 +90,7 @@ export interface EmailRequest {
 }
 
 export async function sendEmailRequest(payload: EmailRequest): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/email/send`, {
+  const response = await fetch(buildApiUrl('/email/send'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

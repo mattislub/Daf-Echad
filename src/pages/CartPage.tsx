@@ -19,6 +19,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE_URL, buildApiUrl } from '../services/api';
 
 interface CartPageProps {
   onNavigate?: (page: string) => void;
@@ -73,6 +74,29 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentRedirecting, setPaymentRedirecting] = useState(false);
   const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [paymentStatusBanner, setPaymentStatusBanner] = useState<
+    | { status: 'success' | 'cancel' | 'error'; orderId?: string | null }
+    | null
+  >(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('paymentStatus') as 'success' | 'cancel' | 'error' | null;
+    const orderId = params.get('orderId');
+
+    if (paymentStatus) {
+      setPaymentStatusBanner({ status: paymentStatus, orderId });
+
+      params.delete('paymentStatus');
+      params.delete('orderId');
+
+      const newQuery = params.toString();
+      const newUrl = `${window.location.pathname}${newQuery ? `?${newQuery}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -84,7 +108,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     setCountryError(null);
 
     try {
-      const response = await fetch('/api/countries');
+      const response = await fetch(buildApiUrl('/countries'));
 
       if (!response.ok) {
         throw new Error('Failed to fetch countries');
@@ -116,7 +140,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     setCarrierError(null);
 
     try {
-      const response = await fetch('/api/carriers');
+      const response = await fetch(buildApiUrl('/carriers'));
 
       if (!response.ok) {
         throw new Error('Failed to fetch carriers');
@@ -426,7 +450,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       </div>
     `;
 
-    const response = await fetch('/api/email/send', {
+    const response = await fetch(buildApiUrl('/email/send'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: storeEmail, subject, text: textBody, html: htmlBody }),
@@ -436,6 +460,15 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       const data = await response.json().catch(() => ({}));
       throw new Error(data.message || 'Failed to send order email');
     }
+  };
+
+  const buildReturnUrl = (status: 'success' | 'cancel' | 'error', orderId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('paymentStatus', status);
+    url.searchParams.set('orderId', orderId);
+    url.hash = '#/cart';
+
+    return url.toString();
   };
 
   const startZCreditCheckout = async ({ orderId, description }: { orderId: string; description: string }) => {
@@ -451,7 +484,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     setPaymentRedirecting(true);
 
     try {
-      const response = await fetch('/api/zcredit/create-checkout', {
+      const response = await fetch(buildApiUrl('/zcredit/create-checkout'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -461,6 +494,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
           installments: 1,
           customerEmail,
           customerName,
+          customerPhone,
+          successUrl: buildReturnUrl('success', orderId),
+          cancelUrl: buildReturnUrl('cancel', orderId),
+          callbackUrl: buildReturnUrl('error', orderId),
         }),
       });
 
@@ -492,6 +529,19 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       setShowConfirmation(false);
       setPaymentMethod(method);
       return;
+    }
+
+    if (method === 'card') {
+      const trimmedName = customerName.trim();
+      const trimmedEmail = customerEmail.trim();
+      const isValidEmail = /.+@.+\..+/.test(trimmedEmail);
+
+      if (!trimmedName || !trimmedEmail || !isValidEmail) {
+        setPaymentError(t('cart.checkout.customerRequired'));
+        setPaymentMethod(method);
+        setSendingOrder(false);
+        return;
+      }
     }
 
     if (!customerName.trim() || !customerPhone.trim() || !customerEmail.trim() || !customerAddress.trim()) {
@@ -568,6 +618,31 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             </div>
           </div>
         </div>
+
+        {paymentStatusBanner && (
+          <div
+            className={`mb-6 rounded-xl border p-4 text-sm shadow-sm ${
+              paymentStatusBanner.status === 'success'
+                ? 'border-green-200 bg-green-50 text-green-800'
+                : paymentStatusBanner.status === 'cancel'
+                  ? 'border-yellow-200 bg-yellow-50 text-yellow-800'
+                  : 'border-red-200 bg-red-50 text-red-800'
+            }`}
+          >
+            <p className="font-semibold">
+              {paymentStatusBanner.status === 'success'
+                ? t('cart.checkout.status.success')
+                : paymentStatusBanner.status === 'cancel'
+                  ? t('cart.checkout.status.cancel')
+                  : t('cart.checkout.status.error')}
+            </p>
+            {paymentStatusBanner.orderId && (
+              <p className="mt-1 opacity-80">
+                {language === 'he' ? 'מספר הזמנה:' : 'Order ID:'} {paymentStatusBanner.orderId}
+              </p>
+            )}
+          </div>
+        )}
 
         {cartItems.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
@@ -1006,6 +1081,102 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                         </div>
                       </div>
                     </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-yellow-700" />
+                  <div>
+                    <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.customer.title')}</p>
+                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.customer.description')}</h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label htmlFor="customer-name" className="text-sm font-semibold text-gray-900">
+                      {t('cart.customer.name')}
+                    </label>
+                    <input
+                      id="customer-name"
+                      type="text"
+                      value={customerName}
+                      onChange={(event) => setCustomerName(event.target.value)}
+                      placeholder={t('cart.customer.namePlaceholder')}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="customer-email" className="text-sm font-semibold text-gray-900">
+                      {t('cart.customer.email')}
+                    </label>
+                    <input
+                      id="customer-email"
+                      type="email"
+                      value={customerEmail}
+                      onChange={(event) => setCustomerEmail(event.target.value)}
+                      placeholder={t('cart.customer.emailPlaceholder')}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label htmlFor="customer-phone" className="text-sm font-semibold text-gray-900">
+                      {t('cart.customer.phone')}
+                    </label>
+                    <input
+                      id="customer-phone"
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(event) => setCustomerPhone(event.target.value)}
+                      placeholder={t('cart.customer.phonePlaceholder')}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-600">{t('cart.customer.note')}</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-yellow-700" />
+                  <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
+                </div>
+                <div className="space-y-3">
+                  <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
+                    paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value="card"
+                      checked={paymentMethod === 'card'}
+                      onChange={() => setPaymentMethod('card')}
+                      className="mt-1"
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="w-4 h-4 text-yellow-700" />
+                        <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
+                      </div>
+                      <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
+                      <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
+                      <div className="mt-3 flex flex-wrap gap-3 items-center">
+                        <button
+                          type="button"
+                          onClick={() => void handleCheckout('card')}
+                          disabled={sendingOrder || paymentRedirecting}
+                          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                        >
+                          {t('cart.checkout.cardCta')}
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
+                      </div>
+                    </div>
+                  </label>
 
                     <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
                       paymentMethod === 'cash' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
