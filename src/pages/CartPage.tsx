@@ -448,13 +448,12 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     const shippingSummary = `${selectedShippingOption.label[language]} · ${selectedShippingOption.method[language]} · ${selectedCountryName || t('cart.shipping.country.unknown')}`;
 
     try {
-      if (method === 'card') {
-        await startZCreditCheckout({ orderId, description: shippingSummary });
-        return;
-      }
-
       await sendOrderEmail(orderId);
       setShowConfirmation(true);
+
+      if (method === 'card') {
+        await startZCreditCheckout({ orderId, description: shippingSummary });
+      }
     } catch (error) {
       console.error('Order email failed', error);
       setOrderError(
