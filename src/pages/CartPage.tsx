@@ -3,11 +3,16 @@ import {
   ArrowRight,
   CreditCard,
   Globe2,
+  LogIn,
+  Mail,
+  MapPin,
   Package,
   ShieldCheck,
   Sparkles,
   Trash2,
   Truck,
+  User,
+  Phone,
   Wallet,
 } from 'lucide-react';
 import Header from '../components/Header';
@@ -67,6 +72,11 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [orderError, setOrderError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentRedirecting, setPaymentRedirecting] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerDetailsError, setCustomerDetailsError] = useState<string | null>(null);
 
   const loadCountries = useCallback(async () => {
     setCountryLoading(true);
@@ -318,6 +328,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       `${language === 'he' ? 'משלוח' : 'Shipping'}: ${shippingDescription}`,
       `${t('cart.shipping.country.summary')}: ${selectedCountryName || t('cart.shipping.country.unknown')}`,
       `${t('cart.shipping.carrier.summary')}: ${carrierSummary}${carrierDetailsLine ? ` (${carrierDetailsLine})` : ''}`,
+      `${t('cart.customer.name')}: ${customerName}`,
+      `${t('cart.customer.phone')}: ${customerPhone}`,
+      `${t('cart.customer.email')}: ${customerEmail}`,
+      `${t('cart.customer.address')}: ${customerAddress}`,
       `${language === 'he' ? 'תשלום' : 'Payment'}: ${paymentDescription}`,
       `${language === 'he' ? 'סה"כ' : 'Total'}: ${formatPrice(orderTotal)}`,
       `${language === 'he' ? 'משקל משוער' : 'Estimated weight'}: ${weightSummary}`,
@@ -359,6 +373,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             <p style="margin: 6px 0;"><strong>${t('cart.shipping.carrier.summary')}:</strong> ${carrierSummary}${
       carrierDetailsLine ? `<br /><span style="color:#4a5568; font-size:12px;">${carrierDetailsLine}</span>` : ''
     }</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.customer.name')}:</strong> ${customerName}</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.customer.phone')}:</strong> ${customerPhone}</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.customer.email')}:</strong> ${customerEmail}</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.customer.address')}:</strong> ${customerAddress}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'תשלום:' : 'Payment:'}</strong> ${paymentDescription}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'סה"כ להזמנה:' : 'Order total:'}</strong> ${formatPrice(orderTotal)}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משקל משוער:' : 'Estimated weight:'}</strong> ${weightSummary}</p>
@@ -403,8 +421,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
           description,
           orderId,
           installments: 1,
-          customerEmail: '',
-          customerName: '',
+          customerEmail,
+          customerName,
         }),
       });
 
@@ -437,6 +455,14 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       setPaymentMethod(method);
       return;
     }
+
+    if (!customerName.trim() || !customerPhone.trim() || !customerEmail.trim() || !customerAddress.trim()) {
+      setCustomerDetailsError(t('cart.customer.required'));
+      setShowConfirmation(false);
+      return;
+    }
+
+    setCustomerDetailsError(null);
 
     setPaymentMethod(method);
     setSendingOrder(true);
@@ -756,6 +782,107 @@ export default function CartPage({ onNavigate }: CartPageProps) {
 
               <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-yellow-700" />
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.customer.title')}</h2>
+                    <p className="text-sm text-gray-600">{t('cart.customer.subtitle')}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
+                  <LogIn className="w-4 h-4 text-yellow-700" />
+                  <span className="font-semibold">{t('cart.customer.loginPrompt')}</span>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('login')}
+                    className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-3 py-1.5 text-white font-semibold shadow hover:bg-yellow-700 transition"
+                  >
+                    {t('cart.customer.loginButton')}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-gray-600">{t('cart.customer.orGuest')}</span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <label htmlFor="customer-name" className="text-sm font-semibold text-gray-900">
+                      {t('cart.customer.name')}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="customer-name"
+                        type="text"
+                        value={customerName}
+                        onChange={(event) => setCustomerName(event.target.value)}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.namePlaceholder')}
+                      />
+                      <User className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="customer-phone" className="text-sm font-semibold text-gray-900">
+                      {t('cart.customer.phone')}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="customer-phone"
+                        type="tel"
+                        value={customerPhone}
+                        onChange={(event) => setCustomerPhone(event.target.value)}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.phonePlaceholder')}
+                      />
+                      <Phone className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="customer-email" className="text-sm font-semibold text-gray-900">
+                      {t('cart.customer.email')}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="customer-email"
+                        type="email"
+                        value={customerEmail}
+                        onChange={(event) => setCustomerEmail(event.target.value)}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.emailPlaceholder')}
+                      />
+                      <Mail className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="customer-address" className="text-sm font-semibold text-gray-900">
+                      {t('cart.customer.address')}
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        id="customer-address"
+                        value={customerAddress}
+                        onChange={(event) => setCustomerAddress(event.target.value)}
+                        rows={3}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.addressPlaceholder')}
+                      />
+                      <MapPin className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-600">{t('cart.customer.helper')}</p>
+                {customerDetailsError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {customerDetailsError}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-yellow-700" />
                   <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
                 </div>
@@ -826,6 +953,30 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                   <div className="flex items-center justify-between text-gray-700">
                     <span>{t('cart.items.total')}</span>
                     <span className="font-semibold">{formatPrice(itemsTotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.customer.name')}</span>
+                    <span className="font-semibold text-right max-w-[60%] break-words">
+                      {customerName || t('cart.customer.pending')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.customer.phone')}</span>
+                    <span className="font-semibold text-right max-w-[60%] break-words">
+                      {customerPhone || t('cart.customer.pending')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.customer.email')}</span>
+                    <span className="font-semibold text-right max-w-[60%] break-words">
+                      {customerEmail || t('cart.customer.pending')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-700">
+                    <span>{t('cart.customer.address')}</span>
+                    <span className="font-semibold text-right max-w-[60%] break-words">
+                      {customerAddress || t('cart.customer.pending')}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-gray-700">
                     <span>{t('cart.weight.totalCart')}</span>
