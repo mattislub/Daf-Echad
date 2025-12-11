@@ -1047,41 +1047,43 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
                   </div>
                   <div className="space-y-3">
-                    <label className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
+                  <label
+                    className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
                       paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="payment-method"
-                        value="card"
-                        checked={paymentMethod === 'card'}
-                        onChange={() => setPaymentMethod('card')}
-                        className="mt-1"
-                      />
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="w-4 h-4 text-yellow-700" />
-                          <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
-                        </div>
-                        <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
-                        <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
-                        <div className="mt-3 flex flex-wrap gap-3 items-center">
-                          <button
-                            type="button"
-                            onClick={() => void handleCheckout('card')}
-                            disabled={sendingOrder || paymentRedirecting}
-                            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
-                          >
-                            {t('cart.checkout.cardCta')}
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
-                          <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
-                        </div>
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value="card"
+                      checked={paymentMethod === 'card'}
+                      onChange={() => setPaymentMethod('card')}
+                      className="mt-1"
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="w-4 h-4 text-yellow-700" />
+                        <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
                       </div>
-                    </label>
-                  ))}
+                      <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
+                      <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
+                      <div className="mt-3 flex flex-wrap gap-3 items-center">
+                        <button
+                          type="button"
+                          onClick={() => void handleCheckout('card')}
+                          disabled={sendingOrder || paymentRedirecting}
+                          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                        >
+                          {t('cart.checkout.cardCta')}
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <p className="text-xs text-gray-500">{t('cart.checkout.cardHelper')}</p>
+                      </div>
+                    </div>
+                  </label>
                 </div>
               </div>
+            )}
 
               <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
