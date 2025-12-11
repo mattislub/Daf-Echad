@@ -14,7 +14,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { API_BASE_URL } from '../services/api';
+import { API_BASE_URL, buildApiUrl } from '../services/api';
 
 interface CartPageProps {
   onNavigate?: (page: string) => void;
@@ -98,7 +98,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     setCountryError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/countries`);
+      const response = await fetch(buildApiUrl('/countries'));
 
       if (!response.ok) {
         throw new Error('Failed to fetch countries');
@@ -130,7 +130,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     setCarrierError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/carriers`);
+      const response = await fetch(buildApiUrl('/carriers'));
 
       if (!response.ok) {
         throw new Error('Failed to fetch carriers');
@@ -395,7 +395,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       </div>
     `;
 
-    const response = await fetch(`${API_BASE_URL}/email/send`, {
+    const response = await fetch(buildApiUrl('/email/send'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: storeEmail, subject, text: textBody, html: htmlBody }),
@@ -429,7 +429,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     setPaymentRedirecting(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/zcredit/create-checkout`, {
+      const response = await fetch(buildApiUrl('/zcredit/create-checkout'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
