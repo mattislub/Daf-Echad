@@ -76,6 +76,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerDetailsError, setCustomerDetailsError] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
   const [paymentStatusBanner, setPaymentStatusBanner] = useState<
     | { status: 'success' | 'cancel' | 'error'; orderId?: string | null }
     | null
@@ -97,11 +100,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       window.history.replaceState({}, '', newUrl);
     }
   }, []);
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [customerDetailsError, setCustomerDetailsError] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(0);
 
   const loadCountries = useCallback(async () => {
     setCountryLoading(true);
