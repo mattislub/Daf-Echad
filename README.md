@@ -46,7 +46,34 @@ This project is a Vite + React frontend. A lightweight Node/Express API was adde
 
 ## ZCredit checkout
 
-`POST /api/zcredit/create-checkout` accepts payment details and returns a ZCredit WebCheckout URL that can be loaded in an iframe.
+The backend already exposes `POST /api/zcredit/create-checkout`, which assembles the request body expected by the ZCredit WebCheckout API and returns a hosted checkout URL. The call uses these environment variables:
+
+- `ZCREDIT_BASE_URL` – Base URL for the ZCredit WebCheckout API (for example, `https://pci.zcredit.co.il/zCreditWS/`).
+- `ZCREDIT_TERMINAL` – Terminal number supplied by ZCredit.
+- `ZCREDIT_PASSWORD` – Terminal password supplied by ZCredit.
+- `ZCREDIT_KEY` – WebCheckout key supplied by ZCredit (GUID).
+
+From ZCredit you therefore need the terminal number, terminal password, and WebCheckout key. The `create-checkout` handler currently sends the following payload fields:
+
+- `Key`, `TerminalNumber`, `User`, `Password` – Taken from the environment variables above.
+- `Local` – Set to `He`.
+- `UniqueId` – The order ID sent from the client (falls back to `ORD-<timestamp>`).
+- `SuccessUrl`, `CancelUrl`, `CallbackUrl` – Empty strings by default; set them from the client request if you want ZCredit to redirect or callback to your site.
+- `PaymentType` – `regular`.
+- `Installments` – Sent with `Type: "regular"` and the min/max quantity matching the requested number of installments (defaults to 1).
+- `Customer` – Email and name fields (sent empty in the current client call; populate them if you collect those details).
+- `CartItems` – One item that uses the requested amount as the `Amount` (ILS), with `Name`/`Description` derived from the client description or order ID.
+
+The request also supports a `PhoneNumber` on the `Customer` object (populated from `customerPhone`) and the redirect URLs supplied by the client (`successUrl`, `cancelUrl`, `callbackUrl`).
+
+To finish the integration, pass the following from the client when starting checkout:
+
+- `amount` (required) – Total price in ILS.
+- `description` – A short label for the order (appears as the cart item name/description).
+- `orderId` – A unique order reference; if omitted the server generates one.
+- `installments` – Number of installments (defaults to 1).
+- `customerEmail` / `customerName` – Optional but recommended for the hosted page.
+- `successUrl` / `cancelUrl` / `callbackUrl` – URLs that ZCredit should redirect or post back to after payment.
 
 ## Health check
 

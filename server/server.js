@@ -491,6 +491,7 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
     description,
     customerName,
     customerEmail,
+    customerPhone,
     orderId,
     successUrl,
     cancelUrl,
@@ -542,7 +543,7 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
     Customer: {
       Email: customerEmail || '',
       Name: customerName || '',
-      PhoneNumber: '',
+      PhoneNumber: customerPhone || '',
     },
     CartItems: [
       {
