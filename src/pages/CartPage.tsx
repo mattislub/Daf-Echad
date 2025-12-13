@@ -469,6 +469,12 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     return url.toString();
   };
 
+  const buildCallbackUrl = (orderId: string) => {
+    const url = new URL(buildApiUrl(`/zcredit/callback?orderId=${encodeURIComponent(orderId)}`), window.location.origin);
+
+    return url.toString();
+  };
+
   const startZCreditCheckout = async ({ orderId, description }: { orderId: string; description: string }) => {
     const itemsTotalILS = getTotalPrice('ILS');
     const orderTotalILS = itemsTotalILS + selectedShippingOption.priceILS;
@@ -495,7 +501,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
           customerPhone,
           successUrl: buildReturnUrl('success', orderId),
           cancelUrl: buildReturnUrl('cancel', orderId),
-          callbackUrl: buildReturnUrl('error', orderId),
+          callbackUrl: buildCallbackUrl(orderId),
         }),
       });
 
