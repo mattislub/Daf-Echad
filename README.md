@@ -60,7 +60,7 @@ From ZCredit you therefore need the terminal number, terminal password, and WebC
 - `Local` – Set to `He`.
 - `UniqueId` – The order ID sent from the client (falls back to `ORD-<timestamp>`).
 - `SuccessUrl`, `CancelUrl`, `CallbackUrl` – Empty strings by default; set them from the client request if you want ZCredit to redirect or callback to your site.
-- `PaymentType` – `regular`.
+- `PaymentType` – `authorize`.
 - `Installments` – Sent with `Type: "regular"` and the min/max quantity matching the requested number of installments (defaults to 1).
 - `Customer` – Email and name fields (sent empty in the current client call; populate them if you collect those details).
 - `CartItems` – One item that uses the requested amount as the `Amount` (ILS), with `Name`/`Description` derived from the client description or order ID.
