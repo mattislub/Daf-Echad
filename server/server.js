@@ -76,8 +76,11 @@ function trimTrailingSlash(url = '') {
 }
 
 function buildZCreditCreateSessionUrl(baseUrl = '') {
-  const sanitizedBase = trimTrailingSlash(baseUrl);
-  return sanitizedBase ? `${sanitizedBase}/WebCheckout/CreateSession` : '';
+  const sanitizedBase = trimTrailingSlash(baseUrl)
+    .replace(/\/WebCheckout\/CreateSession$/i, '')
+    .replace(/\/api\/WebCheckout\/CreateSession$/i, '');
+
+  return sanitizedBase ? `${sanitizedBase}/api/WebCheckout/CreateSession` : '';
 }
 
 function logZCredit(message, details = {}) {
