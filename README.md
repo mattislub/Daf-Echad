@@ -76,6 +76,14 @@ To finish the integration, pass the following from the client when starting chec
 - `customerEmail` / `customerName` – Optional but recommended for the hosted page.
 - `successUrl` / `cancelUrl` / `callbackUrl` – URLs that ZCredit should redirect or post back to after payment.
 
+### Payment return URLs
+
+When you send customers to the hosted WebCheckout page, provide three URLs so both the buyer and your server know what happened:
+
+- **CallbackUrl** – An asynchronous `POST` from ZCredit with the transaction data. This is delivered server-to-server (and retried up to five times), so you will not see it in your browser dev tools. The backend exposes `POST /api/zcredit/callback`, which logs the payload and returns a simple `{ status: "ok" }` response. Point `CallbackUrl` at that endpoint so you can capture the results on your server.
+- **SuccessUrl** – Where the buyer is redirected after a successful charge. If you embed the checkout in an iframe, use a page on your site that can break out of the iframe before returning to your app.
+- **CancelUrl** – An optional redirect if the buyer cancels the payment. Use it only if you want to offer a cancel path.
+
 ## Health check
 
 `GET /api/db-health` pings the database and returns the server time to confirm connectivity to the remote MySQL instance.
