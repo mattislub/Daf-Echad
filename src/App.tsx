@@ -379,6 +379,10 @@ function AppContent({
     });
   }, [currentPage, language, selectedProduct, t]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [currentPage, selectedBookId]);
+
   return (
     <>
       {currentPage === 'home' && (
