@@ -584,34 +584,43 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     : `Step ${currentStep + 1} of ${steps.length}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-yellow-50/40" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
       <Header onNavigate={onNavigate} />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex flex-col gap-3 mb-8">
+      <main className="mx-auto max-w-6xl px-4 py-10">
+        <div className="flex flex-col gap-2 mb-10">
           <p className="text-sm text-yellow-700 font-semibold">{t('cart.delivery.worldwide')}</p>
-          <h1 className="text-3xl font-bold text-gray-900">{t('cart.title')}</h1>
-          <p className="text-gray-600">{t('cart.subtitle')}</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{t('cart.title')}</h1>
+              <p className="text-gray-600">{t('cart.subtitle')}</p>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <ShieldCheck className="w-4 h-4 text-yellow-700" />
+              <span>{t('cart.checkout.secure')}</span>
+            </div>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-xl border border-yellow-100 bg-white/70 px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
               <Truck className="w-5 h-5 text-yellow-700" />
-              <div>
+              <div className="space-y-1">
                 <p className="text-sm font-semibold text-gray-900">{t('cart.delivery.multi')}</p>
                 <p className="text-xs text-gray-600">{t('cart.shipping.description')}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl border border-yellow-100 bg-white/70 px-4 py-3 shadow-sm">
-              <ShieldCheck className="w-5 h-5 text-yellow-700" />
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{t('cart.checkout.secure')}</p>
-                <p className="text-xs text-gray-600">{t('cart.order.note')}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl border border-yellow-100 bg-white/70 px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
               <Sparkles className="w-5 h-5 text-yellow-700" />
-              <div>
+              <div className="space-y-1">
                 <p className="text-sm font-semibold text-gray-900">{t('cart.checkout.tip')}</p>
                 <p className="text-xs text-gray-600">{t('cart.checkout.cardCtaDescription')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <Wallet className="w-5 h-5 text-yellow-700" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-gray-900">{t('cart.payment.title')}</p>
+                <p className="text-xs text-gray-600">{t('cart.order.note')}</p>
               </div>
             </div>
           </div>
@@ -643,7 +652,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
         )}
 
         {cartItems.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-xl p-10 text-center shadow-sm">
             <p className="text-gray-600 mb-4">{t('cart.empty')}</p>
             <button
               onClick={() => onNavigate?.('catalog')}
@@ -667,8 +676,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     onClick={() => goToStep(index)}
                     className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition ${
                       isActive
-                        ? 'border-yellow-600 bg-yellow-50 ring-2 ring-yellow-100'
-                        : 'border-gray-200 bg-white hover:border-yellow-500'
+                        ? 'border-yellow-600 bg-white ring-2 ring-yellow-100'
+                        : 'border-slate-200 bg-white hover:border-yellow-500'
                     }`}
                   >
                     <div
@@ -677,9 +686,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           ? 'bg-yellow-600 text-white'
                           : isComplete
                             ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-600'
+                            : 'bg-slate-100 text-gray-600'
                       }`}
-                    >
+                  >
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
@@ -695,7 +704,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 {currentStep === 0 && (
-                  <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
@@ -710,7 +719,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     {cartItems.map((item) => (
                       <div
                         key={item.id}
-                        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between border border-gray-100 rounded-lg p-4"
+                        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between border border-slate-200 rounded-xl p-4 bg-slate-50"
                       >
                         <div className="flex items-start gap-4 flex-1">
                           {item.image_url && (
@@ -733,10 +742,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                             </p>
                             <div className="flex items-center gap-3">
                               <label className="text-sm text-gray-600">{t('cart.quantity')}</label>
-                              <div className="flex items-center border rounded-lg">
+                              <div className="flex items-center border border-slate-200 rounded-lg bg-white">
                                 <button
                                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                  className="px-3 py-1 text-lg font-bold hover:bg-gray-100"
+                                  className="px-3 py-1 text-lg font-bold hover:bg-slate-100"
                                 >
                                   -
                                 </button>
@@ -746,11 +755,11 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                                   max={99}
                                   value={item.quantity}
                                   onChange={(e) => updateQuantity(item.id, Math.max(1, Number(e.target.value) || 1))}
-                                  className="w-16 text-center border-x py-1"
+                                  className="w-16 text-center border-x border-slate-200 py-1"
                                 />
                                 <button
                                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                  className="px-3 py-1 text-lg font-bold hover:bg-gray-100"
+                                  className="px-3 py-1 text-lg font-bold hover:bg-slate-100"
                                 >
                                   +
                                 </button>
@@ -773,7 +782,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
               )}
 
               {currentStep === 1 && (
-                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
                   <div className="flex items-center gap-2">
                     <Truck className="w-5 h-5 text-yellow-700" />
                     <div>
@@ -811,7 +820,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           value={selectedCountry}
                           onChange={(event) => setSelectedCountry(event.target.value)}
                           disabled={countryLoading || countries.length === 0}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
                         >
                           <option value="" disabled>
                             {t('cart.shipping.country.placeholder')}
@@ -858,7 +867,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           value={selectedCarrier}
                           onChange={(event) => setSelectedCarrier(event.target.value)}
                           disabled={carrierLoading || carriers.length === 0}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:bg-gray-50"
                         >
                           <option value="" disabled>
                             {t('cart.shipping.carrier.placeholder')}
@@ -875,7 +884,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                         )}
 
                         {selectedCarrierDetails && (
-                          <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 space-y-1">
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-gray-700 space-y-1">
                             <p className="font-semibold text-gray-900">{selectedCarrierDetails.name}</p>
                             {carrierDetails.map((detail) => (
                               <p key={detail}>{detail}</p>
@@ -891,7 +900,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                       <label
                         key={option.id}
                         className={`relative border rounded-lg p-4 cursor-pointer transition shadow-sm hover:border-yellow-600 ${
-                          selectedShipping === option.id ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                          selectedShipping === option.id ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-slate-200'
                         }`}
                       >
                         <input
@@ -938,7 +947,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
               )}
 
               {currentStep === 2 && (
-                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2">
                     <User className="w-5 h-5 text-yellow-700" />
                     <div>
@@ -947,7 +956,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-gray-800">
                     <LogIn className="w-4 h-4 text-yellow-700" />
                     <span className="font-semibold">{t('cart.customer.loginPrompt')}</span>
                     <button
@@ -972,7 +981,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           type="text"
                           value={customerName}
                           onChange={(event) => setCustomerName(event.target.value)}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                           placeholder={t('cart.customer.namePlaceholder')}
                         />
                         <User className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
@@ -989,7 +998,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           type="tel"
                           value={customerPhone}
                           onChange={(event) => setCustomerPhone(event.target.value)}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                           placeholder={t('cart.customer.phonePlaceholder')}
                         />
                         <Phone className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
@@ -1006,7 +1015,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           type="email"
                           value={customerEmail}
                           onChange={(event) => setCustomerEmail(event.target.value)}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                           placeholder={t('cart.customer.emailPlaceholder')}
                         />
                         <Mail className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
@@ -1023,7 +1032,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           value={customerAddress}
                           onChange={(event) => setCustomerAddress(event.target.value)}
                           rows={3}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                           placeholder={t('cart.customer.addressPlaceholder')}
                         />
                         <MapPin className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
@@ -1041,7 +1050,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
               )}
 
               {currentStep === 3 && (
-                <div className="bg-white/90 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-yellow-700" />
                     <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
@@ -1051,7 +1060,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     {/* CARD */}
                     <label
                       className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
-                        paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                        paymentMethod === 'card' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-slate-200'
                       }`}
                     >
                       <input
@@ -1088,7 +1097,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     {/* CASH */}
                     <label
                       className={`flex items-start gap-3 border rounded-lg p-4 cursor-pointer ${
-                        paymentMethod === 'cash' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-gray-200'
+                        paymentMethod === 'cash' ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-slate-200'
                       }`}
                     >
                       <input
@@ -1111,14 +1120,14 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white/80 px-4 py-3 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                 <div className="text-sm font-medium text-gray-700">{stepProgressText}</div>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={goToPreviousStep}
                     disabled={currentStep === 0}
-                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-yellow-600 disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-yellow-600 disabled:opacity-60"
                   >
                     {t('cart.steps.previous')}
                   </button>
@@ -1137,7 +1146,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-white/90 backdrop-blur border border-yellow-100 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-yellow-100 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <Package className="w-5 h-5 text-yellow-700" />
                   <h2 className="text-lg font-semibold text-gray-900">{t('cart.summary')}</h2>
@@ -1189,7 +1198,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     <span>{t('cart.shipping.cost')}</span>
                     <span className="font-semibold">{formatPrice(shippingCost)}</span>
                   </div>
-                  <div className="border-t border-gray-200 pt-3 flex items-center justify-between text-gray-900 font-bold text-base">
+                  <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-gray-900 font-bold text-base">
                     <span>{t('cart.total')}</span>
                     <span>{formatPrice(orderTotal)}</span>
                   </div>
