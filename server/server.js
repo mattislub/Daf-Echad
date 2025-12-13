@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { DATABASE_NAME, getServerTime, testConnection, pool } from './db.js';
 import {
   fetchAuthors,
@@ -471,6 +472,49 @@ const RELATED_ITEM_TABLES = [
 const REQUEST_LOG_FILE = path.resolve(process.cwd(), 'server', 'request-logs.log');
 fs.mkdirSync(path.dirname(REQUEST_LOG_FILE), { recursive: true });
 const requestLogStream = fs.createWriteStream(REQUEST_LOG_FILE, { flags: 'a' });
+const SESSION_COOKIE_NAME = 'daf_session_id';
+const SESSION_LOG_FILE = path.resolve(process.cwd(), 'server', 'session-logs.log');
+fs.mkdirSync(path.dirname(SESSION_LOG_FILE), { recursive: true });
+const sessionLogStream = fs.createWriteStream(SESSION_LOG_FILE, { flags: 'a' });
+
+function parseCookies(cookieHeader = '') {
+  return cookieHeader.split(';').reduce((cookies, cookie) => {
+    const [name, ...rest] = cookie.split('=');
+    if (!name || !rest.length) return cookies;
+
+    const trimmedName = name.trim();
+    const value = rest.join('=').trim();
+
+    if (trimmedName) {
+      cookies[trimmedName] = value;
+    }
+
+    return cookies;
+  }, {});
+}
+
+function generateSessionId() {
+  return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+}
+
+function setSessionCookie(res, sessionId) {
+  const cookieParts = [`${SESSION_COOKIE_NAME}=${sessionId}`, 'Path=/', 'HttpOnly', 'SameSite=Lax'];
+  res.append('Set-Cookie', cookieParts.join('; '));
+}
+
+function logSessionEvent(req, type, details = {}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    sessionId: req.sessionId,
+    ip: req.ip,
+    userAgent: req.get('user-agent') || '',
+    referer: req.get('referer') || '',
+    type,
+    details,
+  };
+
+  sessionLogStream.write(`${JSON.stringify(logEntry)}\n`);
+}
 
 app.use((_, res, next) => {
   res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
@@ -491,6 +535,29 @@ app.use((err, req, res, next) => {
 app.use(express.json());
 
 app.use((req, res, next) => {
+  const cookies = parseCookies(req.headers.cookie || '');
+  let sessionId = cookies[SESSION_COOKIE_NAME];
+  const isNewSession = !sessionId;
+
+  if (!sessionId) {
+    sessionId = generateSessionId();
+  }
+
+  req.sessionId = sessionId;
+
+  if (isNewSession) {
+    logSessionEvent(req, 'session-start', {
+      path: req.path,
+      query: req.query,
+    });
+  }
+
+  setSessionCookie(res, sessionId);
+
+  next();
+});
+
+app.use((req, res, next) => {
   const startTime = Date.now();
 
   res.on('finish', () => {
@@ -498,6 +565,7 @@ app.use((req, res, next) => {
 
     const logEntry = {
       timestamp: new Date().toISOString(),
+      sessionId: req.sessionId,
       ip: req.ip,
       method: req.method,
       url: req.originalUrl,
@@ -514,6 +582,24 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+app.post('/api/session/events', (req, res) => {
+  const { type, itemId, itemTitle, quantity, customer, details } = req.body || {};
+
+  if (!type) {
+    return res.status(400).json({ status: 'error', message: 'Event type is required' });
+  }
+
+  logSessionEvent(req, type, {
+    itemId: itemId ?? null,
+    itemTitle: itemTitle ?? null,
+    quantity: quantity ?? null,
+    customer: customer ?? null,
+    details: details ?? {},
+  });
+
+  return res.status(204).send();
 });
 
 app.post('/api/zcredit/create-checkout', async (req, res) => {
@@ -555,6 +641,18 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
 
   const uniqueOrderId = orderId || `ORD-${Date.now()}`;
   const installmentsCount = Math.max(1, Number.isFinite(Number(installments)) ? Number(installments) : 1);
+
+  logSessionEvent(req, 'checkout-start', {
+    amount: numericAmount,
+    description,
+    orderId: uniqueOrderId,
+    installments: installmentsCount,
+    customer: {
+      name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
+    },
+  });
 
   const payload = {
     Key: ZCREDIT_KEY,
@@ -1008,6 +1106,12 @@ app.get('/api/books/:id', async (req, res) => {
     if (!book) {
       return res.status(404).json({ status: 'error', message: 'Book not found' });
     }
+
+    logSessionEvent(req, 'view-item', {
+      itemId: book.id,
+      itemTitle: book.title_he || book.title_en,
+      categoryId: book.category_id,
+    });
 
     res.json(book);
   } catch (error) {
