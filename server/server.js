@@ -87,10 +87,25 @@ function logZCredit(message, details = {}) {
   const safeDetails = { ...details };
 
   if (safeDetails.payload) {
-    safeDetails.payload = {
-      ...safeDetails.payload,
-      Password: safeDetails.payload.Password ? '***' : '',
+    const sanitizeValue = (value, visibleDigits = 0) => {
+      if (value === undefined || value === null) return '';
+
+      const stringValue = String(value);
+      if (!visibleDigits) return '***';
+
+      if (stringValue.length <= visibleDigits) return '*'.repeat(stringValue.length);
+
+      return `${'*'.repeat(Math.max(stringValue.length - visibleDigits, 3))}${stringValue.slice(-visibleDigits)}`;
     };
+
+    const payload = { ...safeDetails.payload };
+
+    if ('Password' in payload) payload.Password = sanitizeValue(payload.Password);
+    if ('Key' in payload) payload.Key = sanitizeValue(payload.Key);
+    if ('TerminalNumber' in payload) payload.TerminalNumber = sanitizeValue(payload.TerminalNumber, 2);
+    if ('User' in payload) payload.User = sanitizeValue(payload.User, 2);
+
+    safeDetails.payload = payload;
   }
 
   console.log('[ZCredit]', message, safeDetails);
