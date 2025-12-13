@@ -550,6 +550,7 @@ app.use((err, req, res, next) => {
 
   next(err);
 });
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -618,6 +619,19 @@ app.post('/api/session/events', (req, res) => {
   });
 
   return res.status(204).send();
+});
+
+app.post('/api/zcredit/callback', (req, res) => {
+  const orderId =
+    req.query.orderId || req.body?.UniqueId || req.body?.uniqueId || req.body?.OrderId || req.body?.orderId || null;
+
+  logZCredit('Received ZCredit callback', {
+    orderId,
+    status: req.body?.Status || req.body?.status || req.body?.ResponseStatus || null,
+    receivedKeys: Object.keys(req.body || {}),
+  });
+
+  return res.json({ status: 'ok', orderId: orderId || undefined });
 });
 
 app.post('/api/zcredit/create-checkout', async (req, res) => {
