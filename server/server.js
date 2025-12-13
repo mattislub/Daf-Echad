@@ -79,6 +79,19 @@ function buildZCreditCreateSessionUrl(baseUrl = '') {
   return sanitizedBase ? `${sanitizedBase}/WebCheckout/CreateSession` : '';
 }
 
+function logZCredit(message, details = {}) {
+  const safeDetails = { ...details };
+
+  if (safeDetails.payload) {
+    safeDetails.payload = {
+      ...safeDetails.payload,
+      Password: safeDetails.payload.Password ? '***' : '',
+    };
+  }
+
+  console.log('[ZCredit]', message, safeDetails);
+}
+
 function buildDimensions({ length, width, depth, size }) {
   const dimensionParts = [length, width, depth]
     .map((value) => (value ? Number(value) : null))
@@ -520,6 +533,7 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
   const numericAmount = Number(amount);
 
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    logZCredit('Rejected request: invalid amount', { rawAmount: amount });
     return res.status(400).json({ status: 'error', message: 'Amount is required and must be greater than zero' });
   }
 
@@ -532,6 +546,7 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
   if (!ZCREDIT_PASSWORD) missingConfig.push('ZCREDIT_PASSWORD');
 
   if (missingConfig.length) {
+    logZCredit('Rejected request: missing configuration', { missingConfig });
     return res.status(500).json({
       status: 'error',
       message: `Missing ZCredit configuration: ${missingConfig.join(', ')}`,
@@ -581,7 +596,13 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
   const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
-    console.log('Creating ZCredit session via', endpoint);
+    logZCredit('Creating checkout session', {
+      endpoint,
+      payload: {
+        ...payload,
+        CartItemsCount: payload.CartItems.length,
+      },
+    });
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -599,8 +620,15 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
     try {
       data = rawText ? JSON.parse(rawText) : null;
     } catch (error) {
+      logZCredit('Failed to parse ZCredit response as JSON', { raw: rawText?.slice(0, 1000) ?? '', error: error instanceof Error ? error.message : 'Unknown error' });
       data = null;
     }
+
+    logZCredit('Received response from ZCredit', {
+      status: response.status,
+      ok: response.ok,
+      rawSnippet: rawText?.slice(0, 500) ?? '',
+    });
 
     if (!response.ok) {
       return res.status(502).json({
@@ -614,6 +642,7 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
     const sessionUrl = data?.Data?.SessionUrl || data?.SessionUrl || '';
 
     if (!sessionUrl) {
+      logZCredit('Missing SessionUrl in ZCredit response', { raw: rawText?.slice(0, 1000) ?? '' });
       return res.status(502).json({
         status: 'error',
         message: 'ZCredit did not return a checkout URL',
@@ -621,12 +650,16 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
       });
     }
 
+    logZCredit('Created ZCredit checkout session', { sessionUrl, orderId: uniqueOrderId });
     return res.json({ status: 'ok', checkoutUrl: sessionUrl, orderId: uniqueOrderId });
   } catch (error) {
     const isAbortError = error instanceof Error && error.name === 'AbortError';
     const message = isAbortError ? 'ZCredit request timed out' : 'Failed to create ZCredit checkout session';
 
-    console.error(message, error);
+    logZCredit(message, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
     return res.status(500).json({
       status: 'error',
