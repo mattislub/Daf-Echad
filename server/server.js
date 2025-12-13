@@ -465,6 +465,7 @@ function mapItemRowToBook(
 }
 
 const app = express();
+app.set('trust proxy', true);
 
 const RELATED_ITEM_TABLES = [
   'authore',
@@ -520,11 +521,21 @@ function setSessionCookie(res, sessionId) {
   res.append('Set-Cookie', cookieParts.join('; '));
 }
 
+function getClientIp(req) {
+  const forwardedFor = req.get('x-forwarded-for');
+  if (forwardedFor) {
+    const [firstIp] = forwardedFor.split(',');
+    if (firstIp?.trim()) return firstIp.trim();
+  }
+
+  return req.ip || req.socket?.remoteAddress || '';
+}
+
 function logSessionEvent(req, type, details = {}) {
   const logEntry = {
     timestamp: new Date().toISOString(),
     sessionId: req.sessionId,
-    ip: req.ip,
+    ip: getClientIp(req),
     userAgent: req.get('user-agent') || '',
     referer: req.get('referer') || '',
     type,
@@ -585,7 +596,7 @@ app.use((req, res, next) => {
     const logEntry = {
       timestamp: new Date().toISOString(),
       sessionId: req.sessionId,
-      ip: req.ip,
+      ip: getClientIp(req),
       method: req.method,
       url: req.originalUrl,
       path: req.path,
