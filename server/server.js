@@ -25,21 +25,39 @@ import {
 } from './data-loaders.js';
 import { mailDefaults, sendEmail } from './email.js';
 
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https:",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-].join('; ');
+function buildContentSecurityPolicy() {
+  const zCreditOrigin = (() => {
+    try {
+      return new URL(ZCREDIT_BASE_URL).origin;
+    } catch {
+      return '';
+    }
+  })();
+
+  const frameSources = ["'self'"];
+
+  if (zCreditOrigin) {
+    frameSources.push(zCreditOrigin);
+  }
+
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https:",
+    `frame-src ${frameSources.join(' ')}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+  ].join('; ');
+}
 
 const ZCREDIT_BASE_URL = (process.env.ZCREDIT_BASE_URL || '').trim();
 const ZCREDIT_TERMINAL = (process.env.ZCREDIT_TERMINAL || '').trim();
 const ZCREDIT_PASSWORD = (process.env.ZCREDIT_PASSWORD || '').trim();
 const ZCREDIT_KEY = (process.env.ZCREDIT_KEY || '').trim();
+const CONTENT_SECURITY_POLICY = buildContentSecurityPolicy();
 
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
