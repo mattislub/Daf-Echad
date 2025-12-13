@@ -528,6 +528,11 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   };
 
   const handleCheckout = async (methodOverride?: 'card' | 'cash') => {
+    if (currentStep < steps.length - 1) {
+      goToStep(steps.length - 1);
+      return;
+    }
+
     const method = methodOverride ?? paymentMethod;
 
     if (!termsAccepted) {
@@ -1242,7 +1247,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
                 <button
                   className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
-                  disabled={sendingOrder || paymentRedirecting || currentStep < steps.length - 1}
+                  disabled={sendingOrder || paymentRedirecting}
                   onClick={() => void handleCheckout()}
                 >
                   {paymentRedirecting
