@@ -510,7 +510,9 @@ export default function CartPage({ onNavigate }: CartPageProps) {
         throw new Error('Missing checkout URL');
       }
 
-      window.location.href = data.checkoutUrl;
+      const encodedCheckout = encodeURIComponent(data.checkoutUrl);
+      const encodedOrderId = encodeURIComponent(orderId);
+      window.location.hash = `#/payment?checkoutUrl=${encodedCheckout}&orderId=${encodedOrderId}`;
     } catch (error) {
       console.error('ZCredit checkout error', error);
       setPaymentError(t('cart.checkout.paymentError'));

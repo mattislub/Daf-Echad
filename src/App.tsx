@@ -17,6 +17,7 @@ import ContactPage from './pages/ContactPage';
 import PoliciesPage from './pages/PoliciesPage';
 import TermsPage from './pages/TermsPage';
 import AdminPage from './pages/AdminPage';
+import PaymentPage from './pages/PaymentPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
@@ -89,6 +90,8 @@ function App() {
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [catalogFiltersFromUrl, setCatalogFiltersFromUrl] = useState<string[]>([]);
+  const [paymentCheckoutUrl, setPaymentCheckoutUrl] = useState<string | null>(null);
+  const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
 
   const getBookSlug = useCallback((book: Book | undefined) => {
     if (!book) return '';
@@ -140,6 +143,10 @@ function App() {
     const targetBook = books.find((book) => book.id === bookId);
 
     setCatalogFiltersFromUrl([]);
+    if (page !== 'payment') {
+      setPaymentCheckoutUrl(null);
+      setPaymentOrderId(null);
+    }
 
     if (page === 'item') {
       const fallbackSlug = bookId ?? '';
@@ -221,6 +228,9 @@ function App() {
       const searchParams = new URLSearchParams(searchString ?? '');
       const categoryFilters = searchParams.getAll('category').filter(Boolean);
 
+      setPaymentCheckoutUrl(null);
+      setPaymentOrderId(null);
+
       switch (route) {
         case 'catalog':
           setCurrentPage('catalog');
@@ -282,6 +292,14 @@ function App() {
           setPendingSlug(null);
           setCatalogFiltersFromUrl([]);
           break;
+        case 'payment':
+          setCurrentPage('payment');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
+          setPaymentCheckoutUrl(searchParams.get('checkoutUrl'));
+          setPaymentOrderId(searchParams.get('orderId'));
+          break;
         default:
           setCurrentPage('home');
           setSelectedBookId(null);
@@ -314,6 +332,8 @@ function App() {
             loadingBooks={loadingBooks}
             pendingSlug={pendingSlug}
             catalogFiltersFromUrl={catalogFiltersFromUrl}
+            paymentCheckoutUrl={paymentCheckoutUrl}
+            paymentOrderId={paymentOrderId}
           />
         </SearchProvider>
       </CartProvider>
@@ -329,6 +349,8 @@ interface AppContentProps {
   loadingBooks: boolean;
   pendingSlug: string | null;
   catalogFiltersFromUrl: string[];
+  paymentCheckoutUrl: string | null;
+  paymentOrderId: string | null;
 }
 
 function AppContent({
@@ -339,6 +361,8 @@ function AppContent({
   loadingBooks,
   pendingSlug,
   catalogFiltersFromUrl,
+  paymentCheckoutUrl,
+  paymentOrderId,
 }: AppContentProps) {
   const { language, t } = useLanguage();
 
@@ -389,6 +413,13 @@ function AppContent({
       {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
       {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
       {currentPage === 'admin' && <AdminPage onNavigate={onNavigate} />}
+      {currentPage === 'payment' && (
+        <PaymentPage
+          checkoutUrl={paymentCheckoutUrl}
+          orderId={paymentOrderId}
+          onNavigate={onNavigate}
+        />
+      )}
     </>
   );
 }
