@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getBookById, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
 import { CartItem } from '../types';
+import { logSessionEvent } from '../services/session';
 
 interface ItemPageProps {
   bookId: string;
@@ -39,6 +40,19 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   useEffect(() => {
     fetchBookData();
   }, [bookId]);
+
+  useEffect(() => {
+    if (!book) return;
+
+    logSessionEvent({
+      type: 'view-item',
+      itemId: book.id,
+      itemTitle: book.title_he || book.title_en,
+      details: {
+        categoryId: book.category_id,
+      },
+    });
+  }, [book]);
 
   const fetchBookData = async () => {
     try {
@@ -113,6 +127,14 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
     };
 
     addToCart(cartItem);
+
+    logSessionEvent({
+      type: 'add-to-cart',
+      itemId: book.id,
+      itemTitle: book.title_he || book.title_en,
+      quantity: quantity,
+      cartItems: [cartItem],
+    });
 
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
