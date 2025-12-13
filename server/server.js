@@ -667,7 +667,7 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
     SuccessUrl: successUrl || '',
     CancelUrl: cancelUrl || '',
     CallbackUrl: callbackUrl || '',
-    PaymentType: 'regular',
+    PaymentType: 'authorize',
     ShowCart: 'false',
     Installments: {
       Type: 'regular',
