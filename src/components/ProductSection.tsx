@@ -8,6 +8,7 @@ interface ProductSectionProps {
   products: Book[];
   onViewAll?: () => void;
   onViewDetails?: (product: Book) => void;
+  onGoToCart?: (product: Book) => void;
 }
 
 export default function ProductSection({
@@ -15,6 +16,7 @@ export default function ProductSection({
   products,
   onViewAll,
   onViewDetails,
+  onGoToCart,
 }: ProductSectionProps) {
   const { language, currency } = useLanguage();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -50,6 +52,7 @@ export default function ProductSection({
                 : ''
             }
             onViewDetails={onViewDetails ? () => onViewDetails(product) : undefined}
+            onGoToCart={onGoToCart ? () => onGoToCart(product) : undefined}
             isFeatured={product.featured}
             inStock={product.in_stock}
             onToggleWishlist={() => toggleWishlist(product)}

@@ -9,6 +9,7 @@ interface ProductCardProps {
   category?: string;
   onAddToCart?: () => void;
   onViewDetails?: () => void;
+  onGoToCart?: () => void;
   isFeatured?: boolean;
   inStock?: boolean;
   onToggleWishlist?: () => void;
@@ -22,6 +23,7 @@ export default function ProductCard({
   category,
   onAddToCart,
   onViewDetails,
+  onGoToCart,
   isFeatured = false,
   inStock = true,
   onToggleWishlist,
@@ -101,15 +103,29 @@ export default function ProductCard({
           )}
         </div>
 
-        {onAddToCart && (
-          <button
-            onClick={onAddToCart}
-            disabled={!inStock}
-            className="w-full bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded font-semibold flex items-center justify-center gap-2 transition-all border border-yellow-600/30"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            <span>{isRTL ? 'הוסף לעגלה' : 'Add to Cart'}</span>
-          </button>
+        {(onAddToCart || onGoToCart) && (
+          <div className="flex flex-col gap-2">
+            {onAddToCart && (
+              <button
+                onClick={onAddToCart}
+                disabled={!inStock}
+                className="w-full bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded font-semibold flex items-center justify-center gap-2 transition-all border border-yellow-600/30"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span>{isRTL ? 'הוסף לעגלה' : 'Add to Cart'}</span>
+              </button>
+            )}
+            {onGoToCart && (
+              <button
+                type="button"
+                onClick={onGoToCart}
+                className="w-full border-2 border-yellow-600/60 text-yellow-800 bg-yellow-50 hover:bg-yellow-100 py-3 rounded font-semibold flex items-center justify-center gap-2 transition-all"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span>{isRTL ? 'מעבר לעגלה' : 'Go to Cart'}</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -67,6 +67,7 @@ function HomePage({
               products={featuredProducts}
               onViewAll={() => onNavigate('catalog')}
               onViewDetails={(product) => onNavigate('item', product.id)}
+              onGoToCart={() => onNavigate('cart')}
             />
 
             <ProductSection
@@ -74,6 +75,7 @@ function HomePage({
               products={newArrivals}
               onViewAll={() => onNavigate('catalog')}
               onViewDetails={(product) => onNavigate('item', product.id)}
+              onGoToCart={() => onNavigate('cart')}
             />
           </>
         )}

@@ -350,6 +350,14 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                 </button>
                 <button
                   type="button"
+                  onClick={() => onNavigate?.('cart')}
+                  className="w-full border-2 border-yellow-600/70 bg-yellow-50 hover:bg-yellow-100 text-yellow-800 py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all"
+                >
+                  <ShoppingCart className="w-6 h-6" />
+                  {language === 'he' ? 'מעבר לעגלה' : 'Go to Cart'}
+                </button>
+                <button
+                  type="button"
                   onClick={handleToggleWishlist}
                   className={`w-full border-2 ${wishlisted ? 'border-yellow-600 text-yellow-700 bg-yellow-50' : 'border-gray-200 text-gray-800 bg-white'} py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:border-yellow-600 hover:text-yellow-700`}
                 >
@@ -446,6 +454,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                       : ''
                   }
                   onViewDetails={() => onNavigate?.('item', relatedBook.id)}
+                  onGoToCart={() => onNavigate?.('cart')}
                 />
               ))}
             </div>
@@ -473,6 +482,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                       : ''
                   }
                   onViewDetails={() => onNavigate?.('item', popularBook.id)}
+                  onGoToCart={() => onNavigate?.('cart')}
                 />
               ))}
             </div>

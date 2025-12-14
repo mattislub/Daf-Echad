@@ -264,6 +264,7 @@ export default function Catalog({ onNavigate, initialCategoryFilters = [] }: Cat
                         : ''
                     }
                     onViewDetails={() => onNavigate?.('item', book.id)}
+                    onGoToCart={() => onNavigate?.('cart')}
                     onToggleWishlist={() => toggleWishlist(book)}
                     isInWishlist={isInWishlist(book.id)}
                   />
