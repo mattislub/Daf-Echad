@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
 import { SearchProvider } from './context/SearchContext';
 import Header from './components/Header';
 import Banner from './components/Banner';
@@ -18,6 +19,7 @@ import PoliciesPage from './pages/PoliciesPage';
 import TermsPage from './pages/TermsPage';
 import AdminPage from './pages/AdminPage';
 import PaymentPage from './pages/PaymentPage';
+import WishlistPage from './pages/WishlistPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
@@ -157,6 +159,14 @@ function App() {
       return;
     }
 
+    if (page === 'wishlist') {
+      setPendingSlug(null);
+      setCurrentPage('wishlist');
+      setSelectedBookId(null);
+      updateHashForPage('wishlist');
+      return;
+    }
+
     setPendingSlug(null);
     setCurrentPage(page);
     setSelectedBookId(null);
@@ -250,6 +260,12 @@ function App() {
           setPendingSlug(null);
           setCatalogFiltersFromUrl([]);
           break;
+        case 'wishlist':
+          setCurrentPage('wishlist');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
+          break;
         case 'about':
           setCurrentPage('about');
           setSelectedBookId(null);
@@ -318,24 +334,26 @@ function App() {
   return (
     <LanguageProvider>
       <CartProvider>
-        <SearchProvider
-          searchItems={books}
-          searchTerm={searchQuery}
-          setSearchTerm={setSearchQuery}
-          onSearch={handleSearch}
-        >
-          <AppContent
-            currentPage={currentPage}
-            selectedBookId={selectedBookId}
-            onNavigate={handleNavigate}
-            books={books}
-            loadingBooks={loadingBooks}
-            pendingSlug={pendingSlug}
-            catalogFiltersFromUrl={catalogFiltersFromUrl}
-            paymentCheckoutUrl={paymentCheckoutUrl}
-            paymentOrderId={paymentOrderId}
-          />
-        </SearchProvider>
+        <WishlistProvider>
+          <SearchProvider
+            searchItems={books}
+            searchTerm={searchQuery}
+            setSearchTerm={setSearchQuery}
+            onSearch={handleSearch}
+          >
+            <AppContent
+              currentPage={currentPage}
+              selectedBookId={selectedBookId}
+              onNavigate={handleNavigate}
+              books={books}
+              loadingBooks={loadingBooks}
+              pendingSlug={pendingSlug}
+              catalogFiltersFromUrl={catalogFiltersFromUrl}
+              paymentCheckoutUrl={paymentCheckoutUrl}
+              paymentOrderId={paymentOrderId}
+            />
+          </SearchProvider>
+        </WishlistProvider>
       </CartProvider>
     </LanguageProvider>
   );
@@ -410,6 +428,7 @@ function AppContent({
         </div>
       )}
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
+      {currentPage === 'wishlist' && <WishlistPage onNavigate={onNavigate} />}
       {currentPage === 'account' && <AccountPage onNavigate={onNavigate} />}
       {currentPage === 'login' && <LoginPage onNavigate={onNavigate} />}
       {currentPage === 'about' && <AboutPage onNavigate={onNavigate} />}

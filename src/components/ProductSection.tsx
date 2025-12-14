@@ -1,6 +1,7 @@
 import ProductCard from './ProductCard';
 import { Book } from '../types/catalog';
 import { useLanguage } from '../context/LanguageContext';
+import { useWishlist } from '../context/WishlistContext';
 
 interface ProductSectionProps {
   title: string;
@@ -16,6 +17,7 @@ export default function ProductSection({
   onViewDetails,
 }: ProductSectionProps) {
   const { language, currency } = useLanguage();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const isRTL = language === 'he';
 
   return (
@@ -50,6 +52,8 @@ export default function ProductSection({
             onViewDetails={onViewDetails ? () => onViewDetails(product) : undefined}
             isFeatured={product.featured}
             inStock={product.in_stock}
+            onToggleWishlist={() => toggleWishlist(product)}
+            isInWishlist={isInWishlist(product.id)}
           />
         ))}
       </div>
