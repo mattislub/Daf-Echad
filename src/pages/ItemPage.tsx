@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import { Book, Category } from '../types/catalog';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -11,6 +12,7 @@ import {
   Loader2,
   ShoppingCart,
   Check,
+  Heart,
   Package,
   ChevronDown,
   ShieldCheck,
@@ -29,6 +31,7 @@ interface ItemPageProps {
 export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const { language, currency } = useLanguage();
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const [book, setBook] = useState<Book | null>(null);
   const [relatedBooks, setRelatedBooks] = useState<Book[]>([]);
   const [popularBooks, setPopularBooks] = useState<Book[]>([]);
@@ -140,6 +143,11 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
+  const handleToggleWishlist = () => {
+    if (!book) return;
+    toggleWishlist(book);
+  };
+
   const handleQuantityChange = (value: number) => {
     const newQuantity = Math.max(1, Math.min(99, value));
     setQuantity(newQuantity);
@@ -206,6 +214,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
     { label: language === 'he' ? 'שפה' : 'Language', value: book.language },
     { label: language === 'he' ? 'כרכים' : 'Volumes', value: book.volumes ? String(book.volumes) : null },
   ].filter((item) => Boolean(item.value));
+  const wishlisted = book ? isInWishlist(book.id) : false;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
@@ -321,23 +330,33 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                 </div>
               </div>
 
-              <button
-                onClick={handleAddToCart}
-                disabled={!book.in_stock || addedToCart}
-                className="w-full bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-500 hover:via-amber-500 hover:to-yellow-500 disabled:from-gray-300 disabled:to-gray-300 text-white py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all shadow-lg shadow-amber-200/40 disabled:shadow-none"
-              >
-                {addedToCart ? (
-                  <>
-                    <Check className="w-6 h-6" />
-                    {language === 'he' ? 'נוסף לעגלה!' : 'Added to Cart!'}
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-6 h-6" />
-                    {language === 'he' ? 'הוסף לעגלה' : 'Add to Cart'}
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!book.in_stock || addedToCart}
+                  className="w-full bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-500 hover:via-amber-500 hover:to-yellow-500 disabled:from-gray-300 disabled:to-gray-300 text-white py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all shadow-lg shadow-amber-200/40 disabled:shadow-none"
+                >
+                  {addedToCart ? (
+                    <>
+                      <Check className="w-6 h-6" />
+                      {language === 'he' ? 'נוסף לעגלה!' : 'Added to Cart!'}
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-6 h-6" />
+                      {language === 'he' ? 'הוסף לעגלה' : 'Add to Cart'}
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleWishlist}
+                  className={`w-full border-2 ${wishlisted ? 'border-yellow-600 text-yellow-700 bg-yellow-50' : 'border-gray-200 text-gray-800 bg-white'} py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:border-yellow-600 hover:text-yellow-700`}
+                >
+                  <Heart className={`w-6 h-6 ${wishlisted ? 'fill-yellow-600 text-yellow-700' : 'text-yellow-700'}`} />
+                  {wishlisted ? (language === 'he' ? 'נשמר ברשימה' : 'Saved to wishlist') : language === 'he' ? 'הוסף לרשימה' : 'Add to wishlist'}
+                </button>
+              </div>
 
               <div className="grid sm:grid-cols-3 gap-3 pt-1">
                 {perks.map((perk) => (

@@ -8,6 +8,7 @@ import Footer from '../components/Footer';
 import { Loader2, SlidersHorizontal } from 'lucide-react';
 import { getAuthors, getBooks, getCategories, getPublishers } from '../services/api';
 import { useSearch } from '../context/SearchContext';
+import { useWishlist } from '../context/WishlistContext';
 
 interface CatalogProps {
   onNavigate?: (page: string, bookId?: string) => void;
@@ -17,6 +18,7 @@ interface CatalogProps {
 export default function Catalog({ onNavigate, initialCategoryFilters = [] }: CatalogProps = {}) {
   const { language, currency } = useLanguage();
   const { searchTerm } = useSearch();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -262,6 +264,8 @@ export default function Catalog({ onNavigate, initialCategoryFilters = [] }: Cat
                         : ''
                     }
                     onViewDetails={() => onNavigate?.('item', book.id)}
+                    onToggleWishlist={() => toggleWishlist(book)}
+                    isInWishlist={isInWishlist(book.id)}
                   />
                 ))}
               </div>

@@ -8,6 +8,7 @@ import {
   BookOpen,
   Baby,
   Sparkles,
+  Heart,
   LogIn,
   Info,
   FileText,
@@ -19,6 +20,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useSearch } from '../context/SearchContext';
 import { Book } from '../types/catalog';
+import { useWishlist } from '../context/WishlistContext';
 
 export interface HeaderProps {
   onNavigate?: (page: string) => void;
@@ -30,6 +32,7 @@ export interface HeaderProps {
 export default function Header({ onNavigate, onSearch, searchItems, searchTerm }: HeaderProps = {}) {
   const { language, setLanguage, currency, setCurrency, t } = useLanguage();
   const { getTotalItems, getTotalPrice } = useCart();
+  const { wishlistItems } = useWishlist();
   const searchContext = useSearch();
 
   const effectiveSearchItems = searchItems ?? searchContext.searchItems;
@@ -198,6 +201,22 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
             >
               <User className="w-5 h-5 text-gray-700" />
               <span className="text-gray-700 font-medium">{t('nav.account')}</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate?.('wishlist')}
+              className="relative flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-yellow-600/40 text-gray-800 rounded-lg transition-colors shadow-sm"
+            >
+              <Heart className="w-5 h-5 text-yellow-700" />
+              <div className="text-right">
+                <div className="text-xs opacity-90">{t('nav.wishlist')}</div>
+                <div className="font-bold">{wishlistItems.length} {language === 'he' ? 'פריטים' : 'items'}</div>
+              </div>
+              {wishlistItems.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {wishlistItems.length}
+                </span>
+              )}
             </button>
 
             <button

@@ -1,4 +1,4 @@
-import { ShoppingCart, Star, Book, Eye } from 'lucide-react';
+import { ShoppingCart, Star, Book, Eye, Heart } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface ProductCardProps {
@@ -11,6 +11,8 @@ interface ProductCardProps {
   onViewDetails?: () => void;
   isFeatured?: boolean;
   inStock?: boolean;
+  onToggleWishlist?: () => void;
+  isInWishlist?: boolean;
 }
 
 export default function ProductCard({
@@ -22,6 +24,8 @@ export default function ProductCard({
   onViewDetails,
   isFeatured = false,
   inStock = true,
+  onToggleWishlist,
+  isInWishlist = false,
 }: ProductCardProps) {
   const { language, currency } = useLanguage();
   const isRTL = language === 'he';
@@ -46,6 +50,19 @@ export default function ProductCard({
           <div className="absolute top-3 left-3 bg-gray-800 text-white p-2 rounded shadow-lg">
             <Star className="w-4 h-4 fill-white" />
           </div>
+        )}
+        {onToggleWishlist && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleWishlist();
+            }}
+            className="absolute top-3 right-3 bg-white/90 hover:bg-white text-yellow-700 p-2 rounded-full shadow-md border border-yellow-100 transition"
+            aria-label={isInWishlist ? (isRTL ? 'הסר מרשימת המשאלות' : 'Remove from wishlist') : isRTL ? 'הוסף לרשימת המשאלות' : 'Add to wishlist'}
+          >
+            <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-yellow-600 text-yellow-700' : 'text-yellow-700'}`} />
+          </button>
         )}
         {onViewDetails && (
           <button
