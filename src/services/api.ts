@@ -81,6 +81,107 @@ export async function getPopularBooks(bookId: string): Promise<Book[]> {
   return fetchJson<Book[]>(`/books?featured=true&exclude=${bookId}&limit=4`);
 }
 
+export interface HfdRateRequest {
+  cityName: string;
+  streetName: string;
+  houseNum?: string;
+  shipmentWeight: number;
+  productsPrice?: number;
+  nameTo?: string;
+  telFirst?: string;
+  referenceNum1?: string;
+  referenceNum2?: string;
+}
+
+export interface HfdRateResponse {
+  status: 'ok' | 'error';
+  estimatedPriceILS?: number;
+  weightGrams?: number;
+  currency?: string;
+  message?: string;
+  hfdStatus?: number;
+  hfdResponse?: {
+    shipmentNumber?: number | null;
+    randNumber?: string | null;
+    referenceNumber1?: string | null;
+    referenceNumber2?: string | null;
+    deliveryLine?: number | null;
+    deliveryArea?: number | null;
+    sortingCode?: number | null;
+    pickUpCode?: number | null;
+    existingShipmentNumber?: number | null;
+    errorCode?: string | null;
+    errorMessage?: string | null;
+  };
+}
+
+export async function requestHfdRate(payload: HfdRateRequest): Promise<HfdRateResponse> {
+  const response = await fetch(buildApiUrl('/shipping/hfd/rate'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = (await response.json().catch(() => ({}))) as HfdRateResponse;
+
+  if (!response.ok) {
+    return {
+      status: 'error',
+      message: data?.message || `HFD rate request failed: ${response.statusText}`,
+      ...data,
+      hfdStatus: response.status,
+    };
+  }
+
+  return data;
+}
+
+export interface TrackingStatusEntry {
+  code?: string;
+  description?: string;
+  date?: string;
+  time?: string;
+}
+
+export interface TrackingResponse {
+  status: 'ok' | 'error';
+  carrier?: string;
+  shipmentNumber?: string | null;
+  referenceNumber1?: string | null;
+  referenceNumber2?: string | null;
+  delivered?: boolean;
+  deliveryLine?: string | number | null;
+  deliveryArea?: string | number | null;
+  statuses?: TrackingStatusEntry[];
+  message?: string;
+}
+
+export async function trackHfdShipment({
+  shipmentNumber,
+  reference,
+}: {
+  shipmentNumber?: string;
+  reference?: string;
+}): Promise<TrackingResponse> {
+  const response = await fetch(buildApiUrl('/shipping/hfd/track'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ shipmentNumber, reference }),
+  });
+
+  const data = (await response.json().catch(() => ({}))) as TrackingResponse;
+
+  if (!response.ok) {
+    return {
+      status: 'error',
+      message: data?.message || `HFD tracking request failed: ${response.statusText}`,
+      ...data,
+    };
+  }
+
+  return data;
+}
+
 export interface EmailRequest {
   to: string | string[];
   subject: string;

@@ -20,6 +20,7 @@ import TermsPage from './pages/TermsPage';
 import AdminPage from './pages/AdminPage';
 import PaymentPage from './pages/PaymentPage';
 import WishlistPage from './pages/WishlistPage';
+import TrackingPage from './pages/TrackingPage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
@@ -280,6 +281,12 @@ function App() {
           setPendingSlug(null);
           setCatalogFiltersFromUrl([]);
           break;
+        case 'tracking':
+          setCurrentPage('tracking');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
+          break;
         case 'policies':
           setCurrentPage('policies');
           setSelectedBookId(null);
@@ -435,6 +442,7 @@ function AppContent({
       {currentPage === 'login' && <LoginPage onNavigate={onNavigate} />}
       {currentPage === 'about' && <AboutPage onNavigate={onNavigate} />}
       {currentPage === 'contact' && <ContactPage onNavigate={onNavigate} />}
+      {currentPage === 'tracking' && <TrackingPage onNavigate={onNavigate} />}
       {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
       {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
       {currentPage === 'admin' && <AdminPage onNavigate={onNavigate} />}

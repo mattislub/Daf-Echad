@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   CreditCard,
@@ -17,6 +17,7 @@ import Footer from '../components/Footer';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
 import { CustomerCreditEntry, CustomerCreditResponse, getCustomerCredit } from '../services/api';
+import TrackingWidget from '../components/TrackingWidget';
 
 interface AccountPageProps {
   onNavigate?: (page: string) => void;
@@ -47,8 +48,6 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
   const { language, currency, t } = useLanguage();
   const isRTL = language === 'he';
   const customerId = '1045';
-  const [trackingNumber, setTrackingNumber] = useState('');
-  const [courier, setCourier] = useState('');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [creditSummary, setCreditSummary] = useState<CustomerCreditResponse | null>(null);
   const [creditError, setCreditError] = useState<string | null>(null);
@@ -108,13 +107,6 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     },
   ];
 
-  const carriers = [
-    { value: 'Israel Post', label: language === 'he' ? 'דואר ישראל' : 'Israel Post' },
-    { value: 'FedEx', label: 'FedEx' },
-    { value: 'DHL', label: 'DHL' },
-    { value: 'Aramex', label: 'Aramex' },
-  ];
-
   const tabs = useMemo(
     () => [
       { id: 'overview', label: t('account.tabs.overview'), icon: LayoutDashboard },
@@ -163,16 +155,6 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
   useEffect(() => {
     loadCustomerCredit();
   }, [loadCustomerCredit]);
-
-  const handleTrackSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
-    if (!trackingNumber || !courier) {
-      return;
-    }
-
-    console.info('Track request', { trackingNumber, courier });
-  };
 
   const addresses: AddressItem[] = [
     {
@@ -515,50 +497,7 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
 
             <p className="text-sm text-gray-700 mb-3">{t('account.trackOrdersDescription')}</p>
 
-            <form className="space-y-3" onSubmit={handleTrackSubmit}>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-800" htmlFor="trackingNumber">
-                  {t('account.trackingNumber')}
-                </label>
-                <input
-                  id="trackingNumber"
-                  name="trackingNumber"
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  className="w-full rounded-lg border border-yellow-200 bg-white px-3 py-2 text-sm focus:border-yellow-400 focus:ring-yellow-300"
-                  placeholder={t('account.trackingPlaceholder')}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-800" htmlFor="courier">
-                  {t('account.courier')}
-                </label>
-                <select
-                  id="courier"
-                  name="courier"
-                  value={courier}
-                  onChange={(e) => setCourier(e.target.value)}
-                  className="w-full rounded-lg border border-yellow-200 bg-white px-3 py-2 text-sm focus:border-yellow-400 focus:ring-yellow-300"
-                >
-                  <option value="">{t('account.selectCourier')}</option>
-                  {carriers.map((carrier) => (
-                    <option key={carrier.value} value={carrier.value}>
-                      {carrier.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800 disabled:opacity-60"
-                disabled={!trackingNumber || !courier}
-              >
-                <Truck className="w-4 h-4" />
-                {t('account.trackNow')}
-              </button>
-            </form>
+            <TrackingWidget defaultTrackingNumber={orders[0]?.trackingNumber || ''} />
           </div>
         </div>
       </div>

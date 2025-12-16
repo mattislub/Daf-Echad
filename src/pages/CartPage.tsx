@@ -6,6 +6,7 @@ import {
   LogIn,
   Mail,
   MapPin,
+  Loader2,
   Package,
   ShieldCheck,
   Sparkles,
@@ -19,7 +20,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { API_BASE_URL, buildApiUrl } from '../services/api';
+import { API_BASE_URL, buildApiUrl, requestHfdRate, HfdRateResponse } from '../services/api';
 
 interface CartPageProps {
   onNavigate?: (page: string) => void;
@@ -50,6 +51,16 @@ interface Carrier {
   telno: string;
   email: string;
   notes: string;
+}
+
+interface HfdQuoteFormState {
+  cityName: string;
+  streetName: string;
+  houseNum: string;
+  contactName: string;
+  phone: string;
+  weightGrams: string;
+  productsPrice: string;
 }
 
 export default function CartPage({ onNavigate }: CartPageProps) {
@@ -83,6 +94,18 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     | { status: 'success' | 'cancel' | 'error'; orderId?: string | null }
     | null
   >(null);
+  const [hfdQuote, setHfdQuote] = useState<HfdRateResponse | null>(null);
+  const [hfdQuoteError, setHfdQuoteError] = useState<string | null>(null);
+  const [hfdQuoteLoading, setHfdQuoteLoading] = useState(false);
+  const [hfdForm, setHfdForm] = useState<HfdQuoteFormState>({
+    cityName: '',
+    streetName: '',
+    houseNum: '',
+    contactName: '',
+    phone: '',
+    weightGrams: '',
+    productsPrice: '',
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -329,6 +352,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const carrierSummary = selectedCarrierName || t('cart.shipping.carrier.unknown');
 
   const itemsTotal = getTotalPrice(currency);
+  const itemsTotalILS = getTotalPrice('ILS');
   const shippingCost = currency === 'ILS' ? selectedShippingOption.priceILS : selectedShippingOption.priceUSD;
   const orderTotal = itemsTotal + shippingCost;
 
@@ -345,6 +369,73 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const formatWeight = (grams?: number | null) => {
     if (!grams || grams <= 0) return t('cart.weight.unknown');
     return `${(grams / 1000).toFixed(3)} ${t('cart.weight.kg')}`;
+  };
+
+  useEffect(() => {
+    const defaultWeight = totalWeightGrams ? String(totalWeightGrams) : '';
+    const defaultPrice = itemsTotalILS ? itemsTotalILS.toFixed(2) : '';
+
+    setHfdForm((previous) => ({
+      ...previous,
+      weightGrams:
+        previous.weightGrams && previous.weightGrams !== defaultWeight
+          ? previous.weightGrams
+          : defaultWeight,
+      productsPrice:
+        previous.productsPrice && previous.productsPrice !== defaultPrice
+          ? previous.productsPrice
+          : defaultPrice,
+    }));
+  }, [itemsTotalILS, totalWeightGrams]);
+
+  const handleHfdFieldChange = (field: keyof HfdQuoteFormState, value: string) => {
+    setHfdForm((previous) => ({ ...previous, [field]: value }));
+  };
+
+  const formatIlsPrice = (value?: number | null) => {
+    if (value === undefined || value === null) return '';
+    return `₪${value.toFixed(2)}`;
+  };
+
+  const handleHfdRateCheck = async () => {
+    setHfdQuoteError(null);
+    setHfdQuote(null);
+
+    const parsedWeight = Number(hfdForm.weightGrams);
+    if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) {
+      setHfdQuoteError(t('cart.shipping.hfd.weightError'));
+      return;
+    }
+
+    if (!hfdForm.cityName.trim() || !hfdForm.streetName.trim()) {
+      setHfdQuoteError(t('cart.shipping.hfd.addressError'));
+      return;
+    }
+
+    setHfdQuoteLoading(true);
+
+    try {
+      const response = await requestHfdRate({
+        cityName: hfdForm.cityName.trim(),
+        streetName: hfdForm.streetName.trim(),
+        houseNum: hfdForm.houseNum.trim(),
+        shipmentWeight: parsedWeight,
+        productsPrice: Number(hfdForm.productsPrice) || 0,
+        nameTo: hfdForm.contactName || customerName,
+        telFirst: hfdForm.phone || customerPhone,
+        referenceNum1: customerEmail || undefined,
+      });
+
+      setHfdQuote(response);
+
+      if (response.status !== 'ok') {
+        setHfdQuoteError(response.message || t('cart.shipping.hfd.errorGeneric'));
+      }
+    } catch (error) {
+      setHfdQuoteError(error instanceof Error ? error.message : t('cart.shipping.hfd.errorGeneric'));
+    } finally {
+      setHfdQuoteLoading(false);
+    }
   };
 
   const sendOrderEmail = async (orderId: string) => {
@@ -955,6 +1046,170 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                         </div>
                       </label>
                     ))}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{t('cart.shipping.hfd.title')}</p>
+                        <p className="text-sm text-gray-600">{t('cart.shipping.hfd.description')}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-slate-200">
+                        <Truck className="w-5 h-5 text-yellow-700" />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="space-y-1">
+                        <label className="text-sm font-semibold text-gray-900" htmlFor="hfd-city">
+                          {t('cart.shipping.hfd.city')}
+                        </label>
+                        <input
+                          id="hfd-city"
+                          type="text"
+                          value={hfdForm.cityName}
+                          onChange={(event) => handleHfdFieldChange('cityName', event.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.shipping.hfd.cityPlaceholder')}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-sm font-semibold text-gray-900" htmlFor="hfd-street">
+                          {t('cart.shipping.hfd.street')}
+                        </label>
+                        <input
+                          id="hfd-street"
+                          type="text"
+                          value={hfdForm.streetName}
+                          onChange={(event) => handleHfdFieldChange('streetName', event.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.shipping.hfd.streetPlaceholder')}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-sm font-semibold text-gray-900" htmlFor="hfd-house">
+                          {t('cart.shipping.hfd.house')}
+                        </label>
+                        <input
+                          id="hfd-house"
+                          type="text"
+                          value={hfdForm.houseNum}
+                          onChange={(event) => handleHfdFieldChange('houseNum', event.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.shipping.hfd.housePlaceholder')}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-sm font-semibold text-gray-900" htmlFor="hfd-contact">
+                          {t('cart.shipping.hfd.contact')}
+                        </label>
+                        <input
+                          id="hfd-contact"
+                          type="text"
+                          value={hfdForm.contactName}
+                          onChange={(event) => handleHfdFieldChange('contactName', event.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.shipping.hfd.contactPlaceholder')}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-sm font-semibold text-gray-900" htmlFor="hfd-phone">
+                          {t('cart.shipping.hfd.phone')}
+                        </label>
+                        <input
+                          id="hfd-phone"
+                          type="tel"
+                          value={hfdForm.phone}
+                          onChange={(event) => handleHfdFieldChange('phone', event.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.shipping.hfd.phonePlaceholder')}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-sm font-semibold text-gray-900" htmlFor="hfd-weight">
+                          {t('cart.shipping.hfd.weight')}
+                        </label>
+                        <input
+                          id="hfd-weight"
+                          type="number"
+                          min={1}
+                          value={hfdForm.weightGrams}
+                          onChange={(event) => handleHfdFieldChange('weightGrams', event.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.shipping.hfd.weightPlaceholder')}
+                        />
+                        <p className="text-xs text-gray-500">{t('cart.shipping.hfd.weightHelper')}</p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-sm font-semibold text-gray-900" htmlFor="hfd-products-price">
+                          {t('cart.shipping.hfd.value')}
+                        </label>
+                        <input
+                          id="hfd-products-price"
+                          type="number"
+                          min={0}
+                          value={hfdForm.productsPrice}
+                          onChange={(event) => handleHfdFieldChange('productsPrice', event.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                          placeholder={t('cart.shipping.hfd.valuePlaceholder')}
+                        />
+                        <p className="text-xs text-gray-500">{t('cart.shipping.hfd.valueHelper')}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void handleHfdRateCheck()}
+                        disabled={hfdQuoteLoading}
+                        className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-white font-semibold shadow hover:bg-yellow-700 transition disabled:opacity-50"
+                      >
+                        {hfdQuoteLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        <span>{t('cart.shipping.hfd.cta')}</span>
+                      </button>
+                      <p className="text-xs text-gray-600">{t('cart.shipping.hfd.helper')}</p>
+                    </div>
+
+                    {hfdQuoteError && (
+                      <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {hfdQuoteError}
+                      </div>
+                    )}
+
+                    {hfdQuote && (
+                      <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-900">{t('cart.shipping.hfd.estimate')}</span>
+                          <span className="text-yellow-700 font-bold">
+                            {hfdQuote.estimatedPriceILS !== undefined
+                              ? formatIlsPrice(hfdQuote.estimatedPriceILS)
+                              : t('cart.shipping.hfd.noEstimate')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          {t('cart.shipping.hfd.weightLabel')}: {formatWeight(hfdQuote.weightGrams)}
+                        </p>
+                        {hfdQuote.hfdResponse?.shipmentNumber && (
+                          <p className="text-xs text-green-700">
+                            {t('cart.shipping.hfd.shipmentNumber')}: {hfdQuote.hfdResponse.shipmentNumber}
+                          </p>
+                        )}
+                        {hfdQuote.hfdResponse?.errorMessage && (
+                          <p className="text-xs text-red-700">
+                            {t('cart.shipping.hfd.apiError')}: {hfdQuote.hfdResponse.errorMessage}
+                          </p>
+                        )}
+                        {hfdQuote.status === 'error' && hfdQuote.message && (
+                          <p className="text-xs text-red-700">{hfdQuote.message}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

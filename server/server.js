@@ -59,6 +59,21 @@ const ZCREDIT_TERMINAL = (process.env.ZCREDIT_TERMINAL || '').trim();
 const ZCREDIT_PASSWORD = (process.env.ZCREDIT_PASSWORD || '').trim();
 const ZCREDIT_KEY = (process.env.ZCREDIT_KEY || '').trim();
 const CONTENT_SECURITY_POLICY = buildContentSecurityPolicy();
+const HFD_BASE_URL = trimTrailingSlash(
+  process.env.HFD_BASE_URL || 'https://test.hfd.co.il/RunCom.WebAPI/api/v1'
+);
+const HFD_TOKEN = (process.env.HFD_TOKEN || '').trim();
+const HFD_CLIENT_NUMBER = Number(process.env.HFD_CLIENT_NUMBER || 0);
+const HFD_STAGE_CODE = Number(process.env.HFD_STAGE_CODE || 5);
+const HFD_SHIPMENT_TYPE = Number(process.env.HFD_SHIPMENT_TYPE || 35);
+const HFD_CARGO_TYPE = Number(process.env.HFD_CARGO_TYPE || 10);
+const HFD_BASE_RATE_ILS = Number(process.env.HFD_BASE_RATE_ILS || 0);
+const HFD_RATE_PER_KG_ILS = Number(process.env.HFD_RATE_PER_KG_ILS || 0);
+const HFD_ORDERER_NAME = (process.env.HFD_ORDERER_NAME || 'Daf Echad').trim();
+const HFD_TRACKING_BASE_URL = trimTrailingSlash(
+  process.env.HFD_TRACKING_BASE_URL ||
+    HFD_BASE_URL.replace(/\/RunCom\.WebAPI\/api\/v1$/i, '/RunCom.Server')
+);
 
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
@@ -196,6 +211,123 @@ function buildCategoryMap(categoryRows) {
 
     return map;
   }, new Map());
+}
+
+function normalizePositiveNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : fallback;
+}
+
+function buildHfdShipmentPayload({
+  cityName,
+  streetName,
+  houseNum,
+  shipmentWeight,
+  productsPrice,
+  nameTo,
+  telFirst,
+  referenceNum1,
+  referenceNum2,
+}) {
+  return {
+    clientNumber: HFD_CLIENT_NUMBER,
+    mesiraIsuf: 'מסירה',
+    shipmentTypeCode: HFD_SHIPMENT_TYPE,
+    stageCode: HFD_STAGE_CODE,
+    ordererName: HFD_ORDERER_NAME,
+    cargoTypeHaloch: HFD_CARGO_TYPE,
+    cargoTypeHazor: 0,
+    packsHaloch: '1',
+    packsHazor: 0,
+    nameTo: nameTo || 'Customer',
+    cityName,
+    streetName,
+    houseNum: houseNum || '',
+    telFirst: telFirst || '',
+    telSecond: '',
+    addressRemarks: '',
+    shipmentRemarks: 'Price check from Daf Echad cart',
+    referenceNum1: referenceNum1 || '',
+    referenceNum2: referenceNum2 || '',
+    futureDate: '',
+    futureTime: '',
+    pudoCodeOrigin: 0,
+    pudoCodeDestination: 0,
+    autoBindPudo: 'N',
+    email: '',
+    productsPrice: productsPrice ?? 0,
+    productPriceCurrency: 'ILS',
+    shipmentWeight: shipmentWeight ?? 0,
+    govina: {
+      code: 0,
+      sum: 0,
+      date: '',
+      remarks: '',
+    },
+  };
+}
+
+function estimateHfdPriceILS(weightGrams) {
+  const base = normalizePositiveNumber(HFD_BASE_RATE_ILS, 0);
+  const perKg = normalizePositiveNumber(HFD_RATE_PER_KG_ILS, 0);
+  const kg = normalizePositiveNumber(weightGrams, 0) / 1000;
+
+  if (!base && !perKg) return 0;
+
+  const additionalWeight = Math.max(kg - 1, 0);
+  const additionalCost = perKg * additionalWeight;
+
+  return Number((base + additionalCost).toFixed(2));
+}
+
+function extractXmlValue(xml = '', tagName = '') {
+  if (!xml || !tagName) return '';
+
+  const tagPattern = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i');
+  const match = xml.match(tagPattern);
+
+  if (!match) return '';
+
+  const rawValue = match[1] ?? '';
+  const cdataPattern = /<!\[CDATA\[([\\s\\S]*?)\]\]>/i;
+  const cdataMatch = rawValue.match(cdataPattern);
+
+  return (cdataMatch ? cdataMatch[1] : rawValue).trim();
+}
+
+function parseHfdStatusEntries(xml = '') {
+  const statuses = [];
+  const statusPattern = /<status>([\s\S]*?)<\/status>/gi;
+  const matches = xml.matchAll(statusPattern);
+
+  for (const match of matches) {
+    const statusXml = match[1] ?? '';
+    statuses.push({
+      code: extractXmlValue(statusXml, 'status_code'),
+      description: extractXmlValue(statusXml, 'status_desc'),
+      date: extractXmlValue(statusXml, 'status_date'),
+      time: extractXmlValue(statusXml, 'status_time'),
+    });
+  }
+
+  return statuses;
+}
+
+function normalizeHfdTrackingResponse(xml = '') {
+  if (!xml) return null;
+
+  const statuses = parseHfdStatusEntries(xml);
+  const deliveredFlag = extractXmlValue(xml, 'ship_delivered_yn');
+
+  return {
+    shipmentNumber: extractXmlValue(xml, 'ship_no') || extractXmlValue(xml, 'ship_num_rand') || null,
+    referenceNumber1: extractXmlValue(xml, 'ref1') || null,
+    referenceNumber2: extractXmlValue(xml, 'ref2') || extractXmlValue(xml, 'ref2_with_prefix') || null,
+    deliveryLine: extractXmlValue(xml, 'deliveryLine') || null,
+    deliveryArea: extractXmlValue(xml, 'deliveryArea') || null,
+    delivered: deliveredFlag ? deliveredFlag.toLowerCase() === 'y' : false,
+    statuses,
+  };
 }
 
 function mapBindingValue(bindingId, bindingMap = new Map()) {
@@ -1231,6 +1363,163 @@ app.get('/api/carriers', async (_req, res) => {
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/api/shipping/hfd/rate', async (req, res) => {
+  const {
+    cityName,
+    streetName,
+    houseNum,
+    shipmentWeight,
+    productsPrice,
+    nameTo,
+    telFirst,
+    referenceNum1,
+    referenceNum2,
+  } = req.body || {};
+
+  const weightGrams = normalizePositiveNumber(shipmentWeight, 0);
+  const estimatedPriceILS = estimateHfdPriceILS(weightGrams);
+
+  if (!cityName || !streetName || !weightGrams) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required fields: cityName, streetName, and shipmentWeight are mandatory.',
+    });
+  }
+
+  if (!HFD_BASE_URL || !HFD_TOKEN || !HFD_CLIENT_NUMBER) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'HFD API is not configured. Please provide HFD_BASE_URL, HFD_TOKEN, and HFD_CLIENT_NUMBER.',
+      estimatedPriceILS,
+    });
+  }
+
+  try {
+    const payload = buildHfdShipmentPayload({
+      cityName,
+      streetName,
+      houseNum,
+      shipmentWeight: weightGrams,
+      productsPrice: Number(productsPrice) || 0,
+      nameTo,
+      telFirst,
+      referenceNum1,
+      referenceNum2,
+    });
+
+    const url = `${HFD_BASE_URL}/shipments/create`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${HFD_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseBody = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        status: 'error',
+        message: responseBody?.errorMessage || 'HFD request failed',
+        hfdStatus: response.status,
+        hfdResponse: responseBody,
+        estimatedPriceILS,
+      });
+    }
+
+    const normalizedResponse = {
+      shipmentNumber: responseBody?.shipmentNumber ?? null,
+      randNumber: responseBody?.randNumber ?? null,
+      referenceNumber1: responseBody?.referenceNumber1 ?? null,
+      referenceNumber2: responseBody?.referenceNumber2 ?? null,
+      deliveryLine: responseBody?.deliveryLine ?? null,
+      deliveryArea: responseBody?.deliveryArea ?? null,
+      sortingCode: responseBody?.sortingCode ?? null,
+      pickUpCode: responseBody?.pickUpCode ?? null,
+      existingShipmentNumber: responseBody?.existingShipmentNumber ?? null,
+      errorCode: responseBody?.errorCode ?? null,
+      errorMessage: responseBody?.errorMessage ?? null,
+    };
+
+    res.json({
+      status: 'ok',
+      estimatedPriceILS,
+      weightGrams,
+      currency: 'ILS',
+      hfdResponse: normalizedResponse,
+    });
+  } catch (error) {
+    console.error('Error while contacting HFD:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown HFD error',
+      estimatedPriceILS,
+    });
+  }
+});
+
+app.post('/api/shipping/hfd/track', async (req, res) => {
+  const { shipmentNumber, reference } = req.body || {};
+
+  if (!shipmentNumber && !reference) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required identifier: send shipmentNumber or reference.',
+    });
+  }
+
+  if (!HFD_TRACKING_BASE_URL || !HFD_TOKEN) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'HFD tracking is not configured. Provide HFD_TRACKING_BASE_URL/HFD_BASE_URL and HFD_TOKEN.',
+    });
+  }
+
+  try {
+    const encodedShipment = shipmentNumber ? encodeURIComponent(shipmentNumber) : '';
+    const encodedReference = reference ? encodeURIComponent(reference) : '';
+    const args = shipmentNumber ? `-N${encodedShipment}` : `-N,-A${encodedReference}`;
+    const url = `${HFD_TRACKING_BASE_URL}/Request.aspx?APPNAME=run&PRGNAME=ship_status_xml&ARGUMENTS=${args}`;
+
+    const headers = { Accept: 'application/xml' };
+    if (HFD_TOKEN) {
+      headers.Authorization = `Bearer ${HFD_TOKEN}`;
+    }
+
+    const response = await fetch(url, { headers });
+    const xml = await response.text();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        status: 'error',
+        message: extractXmlValue(xml, 'message') || 'HFD tracking request failed',
+      });
+    }
+
+    const normalized = normalizeHfdTrackingResponse(xml);
+
+    res.json({
+      status: 'ok',
+      carrier: 'HFD',
+      shipmentNumber: normalized?.shipmentNumber || shipmentNumber || null,
+      referenceNumber1: normalized?.referenceNumber1 || null,
+      referenceNumber2: normalized?.referenceNumber2 || reference || null,
+      delivered: normalized?.delivered ?? false,
+      deliveryLine: normalized?.deliveryLine || null,
+      deliveryArea: normalized?.deliveryArea || null,
+      statuses: normalized?.statuses || [],
+    });
+  } catch (error) {
+    console.error('Error while fetching HFD tracking:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown HFD tracking error',
     });
   }
 });
