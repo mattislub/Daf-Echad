@@ -8,6 +8,7 @@ import {
   BookOpen,
   Baby,
   Sparkles,
+  Truck,
   Heart,
   LogIn,
   Info,
@@ -267,6 +268,13 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
           >
             <Sparkles className="w-4 h-4" />
             <span>{t('nav.women')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate?.('tracking')}
+            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
+          >
+            <Truck className="w-4 h-4" />
+            <span>{t('nav.tracking')}</span>
           </button>
           <button
             onClick={() => onNavigate?.('about')}
