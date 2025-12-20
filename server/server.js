@@ -993,6 +993,73 @@ app.get('/api/db-health', async (_req, res) => {
   }
 });
 
+app.get('/api/db-schema', async (_req, res) => {
+  if (!DATABASE_NAME) {
+    return res.status(500).json({ status: 'error', message: 'Database name is not configured' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT
+        t.TABLE_NAME AS tableName,
+        t.TABLE_TYPE AS tableType,
+        c.COLUMN_NAME AS columnName,
+        c.COLUMN_TYPE AS columnType,
+        c.IS_NULLABLE AS isNullable,
+        c.COLUMN_KEY AS columnKey,
+        c.EXTRA AS extra,
+        c.COLUMN_DEFAULT AS columnDefault,
+        c.ORDINAL_POSITION AS ordinal
+      FROM information_schema.tables t
+      LEFT JOIN information_schema.columns c
+        ON t.TABLE_SCHEMA = c.TABLE_SCHEMA AND t.TABLE_NAME = c.TABLE_NAME
+      WHERE t.TABLE_SCHEMA = ?
+      ORDER BY t.TABLE_NAME, c.ORDINAL_POSITION`,
+      [DATABASE_NAME]
+    );
+
+    const schemaMap = new Map();
+
+    for (const row of rows) {
+      const tableName = row.tableName || row.TABLE_NAME;
+      if (!tableName) continue;
+
+      const table = schemaMap.get(tableName) || {
+        name: tableName,
+        type: row.tableType || row.TABLE_TYPE || 'BASE TABLE',
+        columns: [],
+      };
+
+      if (row.columnName || row.COLUMN_NAME) {
+        table.columns.push({
+          name: row.columnName || row.COLUMN_NAME,
+          type: row.columnType || row.COLUMN_TYPE || '',
+          nullable: String(row.isNullable || row.IS_NULLABLE || '').toLowerCase() === 'yes',
+          key: row.columnKey || row.COLUMN_KEY || '',
+          extra: row.extra || row.EXTRA || '',
+          default: row.columnDefault ?? row.COLUMN_DEFAULT ?? null,
+          ordinal: Number(row.ordinal || row.ORDINAL_POSITION || 0),
+        });
+      }
+
+      schemaMap.set(tableName, table);
+    }
+
+    const schema = Array.from(schemaMap.values()).map((table) => ({
+      ...table,
+      columns: table.columns.sort((a, b) => a.ordinal - b.ordinal),
+    }));
+
+    res.json(schema);
+  } catch (error) {
+    console.error('Error fetching database schema:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 app.get('/api/customers', async (_req, res) => {
   try {
     const [customers, languages] = await Promise.all([fetchCustomers(), fetchLanguages()]);

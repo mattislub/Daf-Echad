@@ -1,9 +1,10 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Book } from '../types/catalog';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { getBooks } from '../services/api';
+import { getBooks, getDatabaseSchema } from '../services/api';
+import { DatabaseSchemaTable } from '../types/database';
 import {
   BookOpen,
   CheckCircle2,
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Wrench,
+  Database,
 } from 'lucide-react';
 
 interface AdminOrder {
@@ -87,6 +89,9 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
     },
   ]);
   const [loadingBooks, setLoadingBooks] = useState(false);
+  const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchemaTable[]>([]);
+  const [loadingSchema, setLoadingSchema] = useState(false);
+  const [schemaError, setSchemaError] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [newBook, setNewBook] = useState<Pick<Book, 'title_en' | 'title_he' | 'price_ils' | 'price_usd'>>({
@@ -95,6 +100,21 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
     price_ils: 0,
     price_usd: 0,
   });
+
+  const loadSchema = useCallback(async () => {
+    try {
+      setSchemaError('');
+      setLoadingSchema(true);
+      const schema = await getDatabaseSchema();
+      setDatabaseSchema(schema);
+    } catch (error) {
+      console.error('Failed to load database schema for admin panel', error);
+      setDatabaseSchema([]);
+      setSchemaError(t('admin.schemaError'));
+    } finally {
+      setLoadingSchema(false);
+    }
+  }, [t]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -114,6 +134,11 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
 
     loadBooks();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    loadSchema();
+  }, [isAuthenticated, loadSchema]);
 
   const handleLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -366,9 +391,9 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
             )}
           </section>
 
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">{t('admin.addBook')}</h2>
-            <p className="text-sm text-gray-600">{t('admin.addBookDescription')}</p>
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">{t('admin.addBook')}</h2>
+          <p className="text-sm text-gray-600">{t('admin.addBookDescription')}</p>
             <form className="space-y-4" onSubmit={handleAddBook}>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-800" htmlFor="title-he">
@@ -437,24 +462,112 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
                 {t('admin.createBook')}
               </button>
             </form>
-            <p className="text-xs text-gray-500 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4" />
-              {t('admin.environmentNotice')}
-            </p>
-          </section>
+          <p className="text-xs text-gray-500 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            {t('admin.environmentNotice')}
+          </p>
+        </section>
+      </div>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+              <Database className="w-6 h-6 text-blue-700" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{t('admin.schemaTitle')}</h2>
+              <p className="text-sm text-gray-600">{t('admin.schemaDescription')}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">{`${t('admin.schemaTablesLabel')}: ${databaseSchema.length}`}</span>
+            <button
+              onClick={loadSchema}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              {t('admin.schemaRetry')}
+            </button>
+          </div>
         </div>
 
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{t('admin.orders')}</h2>
-              <p className="text-sm text-gray-600">{t('admin.ordersDescription')}</p>
-            </div>
-            <span className="text-sm text-gray-600">{`${t('admin.totalItems')}: ${orders.length}`}</span>
+        {loadingSchema ? (
+          <div className="flex items-center justify-center py-8 text-gray-500">{t('admin.loading')}</div>
+        ) : schemaError ? (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+            <p className="text-sm">{schemaError}</p>
+            <button
+              onClick={loadSchema}
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              {t('admin.schemaRetry')}
+            </button>
           </div>
+        ) : databaseSchema.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-gray-500">{t('admin.schemaEmpty')}</div>
+        ) : (
+          <div className="space-y-4">
+            {databaseSchema.map((table) => (
+              <article key={table.name} className="border border-gray-200 rounded-xl">
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-t-xl">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">{table.type}</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{table.name}</h3>
+                  </div>
+                  <StatusBadge label={`${table.columns.length} ${t('admin.schemaColumnsLabel')}`} tone="blue" />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-white">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaColumn')}</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaType')}</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaNullable')}</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaKey')}</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaDefault')}</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaExtra')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {table.columns.length === 0 ? (
+                        <tr>
+                          <td className="px-4 py-3 text-sm text-gray-500" colSpan={6}>
+                            {t('admin.schemaNoColumns')}
+                          </td>
+                        </tr>
+                      ) : (
+                        table.columns.map((column) => (
+                          <tr key={`${table.name}-${column.name}`}>
+                            <td className="px-4 py-3 font-medium text-gray-900">{column.name}</td>
+                            <td className="px-4 py-3 text-gray-700">{column.type}</td>
+                            <td className="px-4 py-3 text-gray-700">{column.nullable ? t('admin.yes') : t('admin.no')}</td>
+                            <td className="px-4 py-3 text-gray-700">{column.key || '-'}</td>
+                            <td className="px-4 py-3 text-gray-700">{column.default ?? '-'}</td>
+                            <td className="px-4 py-3 text-gray-700">{column.extra || '-'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {orders.map((order) => (
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">{t('admin.orders')}</h2>
+            <p className="text-sm text-gray-600">{t('admin.ordersDescription')}</p>
+          </div>
+          <span className="text-sm text-gray-600">{`${t('admin.totalItems')}: ${orders.length}`}</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {orders.map((order) => (
               <article key={order.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>

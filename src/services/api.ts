@@ -1,4 +1,5 @@
 import { Author, Book, Category, Publisher } from '../types/catalog';
+import { DatabaseSchemaTable } from '../types/database';
 
 export interface CustomerCreditEntry {
   id: string;
@@ -79,6 +80,10 @@ export async function getRelatedBooks(categoryId: string | null, bookId: string)
 
 export async function getPopularBooks(bookId: string): Promise<Book[]> {
   return fetchJson<Book[]>(`/books?featured=true&exclude=${bookId}&limit=4`);
+}
+
+export async function getDatabaseSchema(): Promise<DatabaseSchemaTable[]> {
+  return fetchJson<DatabaseSchemaTable[]>('/db-schema');
 }
 
 export interface HfdRateRequest {
