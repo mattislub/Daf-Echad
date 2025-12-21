@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import {
   ArrowRight,
   CreditCard,
@@ -15,12 +15,20 @@ import {
   User,
   Phone,
   Wallet,
+  Plus,
 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { API_BASE_URL, buildApiUrl, requestHfdRate, HfdRateResponse } from '../services/api';
+import {
+  API_BASE_URL,
+  buildApiUrl,
+  requestHfdRate,
+  HfdRateResponse,
+  CustomerShippingAddress,
+  getCustomerShippingAddresses,
+} from '../services/api';
 
 interface CartPageProps {
   onNavigate?: (page: string) => void;
@@ -63,9 +71,24 @@ interface HfdQuoteFormState {
   productsPrice: string;
 }
 
+interface ShippingFormState {
+  street: string;
+  houseNumber: string;
+  entrance: string;
+  apartment: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  specialInstructions: string;
+  callId: string;
+  isDefault: boolean;
+}
+
 export default function CartPage({ onNavigate }: CartPageProps) {
   const { cartItems, updateQuantity, removeFromCart, getTotalPrice } = useCart();
   const { language, currency, t } = useLanguage();
+  const customerId = '1045';
 
   const [selectedShipping, setSelectedShipping] = useState<string>('israel-standard');
   const [countries, setCountries] = useState<Country[]>([]);
@@ -87,13 +110,39 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
   const [customerDetailsError, setCustomerDetailsError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [paymentStatusBanner, setPaymentStatusBanner] = useState<
     | { status: 'success' | 'cancel' | 'error'; orderId?: string | null }
     | null
   >(null);
+  const [shippingAddresses, setShippingAddresses] = useState<CustomerShippingAddress[]>([]);
+  const [shippingAddressesError, setShippingAddressesError] = useState<string | null>(null);
+  const [shippingAddressesLoading, setShippingAddressesLoading] = useState(false);
+  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string>('');
+  const [sessionCallId] = useState(() => {
+    if (typeof window === 'undefined') return '';
+
+    const existing = window.sessionStorage.getItem('cartCallId');
+    if (existing) return existing;
+
+    const generated = `web-${Date.now()}`;
+    window.sessionStorage.setItem('cartCallId', generated);
+    return generated;
+  });
+  const [shippingForm, setShippingForm] = useState<ShippingFormState>({
+    street: '',
+    houseNumber: '',
+    entrance: '',
+    apartment: '',
+    city: '',
+    state: '',
+    zip: '',
+    country: '',
+    specialInstructions: '',
+    callId: sessionCallId,
+    isDefault: false,
+  });
   const [hfdQuote, setHfdQuote] = useState<HfdRateResponse | null>(null);
   const [hfdQuoteError, setHfdQuoteError] = useState<string | null>(null);
   const [hfdQuoteLoading, setHfdQuoteLoading] = useState(false);
@@ -187,6 +236,51 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   useEffect(() => {
     void loadCarriers();
   }, [loadCarriers]);
+
+  const loadShippingAddresses = useCallback(async () => {
+    setShippingAddressesLoading(true);
+    setShippingAddressesError(null);
+
+    try {
+      const addresses = await getCustomerShippingAddresses(customerId);
+      setShippingAddresses(addresses);
+
+      if (addresses.length > 0) {
+        const defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0];
+        setSelectedShippingAddressId(defaultAddress.id);
+        setShippingForm(mapAddressToFormState(defaultAddress));
+      } else {
+        setSelectedShippingAddressId('new');
+        setShippingForm(mapAddressToFormState());
+      }
+    } catch (error) {
+      console.error('Failed to load shipping addresses', error);
+      setShippingAddressesError(t('cart.customer.addresses.error'));
+      setShippingAddresses([]);
+      setSelectedShippingAddressId('new');
+      setShippingForm(mapAddressToFormState());
+    } finally {
+      setShippingAddressesLoading(false);
+    }
+  }, [customerId, mapAddressToFormState, t]);
+
+  useEffect(() => {
+    void loadShippingAddresses();
+  }, [loadShippingAddresses]);
+
+  useEffect(() => {
+    setShippingForm((previous) => {
+      if (previous.callId || !sessionCallId) return previous;
+      return { ...previous, callId: sessionCallId };
+    });
+  }, [sessionCallId]);
+
+  useEffect(() => {
+    setShippingForm((previous) => {
+      if (previous.country || !selectedCountryName) return previous;
+      return { ...previous, country: selectedCountryName };
+    });
+  }, [selectedCountryName]);
 
   const shippingOptions: ShippingOption[] = useMemo(
     () => [
@@ -323,6 +417,68 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     () => countries.find((country) => country.id === selectedCountry)?.name || '',
     [countries, selectedCountry],
   );
+  const mapAddressToFormState = useCallback(
+    (address?: CustomerShippingAddress): ShippingFormState => ({
+      street: address?.street?.trim() ?? '',
+      houseNumber: address?.houseNumber?.trim() ?? '',
+      entrance: address?.entrance?.trim() ?? '',
+      apartment: address?.apartment?.trim() ?? '',
+      city: address?.city?.trim() ?? '',
+      state: address?.state?.trim() ?? '',
+      zip: address?.zip?.trim() ?? '',
+      country: address?.country?.trim() ?? selectedCountryName || '',
+      specialInstructions: address?.specialInstructions?.trim() ?? '',
+      callId: address?.callId?.trim() ?? sessionCallId,
+      isDefault: Boolean(address?.isDefault),
+    }),
+    [selectedCountryName, sessionCallId],
+  );
+  const formatShippingAddressDetails = useCallback(
+    (address: Partial<CustomerShippingAddress> | Partial<ShippingFormState>) => {
+      const parts: string[] = [];
+      const streetLine = [address.street, address.houseNumber].filter(Boolean).join(' ');
+
+      if (streetLine) parts.push(streetLine);
+      if (address.entrance)
+        parts.push(language === 'he' ? `כניסה ${address.entrance}` : `Entrance ${address.entrance}`);
+      if (address.apartment)
+        parts.push(language === 'he' ? `דירה ${address.apartment}` : `Apartment ${address.apartment}`);
+
+      const cityLine = [address.city, address.state].filter(Boolean).join(', ');
+      if (cityLine) parts.push(cityLine);
+
+      if (address.zip) parts.push(`${language === 'he' ? 'מיקוד' : 'ZIP'} ${address.zip}`);
+      if (address.country) parts.push(address.country);
+
+      return parts.join(', ');
+    },
+    [language],
+  );
+  const shippingAddressSummary = useMemo(
+    () => formatShippingAddressDetails(shippingForm),
+    [formatShippingAddressDetails, shippingForm],
+  );
+  const handleSelectShippingAddress = (addressId: string) => {
+    setSelectedShippingAddressId(addressId);
+    const address = shippingAddresses.find((item) => item.id === addressId);
+    setShippingForm(mapAddressToFormState(address));
+  };
+
+  const handleAddShippingAddress = () => {
+    setSelectedShippingAddressId('new');
+    setShippingForm(mapAddressToFormState());
+  };
+
+  const handleShippingInputChange = (field: keyof ShippingFormState) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const target = event.target as HTMLInputElement;
+      const value = target.type === 'checkbox' ? target.checked : event.target.value;
+
+      setShippingForm((previous) => ({
+        ...previous,
+        [field]: value as ShippingFormState[keyof ShippingFormState],
+      }));
+    };
   const selectedCarrierDetails = useMemo(
     () => carriers.find((carrier) => carrier.id === selectedCarrier),
     [carriers, selectedCarrier],
@@ -468,6 +624,14 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       })
       .join('\n');
 
+    const shippingDetailsLines = [
+      `${t('cart.customer.address.detailsLabel')}: ${shippingAddressSummary || t('cart.customer.pending')}`,
+      shippingForm.specialInstructions
+        ? `${t('cart.customer.address.specialInstructionsLabel')}: ${shippingForm.specialInstructions}`
+        : '',
+      shippingForm.callId ? `${t('cart.customer.address.callIdLabel')}: ${shippingForm.callId}` : '',
+    ].filter(Boolean);
+
     const textBody = [
       thankYouLine,
       introLine,
@@ -482,7 +646,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       `${t('cart.customer.name')}: ${customerName}`,
       `${t('cart.customer.phone')}: ${customerPhone}`,
       `${t('cart.customer.email')}: ${customerEmail}`,
-      `${t('cart.customer.address')}: ${customerAddress}`,
+      ...shippingDetailsLines,
       `${language === 'he' ? 'תשלום' : 'Payment'}: ${paymentDescription}`,
       `${language === 'he' ? 'סה"כ' : 'Total'}: ${formatPrice(orderTotal)}`,
       `${language === 'he' ? 'משקל משוער' : 'Estimated weight'}: ${weightSummary}`,
@@ -527,7 +691,19 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             <p style="margin: 6px 0;"><strong>${t('cart.customer.name')}:</strong> ${customerName}</p>
             <p style="margin: 6px 0;"><strong>${t('cart.customer.phone')}:</strong> ${customerPhone}</p>
             <p style="margin: 6px 0;"><strong>${t('cart.customer.email')}:</strong> ${customerEmail}</p>
-            <p style="margin: 6px 0;"><strong>${t('cart.customer.address')}:</strong> ${customerAddress}</p>
+            <p style="margin: 6px 0;"><strong>${t('cart.customer.address.detailsLabel')}:</strong> ${
+              shippingAddressSummary || t('cart.customer.pending')
+            }</p>
+            ${
+              shippingForm.specialInstructions
+                ? `<p style="margin: 6px 0;"><strong>${t('cart.customer.address.specialInstructionsLabel')}:</strong> ${shippingForm.specialInstructions}</p>`
+                : ''
+            }
+            ${
+              shippingForm.callId
+                ? `<p style="margin: 6px 0;"><strong>${t('cart.customer.address.callIdLabel')}:</strong> ${shippingForm.callId}</p>`
+                : ''
+            }
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'תשלום:' : 'Payment:'}</strong> ${paymentDescription}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'סה"כ להזמנה:' : 'Order total:'}</strong> ${formatPrice(orderTotal)}</p>
             <p style="margin: 6px 0;"><strong>${language === 'he' ? 'משקל משוער:' : 'Estimated weight:'}</strong> ${weightSummary}</p>
@@ -646,7 +822,10 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       }
     }
 
-    if (!customerName.trim() || !customerPhone.trim() || !customerEmail.trim() || !customerAddress.trim()) {
+    const hasShippingDetails =
+      shippingForm.street.trim() && shippingForm.houseNumber.trim() && shippingForm.city.trim();
+
+    if (!customerName.trim() || !customerPhone.trim() || !customerEmail.trim() || !hasShippingDetails) {
       setCustomerDetailsError(t('cart.customer.required'));
       setShowConfirmation(false);
       return;
@@ -1291,24 +1470,253 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     </div>
 
                     <div className="space-y-1">
-                      <label htmlFor="customer-address" className="text-sm font-semibold text-gray-900">
-                        {t('cart.customer.address')}
+                      <label htmlFor="customer-callid" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.callIdLabel')}
                       </label>
                       <div className="relative">
-                        <textarea
-                          id="customer-address"
-                          value={customerAddress}
-                          onChange={(event) => setCustomerAddress(event.target.value)}
-                          rows={3}
+                        <input
+                          id="customer-callid"
+                          type="text"
+                          value={shippingForm.callId}
+                          onChange={handleShippingInputChange('callId')}
                           className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
-                          placeholder={t('cart.customer.addressPlaceholder')}
+                          placeholder={t('cart.customer.address.callIdPlaceholder')}
                         />
-                        <MapPin className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
+                        <Phone className="w-4 h-4 text-gray-400 absolute top-3 right-3" />
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-xs text-gray-600">{t('cart.customer.helper')}</p>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-yellow-700" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{t('cart.customer.address.selectExisting')}</p>
+                          <p className="text-xs text-gray-600">{t('cart.customer.address.loadExisting')}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddShippingAddress}
+                        className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-yellow-700 border border-yellow-200 shadow-sm hover:bg-yellow-50"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {t('cart.customer.address.additional')}
+                      </button>
+                    </div>
+
+                    {shippingAddressesLoading && (
+                      <p className="text-sm text-gray-500">{t('cart.customer.address.loading')}</p>
+                    )}
+
+                    {shippingAddressesError && (
+                      <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {shippingAddressesError}
+                      </div>
+                    )}
+
+                    {shippingAddresses.length > 0 && !shippingAddressesLoading && (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {shippingAddresses.map((address) => {
+                          const isSelected = selectedShippingAddressId === address.id;
+                          const isDefault = address.isDefault;
+
+                          return (
+                            <label
+                              key={address.id}
+                              className={`flex gap-3 rounded-lg border p-3 cursor-pointer transition bg-white ${
+                                isSelected ? 'border-yellow-600 ring-2 ring-yellow-100' : 'border-slate-200'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="shipping-address"
+                                checked={isSelected}
+                                onChange={() => handleSelectShippingAddress(address.id)}
+                                className="mt-1"
+                              />
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-semibold text-gray-900">{t('cart.customer.address.label')}</span>
+                                  {isDefault && (
+                                    <span className="text-xs rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5">
+                                      {t('cart.customer.address.default')}
+                                    </span>
+                                  )}
+                                  {isSelected && (
+                                    <span className="text-xs rounded-full bg-green-100 text-green-700 px-2 py-0.5">
+                                      {t('cart.customer.address.inUse')}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-700">
+                                  {formatShippingAddressDetails(address)}
+                                </p>
+                                {address.specialInstructions && (
+                                  <p className="text-xs text-gray-500">
+                                    {t('cart.customer.address.specialInstructionsLabel')}: {address.specialInstructions}
+                                  </p>
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {shippingAddresses.length === 0 && !shippingAddressesLoading && (
+                      <p className="text-sm text-gray-500">{t('cart.customer.address.none')}</p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-street" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.streetLabel')}
+                      </label>
+                      <input
+                        id="shipping-street"
+                        type="text"
+                        value={shippingForm.street}
+                        onChange={handleShippingInputChange('street')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.streetPlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-number" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.houseNumberLabel')}
+                      </label>
+                      <input
+                        id="shipping-number"
+                        type="text"
+                        value={shippingForm.houseNumber}
+                        onChange={handleShippingInputChange('houseNumber')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.houseNumberPlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-city" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.cityLabel')}
+                      </label>
+                      <input
+                        id="shipping-city"
+                        type="text"
+                        value={shippingForm.city}
+                        onChange={handleShippingInputChange('city')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.cityPlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-state" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.stateLabel')}
+                      </label>
+                      <input
+                        id="shipping-state"
+                        type="text"
+                        value={shippingForm.state}
+                        onChange={handleShippingInputChange('state')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.statePlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-zip" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.zipLabel')}
+                      </label>
+                      <input
+                        id="shipping-zip"
+                        type="text"
+                        value={shippingForm.zip}
+                        onChange={handleShippingInputChange('zip')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.zipPlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-country" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.countryLabel')}
+                      </label>
+                      <input
+                        id="shipping-country"
+                        type="text"
+                        value={shippingForm.country}
+                        onChange={handleShippingInputChange('country')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.countryPlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-entrance" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.entranceLabel')}
+                        <span className="text-xs text-gray-500"> ({t('cart.customer.address.optional')})</span>
+                      </label>
+                      <input
+                        id="shipping-entrance"
+                        type="text"
+                        value={shippingForm.entrance}
+                        onChange={handleShippingInputChange('entrance')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.entrancePlaceholder')}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="shipping-apartment" className="text-sm font-semibold text-gray-900">
+                        {t('cart.customer.address.apartmentLabel')}
+                        <span className="text-xs text-gray-500"> ({t('cart.customer.address.optional')})</span>
+                      </label>
+                      <input
+                        id="shipping-apartment"
+                        type="text"
+                        value={shippingForm.apartment}
+                        onChange={handleShippingInputChange('apartment')}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.apartmentPlaceholder')}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1 md:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="shipping-notes" className="text-sm font-semibold text-gray-900">
+                          {t('cart.customer.address.specialInstructionsLabel')}
+                        </label>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <input
+                            id="shipping-default"
+                            type="checkbox"
+                            checked={shippingForm.isDefault}
+                            onChange={handleShippingInputChange('isDefault')}
+                            className="rounded border-gray-300 text-yellow-700 focus:ring-yellow-200"
+                          />
+                          <label htmlFor="shipping-default" className="cursor-pointer">
+                            {t('cart.customer.address.markDefault')}
+                          </label>
+                        </div>
+                      </div>
+                      <textarea
+                        id="shipping-notes"
+                        value={shippingForm.specialInstructions}
+                        onChange={handleShippingInputChange('specialInstructions')}
+                        rows={3}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-200"
+                        placeholder={t('cart.customer.address.specialInstructionsPlaceholder')}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-600">{t('cart.customer.address.helper')}</p>
                   {customerDetailsError && (
                     <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                       {customerDetailsError}
@@ -1445,10 +1853,27 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.customer.address')}</span>
+                        <span>{t('cart.customer.address.detailsLabel')}</span>
                         <span className="font-semibold text-right max-w-[60%] break-words">
-                          {customerAddress || t('cart.customer.pending')}
+                          {shippingAddressSummary || t('cart.customer.pending')}
                         </span>
+                      </div>
+                      {shippingForm.specialInstructions && (
+                        <div className="flex items-center justify-between text-gray-700">
+                          <span className="text-xs">{t('cart.customer.address.specialInstructionsLabel')}</span>
+                          <span className="font-semibold text-right max-w-[60%] break-words">
+                            {shippingForm.specialInstructions}
+                          </span>
+                        </div>
+                      )}
+                      {shippingForm.callId && (
+                        <div className="flex items-center justify-between text-gray-700">
+                          <span className="text-xs">{t('cart.customer.address.callIdLabel')}</span>
+                          <span className="font-semibold text-right max-w-[60%] break-words">
+                            {shippingForm.callId}
+                          </span>
+                        </div>
+                      )}
                       </div>
                       <div className="flex items-center justify-between text-gray-700">
                         <span>{t('cart.weight.totalCart')}</span>
