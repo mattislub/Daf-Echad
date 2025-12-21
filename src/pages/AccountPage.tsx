@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   CreditCard,
@@ -20,8 +20,11 @@ import {
   CustomerCreditEntry,
   CustomerCreditResponse,
   CustomerShippingAddress,
+  CustomerShippingAddressInput,
+  createCustomerShippingAddress,
   getCustomerCredit,
   getCustomerShippingAddresses,
+  updateCustomerShippingAddress,
 } from '../services/api';
 import TrackingWidget from '../components/TrackingWidget';
 
@@ -61,6 +64,11 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
   const [shippingAddresses, setShippingAddresses] = useState<CustomerShippingAddress[]>([]);
   const [addressesError, setAddressesError] = useState<string | null>(null);
   const [isAddressesLoading, setIsAddressesLoading] = useState(false);
+  const [addressForm, setAddressForm] = useState<CustomerShippingAddressInput>({ street: '', city: '' });
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('new');
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [addressFormMessage, setAddressFormMessage] = useState<string | null>(null);
+  const [addressFormError, setAddressFormError] = useState<string | null>(null);
 
   const customerProfile = {
     name: { he: 'אברהם כהן', en: 'Avraham Cohen' },
@@ -185,6 +193,23 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     return parts.join(', ');
   };
 
+  const mapAddressToFormState = useCallback(
+    (address?: CustomerShippingAddress): CustomerShippingAddressInput => ({
+      street: address?.street?.trim() ?? '',
+      houseNumber: address?.houseNumber?.trim() ?? '',
+      entrance: address?.entrance?.trim() ?? '',
+      apartment: address?.apartment?.trim() ?? '',
+      city: address?.city?.trim() ?? '',
+      state: address?.state?.trim() ?? '',
+      zip: address?.zip?.trim() ?? '',
+      country: address?.country?.trim() ?? '',
+      specialInstructions: address?.specialInstructions?.trim() ?? '',
+      callId: address?.callId?.trim() ?? '',
+      isDefault: Boolean(address?.isDefault),
+    }),
+    [],
+  );
+
   const loadCustomerCredit = useCallback(async () => {
     setIsCreditLoading(true);
     setCreditError(null);
@@ -225,6 +250,17 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     loadShippingAddresses();
   }, [loadShippingAddresses]);
 
+  useEffect(() => {
+    if (shippingAddresses.length > 0) {
+      const preferred = shippingAddresses.find((address) => address.isDefault) ?? shippingAddresses[0];
+      setSelectedAddressId(preferred.id);
+      setAddressForm(mapAddressToFormState(preferred));
+    } else {
+      setSelectedAddressId('new');
+      setAddressForm(mapAddressToFormState());
+    }
+  }, [mapAddressToFormState, shippingAddresses]);
+
   const creditValue = creditSummary ? formatCurrency(creditSummary.totalCredit) : t('account.creditLoading');
   const tierLabel = language === 'he' ? 'חבר זהב' : 'Gold member';
   const tierDescription =
@@ -261,6 +297,60 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
       primary: isDefault,
     };
   });
+
+  const handleAddressInputChange = (field: keyof CustomerShippingAddressInput) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const target = event.target as HTMLInputElement;
+      const value = target.type === 'checkbox' ? target.checked : event.target.value;
+
+      setAddressForm((previous) => ({
+        ...previous,
+        [field]: value as CustomerShippingAddressInput[keyof CustomerShippingAddressInput],
+      }));
+    };
+
+  const handleSelectSavedAddress = (addressId: string) => {
+    setSelectedAddressId(addressId);
+    const address = shippingAddresses.find((item) => item.id === addressId);
+    setAddressForm(mapAddressToFormState(address));
+    setAddressFormMessage(null);
+    setAddressFormError(null);
+  };
+
+  const handleSaveAddress = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSavingAddress(true);
+    setAddressFormError(null);
+    setAddressFormMessage(null);
+
+    const payload: CustomerShippingAddressInput = {
+      ...addressForm,
+      street: addressForm.street.trim(),
+      city: addressForm.city.trim(),
+    };
+
+    if (!payload.street || !payload.city) {
+      setAddressFormError(language === 'he' ? 'יש למלא רחוב ועיר לפחות.' : 'Street and city are required.');
+      setIsSavingAddress(false);
+      return;
+    }
+
+    try {
+      if (selectedAddressId === 'new') {
+        await createCustomerShippingAddress(customerId, payload);
+      } else {
+        await updateCustomerShippingAddress(customerId, selectedAddressId, payload);
+      }
+
+      setAddressFormMessage(t('account.addressesSaved'));
+      await loadShippingAddresses();
+    } catch (error) {
+      console.error('Failed to save address', error);
+      setAddressFormError(t('account.addressesSaveError'));
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
 
   const renderCreditRows = (transactions: CustomerCreditEntry[]) => (
     <div className="overflow-x-auto">
@@ -588,29 +678,205 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
           <h2 className="text-lg font-semibold text-gray-900">{t('account.manageAddresses')}</h2>
         </div>
       </div>
-      <div className="space-y-4">
-        {isAddressesLoading && (
-          <p className="text-sm text-gray-500">{language === 'he' ? 'טוען כתובות משלוח...' : 'Loading shipping addresses...'}</p>
-        )}
-        {addressesError && <p className="text-sm text-red-600">{addressesError}</p>}
-        {addressItems.map((address) => (
-          <div key={address.details.en} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <p className="font-semibold text-gray-900">{address.label[language]}</p>
-              {address.primary && (
-                <span className="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
-                  {t('account.primary')}
-                </span>
-              )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-4 lg:col-span-2">
+          {isAddressesLoading && (
+            <p className="text-sm text-gray-500">{t('account.addressesLoading')}</p>
+          )}
+          {addressesError && <p className="text-sm text-red-600">{addressesError}</p>}
+          {addressItems.map((address) => (
+            <div key={address.details.en} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="font-semibold text-gray-900">{address.label[language]}</p>
+                {address.primary && (
+                  <span className="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+                    {t('account.primary')}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-700">{address.details[language]}</p>
+              <p className="text-sm text-gray-600">{address.phone}</p>
             </div>
-            <p className="text-sm text-gray-700">{address.details[language]}</p>
-            <p className="text-sm text-gray-600">{address.phone}</p>
+          ))}
+          {!isAddressesLoading && !addressItems.length && (
+            <p className="text-sm text-gray-600">{t('account.addressesEmpty')}</p>
+          )}
+        </div>
+
+        <form
+          onSubmit={handleSaveAddress}
+          className="space-y-3 bg-gray-50 border border-gray-200 rounded-lg p-4 self-start"
+        >
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-gray-900">{t('account.addressForm.title')}</p>
+            <p className="text-xs text-gray-600">{t('account.addressForm.description')}</p>
           </div>
-        ))}
-        <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100">
-          <MapPin className="w-4 h-4" />
-          {t('account.addAddress')}
-        </button>
+
+          {shippingAddresses.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="select-address">
+                {t('account.addressForm.selectLabel')}
+              </label>
+              <select
+                id="select-address"
+                value={selectedAddressId}
+                onChange={(event) => handleSelectSavedAddress(event.target.value)}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="new">{t('account.addressForm.newAddress')}</option>
+                {shippingAddresses.map((address) => (
+                  <option key={address.id} value={address.id}>
+                    {formatAddressDetails(address, language)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-street">
+                {t('account.addressForm.street')}
+              </label>
+              <input
+                id="address-street"
+                value={addressForm.street}
+                onChange={handleAddressInputChange('street')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-number">
+                {t('account.addressForm.houseNumber')}
+              </label>
+              <input
+                id="address-number"
+                value={addressForm.houseNumber || ''}
+                onChange={handleAddressInputChange('houseNumber')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-entrance">
+                {t('account.addressForm.entrance')}
+              </label>
+              <input
+                id="address-entrance"
+                value={addressForm.entrance || ''}
+                onChange={handleAddressInputChange('entrance')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-apartment">
+                {t('account.addressForm.apartment')}
+              </label>
+              <input
+                id="address-apartment"
+                value={addressForm.apartment || ''}
+                onChange={handleAddressInputChange('apartment')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-city">
+                {t('account.addressForm.city')}
+              </label>
+              <input
+                id="address-city"
+                value={addressForm.city}
+                onChange={handleAddressInputChange('city')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-state">
+                {t('account.addressForm.state')}
+              </label>
+              <input
+                id="address-state"
+                value={addressForm.state || ''}
+                onChange={handleAddressInputChange('state')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-zip">
+                {t('account.addressForm.zip')}
+              </label>
+              <input
+                id="address-zip"
+                value={addressForm.zip || ''}
+                onChange={handleAddressInputChange('zip')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="address-country">
+                {t('account.addressForm.country')}
+              </label>
+              <input
+                id="address-country"
+                value={addressForm.country || ''}
+                onChange={handleAddressInputChange('country')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-700" htmlFor="address-phone">
+              {t('account.addressForm.phone')}
+            </label>
+            <input
+              id="address-phone"
+              value={addressForm.callId || ''}
+              onChange={handleAddressInputChange('callId')}
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-700" htmlFor="address-notes">
+              {t('account.addressForm.instructions')}
+            </label>
+            <textarea
+              id="address-notes"
+              value={addressForm.specialInstructions || ''}
+              onChange={handleAddressInputChange('specialInstructions')}
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              rows={2}
+            />
+          </div>
+
+          <label className="inline-flex items-center gap-2 text-sm text-gray-800">
+            <input
+              type="checkbox"
+              checked={Boolean(addressForm.isDefault)}
+              onChange={handleAddressInputChange('isDefault')}
+              className="rounded border-gray-300 text-yellow-700 focus:ring-yellow-500"
+            />
+            {t('account.addressForm.default')}
+          </label>
+
+          {addressFormError && (
+            <p className="text-sm text-red-600" role="alert">
+              {addressFormError}
+            </p>
+          )}
+          {addressFormMessage && <p className="text-sm text-green-700">{addressFormMessage}</p>}
+
+          <button
+            type="submit"
+            disabled={isSavingAddress}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-yellow-700 rounded-lg hover:bg-yellow-800 disabled:opacity-60"
+          >
+            {isSavingAddress ? t('account.addressForm.saving') : t('account.addressForm.save')}
+          </button>
+          <p className="text-xs text-gray-500">{t('account.addressForm.requiredHint')}</p>
+        </form>
       </div>
     </div>
   );

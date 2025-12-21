@@ -37,6 +37,23 @@ export interface CustomerShippingAddress {
   updatedAt?: string | null;
 }
 
+export type CustomerShippingAddressInput = Partial<
+  Pick<
+    CustomerShippingAddress,
+    | 'street'
+    | 'houseNumber'
+    | 'entrance'
+    | 'apartment'
+    | 'city'
+    | 'state'
+    | 'zip'
+    | 'country'
+    | 'specialInstructions'
+    | 'callId'
+    | 'isDefault'
+  >
+> & { street: string; city: string };
+
 function normalizeApiBaseUrl(baseUrl?: string): string {
   if (!baseUrl) return '/api';
 
@@ -88,6 +105,40 @@ export async function getCustomerCredit(customerId: string): Promise<CustomerCre
 
 export async function getCustomerShippingAddresses(customerId: string): Promise<CustomerShippingAddress[]> {
   return fetchJson<CustomerShippingAddress[]>(`/customers/${customerId}/shipping-addresses`);
+}
+
+async function mutateShippingAddress(
+  path: string,
+  payload: CustomerShippingAddressInput,
+  method: 'POST' | 'PUT',
+): Promise<CustomerShippingAddress> {
+  const response = await fetch(buildApiUrl(path), {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = `API request failed: ${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<CustomerShippingAddress>;
+}
+
+export async function createCustomerShippingAddress(
+  customerId: string,
+  payload: CustomerShippingAddressInput,
+): Promise<CustomerShippingAddress> {
+  return mutateShippingAddress(`/customers/${customerId}/shipping-addresses`, payload, 'POST');
+}
+
+export async function updateCustomerShippingAddress(
+  customerId: string,
+  addressId: string,
+  payload: CustomerShippingAddressInput,
+): Promise<CustomerShippingAddress> {
+  return mutateShippingAddress(`/customers/${customerId}/shipping-addresses/${addressId}`, payload, 'PUT');
 }
 
 export async function getBookById(bookId: string): Promise<Book | null> {
