@@ -24,6 +24,7 @@ import {
   loadBookReferenceData,
   fetchCustomerCredits,
   fetchCarriers,
+  fetchShippingAddresses,
 } from './data-loaders.js';
 import { mailDefaults, sendEmail } from './email.js';
 
@@ -467,6 +468,25 @@ function mapDiscountRow(row) {
     active: normalizeBoolean(row.active),
     public: normalizeBoolean(row.public),
     filename: row.filename ?? '',
+  };
+}
+
+function mapShippingAddressRow(row) {
+  return {
+    id: row.ID ? String(row.ID) : row.id ? String(row.id) : '',
+    customerId: row.custid ? String(row.custid) : '',
+    isDefault: normalizeBoolean(row.stdefault),
+    street: row.street?.trim() ?? '',
+    houseNumber: row.no !== undefined && row.no !== null ? String(row.no).trim() : '',
+    entrance: row.ent?.trim() ?? '',
+    apartment: row.apt?.trim() ?? '',
+    city: row.city?.trim() ?? '',
+    state: row.state?.trim() ?? '',
+    zip: row.zip !== undefined && row.zip !== null ? String(row.zip).trim() : '',
+    country: row.country?.trim() ?? '',
+    specialInstructions: row.specinst?.trim() ?? '',
+    callId: row.callid !== undefined && row.callid !== null ? String(row.callid).trim() : '',
+    updatedAt: toIsoDateString(row.stamp),
   };
 }
 
@@ -1158,6 +1178,27 @@ app.get('/api/customers/:id/credit', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching customer credit history:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/customers/:id/shipping-addresses', async (req, res) => {
+  const customerId = req.params.id;
+
+  if (!customerId) {
+    return res.status(400).json({ status: 'error', message: 'Customer ID is required' });
+  }
+
+  try {
+    const rows = await fetchShippingAddresses(customerId);
+    const addresses = rows.map((row) => mapShippingAddressRow(row)).filter((address) => address.id);
+
+    res.json(addresses);
+  } catch (error) {
+    console.error('Error fetching shipping addresses:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',

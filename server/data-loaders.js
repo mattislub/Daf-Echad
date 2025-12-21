@@ -213,6 +213,17 @@ export async function fetchCustomerCredits(customerId) {
   );
 }
 
+export async function fetchShippingAddresses(customerId) {
+  return runQuery(
+    'fetching customer shipping addresses',
+    `SELECT ID, custid, stdefault, street, no, ent, apt, city, state, zip, country, specinst, callid, stamp
+     FROM shipto
+     WHERE custid = ?
+     ORDER BY stdefault DESC, ID DESC`,
+    [customerId]
+  );
+}
+
 export async function fetchBindings() {
   const rows = await runQuery('fetching bindings', 'SELECT ID, name, type, material FROM binding');
 
