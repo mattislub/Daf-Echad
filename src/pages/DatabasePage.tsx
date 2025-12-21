@@ -26,6 +26,11 @@ export default function DatabasePage({ onNavigate }: { onNavigate?: (page: strin
   const [rowLimit, setRowLimit] = useState(10);
   const [tableData, setTableData] = useState<Record<string, TableDataState>>({});
 
+  const sortedTables = useMemo(
+    () => [...schema].sort((first, second) => first.name.localeCompare(second.name)),
+    [schema],
+  );
+
   const loadSchema = useCallback(async () => {
     try {
       setSchemaError('');
@@ -60,6 +65,9 @@ export default function DatabasePage({ onNavigate }: { onNavigate?: (page: strin
       prev.includes(tableName) ? prev.filter((name) => name !== tableName) : [...prev, tableName],
     );
   };
+
+  const handleSelectAllTables = () => setSelectedTables(sortedTables.map((table) => table.name));
+  const handleClearSelection = () => setSelectedTables([]);
 
   const loadTableData = async (tableName: string) => {
     setTableData((prev) => ({ ...prev, [tableName]: { rows: [], loading: true, error: '' } }));
@@ -166,6 +174,58 @@ export default function DatabasePage({ onNavigate }: { onNavigate?: (page: strin
               />
               <span className="text-sm text-gray-700">{t('database.showSelectedOnly')}</span>
             </label>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">{t('database.selectionTitle')}</h3>
+                <p className="text-sm text-gray-600">{t('database.selectionDescription')}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap text-sm text-gray-700">
+                <span className="font-semibold">{t('database.selectedCount', { count: selectedTables.length })}</span>
+                <button
+                  onClick={handleSelectAllTables}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                >
+                  {t('database.selectAll')}
+                </button>
+                <button
+                  onClick={handleClearSelection}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                >
+                  {t('database.clearSelection')}
+                </button>
+                <button
+                  onClick={() => setOnlySelected((prev) => !prev)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  {onlySelected ? t('database.resetSelectionFilter') : t('database.applySelectionFilter')}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-52 overflow-y-auto" data-testid="table-selection-list">
+              {sortedTables.map((table) => (
+                <label
+                  key={`selection-${table.name}`}
+                  className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 bg-white hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedTables.includes(table.name)}
+                    onChange={() => toggleSelectedTable(table.name)}
+                    className="h-4 w-4"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{table.name}</p>
+                    <p className="text-xs text-gray-600">{table.type}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-500">{t('database.selectionHint')}</p>
           </div>
         </section>
 
