@@ -1,10 +1,9 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Book } from '../types/catalog';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { getBooks, getDatabaseSchema } from '../services/api';
-import { DatabaseSchemaTable } from '../types/database';
+import { getBooks } from '../services/api';
 import {
   BookOpen,
   CheckCircle2,
@@ -16,7 +15,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Wrench,
-  Database,
+  ArrowRight,
 } from 'lucide-react';
 
 interface AdminOrder {
@@ -89,9 +88,6 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
     },
   ]);
   const [loadingBooks, setLoadingBooks] = useState(false);
-  const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchemaTable[]>([]);
-  const [loadingSchema, setLoadingSchema] = useState(false);
-  const [schemaError, setSchemaError] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [newBook, setNewBook] = useState<Pick<Book, 'title_en' | 'title_he' | 'price_ils' | 'price_usd'>>({
@@ -100,21 +96,6 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
     price_ils: 0,
     price_usd: 0,
   });
-
-  const loadSchema = useCallback(async () => {
-    try {
-      setSchemaError('');
-      setLoadingSchema(true);
-      const schema = await getDatabaseSchema();
-      setDatabaseSchema(schema);
-    } catch (error) {
-      console.error('Failed to load database schema for admin panel', error);
-      setDatabaseSchema([]);
-      setSchemaError(t('admin.schemaError'));
-    } finally {
-      setLoadingSchema(false);
-    }
-  }, [t]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -134,11 +115,6 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
 
     loadBooks();
   }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    loadSchema();
-  }, [isAuthenticated, loadSchema]);
 
   const handleLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -469,93 +445,19 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
         </section>
       </div>
 
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-              <Database className="w-6 h-6 text-blue-700" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{t('admin.schemaTitle')}</h2>
-              <p className="text-sm text-gray-600">{t('admin.schemaDescription')}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">{`${t('admin.schemaTablesLabel')}: ${databaseSchema.length}`}</span>
-            <button
-              onClick={loadSchema}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-            >
-              <RefreshCcw className="w-4 h-4" />
-              {t('admin.schemaRetry')}
-            </button>
-          </div>
+      <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm text-blue-700 font-semibold">{t('admin.databasePreviewTitle')}</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t('admin.databasePreviewHeading')}</h2>
+          <p className="text-sm text-gray-700 max-w-2xl">{t('admin.databasePreviewDescription')}</p>
         </div>
-
-        {loadingSchema ? (
-          <div className="flex items-center justify-center py-8 text-gray-500">{t('admin.loading')}</div>
-        ) : schemaError ? (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-            <p className="text-sm">{schemaError}</p>
-            <button
-              onClick={loadSchema}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
-            >
-              <RefreshCcw className="w-4 h-4" />
-              {t('admin.schemaRetry')}
-            </button>
-          </div>
-        ) : databaseSchema.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-gray-500">{t('admin.schemaEmpty')}</div>
-        ) : (
-          <div className="space-y-4">
-            {databaseSchema.map((table) => (
-              <article key={table.name} className="border border-gray-200 rounded-xl">
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-t-xl">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500">{table.type}</p>
-                    <h3 className="text-lg font-semibold text-gray-900">{table.name}</h3>
-                  </div>
-                  <StatusBadge label={`${table.columns.length} ${t('admin.schemaColumnsLabel')}`} tone="blue" />
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead className="bg-white">
-                      <tr>
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaColumn')}</th>
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaType')}</th>
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaNullable')}</th>
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaKey')}</th>
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaDefault')}</th>
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700">{t('admin.schemaExtra')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {table.columns.length === 0 ? (
-                        <tr>
-                          <td className="px-4 py-3 text-sm text-gray-500" colSpan={6}>
-                            {t('admin.schemaNoColumns')}
-                          </td>
-                        </tr>
-                      ) : (
-                        table.columns.map((column) => (
-                          <tr key={`${table.name}-${column.name}`}>
-                            <td className="px-4 py-3 font-medium text-gray-900">{column.name}</td>
-                            <td className="px-4 py-3 text-gray-700">{column.type}</td>
-                            <td className="px-4 py-3 text-gray-700">{column.nullable ? t('admin.yes') : t('admin.no')}</td>
-                            <td className="px-4 py-3 text-gray-700">{column.key || '-'}</td>
-                            <td className="px-4 py-3 text-gray-700">{column.default ?? '-'}</td>
-                            <td className="px-4 py-3 text-gray-700">{column.extra || '-'}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+        <button
+          onClick={() => onNavigate?.('database')}
+          className="inline-flex items-center gap-2 px-4 py-3 bg-blue-700 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-800"
+        >
+          {t('admin.databasePreviewCta')}
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
