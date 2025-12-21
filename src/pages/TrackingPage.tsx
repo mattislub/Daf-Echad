@@ -1,7 +1,9 @@
+import { Suspense, lazy } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import TrackingWidget from '../components/TrackingWidget';
 import { useLanguage } from '../context/LanguageContext';
+
+const TrackingWidget = lazy(() => import('../components/TrackingWidget'));
 
 interface TrackingPageProps {
   onNavigate?: (page: string) => void;
@@ -23,7 +25,15 @@ export default function TrackingPage({ onNavigate }: TrackingPageProps) {
             <p className="text-gray-600">{t('tracking.subtitle')}</p>
           </div>
 
-          <TrackingWidget />
+          <Suspense
+            fallback={(
+              <div className="flex items-center justify-center py-8 text-gray-600 text-sm">
+                {language === 'he' ? 'טוען רכיב מעקב...' : 'Loading tracking widget...'}
+              </div>
+            )}
+          >
+            <TrackingWidget />
+          </Suspense>
         </div>
       </main>
 
