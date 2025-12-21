@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
+import mysql from 'mysql2/promise';
 import crypto from 'node:crypto';
 import { DATABASE_NAME, getServerTime, testConnection, pool } from './db.js';
 import {
@@ -1053,6 +1054,26 @@ app.get('/api/db-schema', async (_req, res) => {
     res.json(schema);
   } catch (error) {
     console.error('Error fetching database schema:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/db-tables/:tableName/data', async (req, res) => {
+  const { tableName } = req.params;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+
+  if (!tableName || !/^[a-zA-Z0-9_]+$/.test(tableName)) {
+    return res.status(400).json({ status: 'error', message: 'Invalid table name provided' });
+  }
+
+  try {
+    const [rows] = await pool.query(`SELECT * FROM ${mysql.escapeId(tableName)} LIMIT ?`, [limit]);
+    res.json(rows ?? []);
+  } catch (error) {
+    console.error(`Error fetching data for table ${tableName}:`, error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',

@@ -86,6 +86,11 @@ export async function getDatabaseSchema(): Promise<DatabaseSchemaTable[]> {
   return fetchJson<DatabaseSchemaTable[]>('/db-schema');
 }
 
+export async function getTableData(tableName: string, limit = 10): Promise<Record<string, unknown>[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return fetchJson<Record<string, unknown>[]>(`/db-tables/${encodeURIComponent(tableName)}/data?${params.toString()}`);
+}
+
 export interface HfdRateRequest {
   cityName: string;
   streetName: string;

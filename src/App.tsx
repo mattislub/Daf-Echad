@@ -21,6 +21,7 @@ import AdminPage from './pages/AdminPage';
 import PaymentPage from './pages/PaymentPage';
 import WishlistPage from './pages/WishlistPage';
 import TrackingPage from './pages/TrackingPage';
+import DatabasePage from './pages/DatabasePage';
 import { Book } from './types/catalog';
 import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
@@ -317,6 +318,12 @@ function App() {
           setPendingSlug(null);
           setCatalogFiltersFromUrl([]);
           break;
+        case 'database':
+          setCurrentPage('database');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
+          break;
         case 'payment':
           setCurrentPage('payment');
           setSelectedBookId(null);
@@ -446,6 +453,7 @@ function AppContent({
       {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
       {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
       {currentPage === 'admin' && <AdminPage onNavigate={onNavigate} />}
+      {currentPage === 'database' && <DatabasePage onNavigate={onNavigate} />}
       {currentPage === 'payment' && (
         <PaymentPage
           checkoutUrl={paymentCheckoutUrl}
