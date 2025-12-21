@@ -20,6 +20,23 @@ export interface CustomerCreditResponse {
   transactions: CustomerCreditEntry[];
 }
 
+export interface CustomerShippingAddress {
+  id: string;
+  customerId: string;
+  isDefault: boolean;
+  street: string;
+  houseNumber?: string;
+  entrance?: string;
+  apartment?: string;
+  city: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  specialInstructions?: string;
+  callId?: string;
+  updatedAt?: string | null;
+}
+
 function normalizeApiBaseUrl(baseUrl?: string): string {
   if (!baseUrl) return '/api';
 
@@ -67,6 +84,10 @@ export async function getAuthors(): Promise<Author[]> {
 
 export async function getCustomerCredit(customerId: string): Promise<CustomerCreditResponse> {
   return fetchJson<CustomerCreditResponse>(`/customers/${customerId}/credit`);
+}
+
+export async function getCustomerShippingAddresses(customerId: string): Promise<CustomerShippingAddress[]> {
+  return fetchJson<CustomerShippingAddress[]>(`/customers/${customerId}/shipping-addresses`);
 }
 
 export async function getBookById(bookId: string): Promise<Book | null> {

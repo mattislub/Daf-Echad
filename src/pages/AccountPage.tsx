@@ -16,7 +16,13 @@ import {
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
-import { CustomerCreditEntry, CustomerCreditResponse, getCustomerCredit } from '../services/api';
+import {
+  CustomerCreditEntry,
+  CustomerCreditResponse,
+  CustomerShippingAddress,
+  getCustomerCredit,
+  getCustomerShippingAddresses,
+} from '../services/api';
 import TrackingWidget from '../components/TrackingWidget';
 
 interface AccountPageProps {
@@ -52,6 +58,9 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
   const [creditSummary, setCreditSummary] = useState<CustomerCreditResponse | null>(null);
   const [creditError, setCreditError] = useState<string | null>(null);
   const [isCreditLoading, setIsCreditLoading] = useState(false);
+  const [shippingAddresses, setShippingAddresses] = useState<CustomerShippingAddress[]>([]);
+  const [addressesError, setAddressesError] = useState<string | null>(null);
+  const [isAddressesLoading, setIsAddressesLoading] = useState(false);
 
   const customerProfile = {
     name: { he: 'אברהם כהן', en: 'Avraham Cohen' },
@@ -62,6 +71,30 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     customerType: { he: 'לקוח פרטי', en: 'Personal customer' },
     languagePreference: { he: 'עברית', en: 'Hebrew' },
   } as const;
+
+  const defaultShippingAddresses: CustomerShippingAddress[] = [
+    {
+      id: 'primary',
+      customerId,
+      isDefault: true,
+      street: 'רח׳ הקבלה',
+      houseNumber: '12',
+      city: 'ירושלים',
+      country: 'ישראל',
+      callId: '+972-52-123-4567',
+    },
+    {
+      id: 'backup',
+      customerId,
+      isDefault: false,
+      street: 'Kedumim Ave',
+      houseNumber: '45',
+      city: 'Lakewood',
+      state: 'NJ',
+      country: 'USA',
+      callId: '+1-848-555-2211',
+    },
+  ];
 
   const customerName = customerProfile.name[language];
 
@@ -136,6 +169,22 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
 
   const formatTotal = (order: OrderItem) => (currency === 'ILS' ? `₪${order.totalILS}` : `$${order.totalUSD}`);
 
+  const formatAddressDetails = (address: CustomerShippingAddress, currentLanguage: typeof language) => {
+    const parts: string[] = [];
+    const streetLine = [address.street, address.houseNumber].filter(Boolean).join(' ');
+
+    if (streetLine) parts.push(streetLine);
+    if (address.entrance) parts.push(currentLanguage === 'he' ? `כניסה ${address.entrance}` : `Entrance ${address.entrance}`);
+    if (address.apartment) parts.push(currentLanguage === 'he' ? `דירה ${address.apartment}` : `Apartment ${address.apartment}`);
+    if (address.city) parts.push(address.city);
+    if (address.state) parts.push(address.state);
+    if (address.zip)
+      parts.push(currentLanguage === 'he' ? `מיקוד ${address.zip}` : `${currentLanguage === 'he' ? 'מיקוד' : 'ZIP'} ${address.zip}`);
+    if (address.country) parts.push(address.country);
+
+    return parts.join(', ');
+  };
+
   const loadCustomerCredit = useCallback(async () => {
     setIsCreditLoading(true);
     setCreditError(null);
@@ -152,23 +201,29 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     }
   }, [customerId, t]);
 
+  const loadShippingAddresses = useCallback(async () => {
+    setIsAddressesLoading(true);
+    setAddressesError(null);
+
+    try {
+      const addresses = await getCustomerShippingAddresses(customerId);
+      setShippingAddresses(addresses);
+    } catch (error) {
+      console.error('Failed to load shipping addresses', error);
+      setAddressesError(language === 'he' ? 'לא הצלחנו לטעון כתובות משלוח.' : 'Unable to load shipping addresses.');
+      setShippingAddresses([]);
+    } finally {
+      setIsAddressesLoading(false);
+    }
+  }, [customerId, language]);
+
   useEffect(() => {
     loadCustomerCredit();
   }, [loadCustomerCredit]);
 
-  const addresses: AddressItem[] = [
-    {
-      label: { he: 'כתובת ראשית', en: 'Primary address' },
-      details: { he: 'רח׳ הקבלה 12, ירושלים', en: '12 Hakabala St, Jerusalem' },
-      phone: '+972-52-123-4567',
-      primary: true,
-    },
-    {
-      label: { he: 'כתובת גיבוי', en: 'Backup address' },
-      details: { he: '45 Kedumim Ave, Lakewood NJ', en: '45 Kedumim Ave, Lakewood NJ' },
-      phone: '+1-848-555-2211',
-    },
-  ];
+  useEffect(() => {
+    loadShippingAddresses();
+  }, [loadShippingAddresses]);
 
   const creditValue = creditSummary ? formatCurrency(creditSummary.totalCredit) : t('account.creditLoading');
   const tierLabel = language === 'he' ? 'חבר זהב' : 'Gold member';
@@ -186,6 +241,26 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
 
   const nextDelivery = orders[0];
   const pickupOrder = orders.find((order) => order.status.en === 'Awaiting pickup');
+
+  const addressSource = shippingAddresses.length ? shippingAddresses : defaultShippingAddresses;
+  const addressItems: AddressItem[] = addressSource.map((address, index) => {
+    const detailsHe = formatAddressDetails(address, 'he');
+    const detailsEn = formatAddressDetails(address, 'en');
+
+    const isDefault = shippingAddresses.length ? address.isDefault : index === 0;
+
+    return {
+      label: shippingAddresses.length
+        ? {
+            he: address.isDefault ? 'כתובת ברירת מחדל' : `כתובת ${index + 1}`,
+            en: address.isDefault ? 'Default address' : `Address ${index + 1}`,
+          }
+        : { he: index === 0 ? 'כתובת ראשית' : 'כתובת נוספת', en: index === 0 ? 'Primary address' : 'Additional address' },
+      details: { he: detailsHe, en: detailsEn },
+      phone: address.callId || customerProfile.phone,
+      primary: isDefault,
+    };
+  });
 
   const renderCreditRows = (transactions: CustomerCreditEntry[]) => (
     <div className="overflow-x-auto">
@@ -514,7 +589,11 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
         </div>
       </div>
       <div className="space-y-4">
-        {addresses.map((address) => (
+        {isAddressesLoading && (
+          <p className="text-sm text-gray-500">{language === 'he' ? 'טוען כתובות משלוח...' : 'Loading shipping addresses...'}</p>
+        )}
+        {addressesError && <p className="text-sm text-red-600">{addressesError}</p>}
+        {addressItems.map((address) => (
           <div key={address.details.en} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
             <div className="flex items-center justify-between gap-2 mb-1">
               <p className="font-semibold text-gray-900">{address.label[language]}</p>
