@@ -1823,140 +1823,137 @@ export default function CartPage({ onNavigate }: CartPageProps) {
 
             <div className="space-y-4">
               {currentStep === steps.length - 1 ? (
-                <>
-                  <div className="bg-white border border-yellow-100 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Package className="w-5 h-5 text-yellow-700" />
-                      <h2 className="text-lg font-semibold text-gray-900">{t('cart.summary')}</h2>
+                <div className="bg-white border border-yellow-100 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Package className="w-5 h-5 text-yellow-700" />
+                    <h2 className="text-lg font-semibold text-gray-900">{t('cart.summary')}</h2>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.items.total')}</span>
+                      <span className="font-semibold">{formatPrice(itemsTotal)}</span>
                     </div>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.items.total')}</span>
-                        <span className="font-semibold">{formatPrice(itemsTotal)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.customer.name')}</span>
-                        <span className="font-semibold text-right max-w-[60%] break-words">
-                          {customerName || t('cart.customer.pending')}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.customer.phone')}</span>
-                        <span className="font-semibold text-right max-w-[60%] break-words">
-                          {customerPhone || t('cart.customer.pending')}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.customer.email')}</span>
-                        <span className="font-semibold text-right max-w-[60%] break-words">
-                          {customerEmail || t('cart.customer.pending')}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.customer.address.detailsLabel')}</span>
-                        <span className="font-semibold text-right max-w-[60%] break-words">
-                          {shippingAddressSummary || t('cart.customer.pending')}
-                        </span>
-                      </div>
-                      {shippingForm.specialInstructions && (
-                        <div className="flex items-center justify-between text-gray-700">
-                          <span className="text-xs">{t('cart.customer.address.specialInstructionsLabel')}</span>
-                          <span className="font-semibold text-right max-w-[60%] break-words">
-                            {shippingForm.specialInstructions}
-                          </span>
-                        </div>
-                      )}
-                      {shippingForm.callId && (
-                        <div className="flex items-center justify-between text-gray-700">
-                          <span className="text-xs">{t('cart.customer.address.callIdLabel')}</span>
-                          <span className="font-semibold text-right max-w-[60%] break-words">
-                            {shippingForm.callId}
-                          </span>
-                        </div>
-                      )}
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.weight.totalCart')}</span>
-                        <span className="font-semibold">
-                          {totalWeightGrams > 0 ? formatWeight(totalWeightGrams) : t('cart.weight.missingSummary')}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.shipping.country.summary')}</span>
-                        <span className="font-semibold">{selectedCountryName || t('cart.shipping.country.unknown')}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.shipping.carrier.summary')}</span>
-                        <span className="font-semibold">{selectedCarrierName || t('cart.shipping.carrier.unknown')}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-gray-700">
-                        <span>{t('cart.shipping.cost')}</span>
-                        <span className="font-semibold">{formatPrice(shippingCost)}</span>
-                      </div>
-                      <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-gray-900 font-bold text-base">
-                        <span>{t('cart.total')}</span>
-                        <span>{formatPrice(orderTotal)}</span>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-yellow-700" />
-                        <span>{paymentMethod === 'card' ? t('cart.order.note') : t('cart.payment.cash.note')}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-gray-700">
-                        <input
-                          type="checkbox"
-                          id="terms-agreement"
-                          checked={termsAccepted}
-                          onChange={(e) => {
-                            setTermsAccepted(e.target.checked);
-                            setShowTermsError(false);
-                          }}
-                          className="mt-1"
-                        />
-                        <label htmlFor="terms-agreement" className="leading-snug">
-                          {t('cart.terms.checkbox')}
-                          <button
-                            type="button"
-                            onClick={() => onNavigate?.('terms')}
-                            className="block text-yellow-700 font-semibold hover:underline"
-                          >
-                            {t('cart.terms.link')}
-                          </button>
-                        </label>
-                      </div>
-                      {showTermsError && (
-                        <p className="text-red-600 text-sm">{t('cart.terms.required')}</p>
-                      )}
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.customer.name')}</span>
+                      <span className="font-semibold text-right max-w-[60%] break-words">
+                        {customerName || t('cart.customer.pending')}
+                      </span>
                     </div>
-                    <button
-                      className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
-                      disabled={sendingOrder || paymentRedirecting}
-                      onClick={() => void handleCheckout()}
-                    >
-                      {paymentRedirecting
-                        ? t('cart.checkout.redirecting')
-                        : sendingOrder
-                          ? language === 'he'
-                            ? 'שולח את פרטי ההזמנה...'
-                            : 'Sending order details...'
-                          : t('cart.checkout')}
-                    </button>
-                    {orderError && (
-                      <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
-                        {orderError}
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.customer.phone')}</span>
+                      <span className="font-semibold text-right max-w-[60%] break-words">
+                        {customerPhone || t('cart.customer.pending')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.customer.email')}</span>
+                      <span className="font-semibold text-right max-w-[60%] break-words">
+                        {customerEmail || t('cart.customer.pending')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.customer.address.detailsLabel')}</span>
+                      <span className="font-semibold text-right max-w-[60%] break-words">
+                        {shippingAddressSummary || t('cart.customer.pending')}
+                      </span>
+                    </div>
+                    {shippingForm.specialInstructions && (
+                      <div className="flex items-center justify-between text-gray-700">
+                        <span className="text-xs">{t('cart.customer.address.specialInstructionsLabel')}</span>
+                        <span className="font-semibold text-right max-w-[60%] break-words">
+                          {shippingForm.specialInstructions}
+                        </span>
                       </div>
                     )}
-                    {paymentError && (
-                      <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
-                        {paymentError}
+                    {shippingForm.callId && (
+                      <div className="flex items-center justify-between text-gray-700">
+                        <span className="text-xs">{t('cart.customer.address.callIdLabel')}</span>
+                        <span className="font-semibold text-right max-w-[60%] break-words">
+                          {shippingForm.callId}
+                        </span>
                       </div>
                     )}
-                    {showConfirmation && (
-                      <div className="mt-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
-                        {t('cart.checkout.confirmation')}
-                      </div>
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.weight.totalCart')}</span>
+                      <span className="font-semibold">
+                        {totalWeightGrams > 0 ? formatWeight(totalWeightGrams) : t('cart.weight.missingSummary')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.shipping.country.summary')}</span>
+                      <span className="font-semibold">{selectedCountryName || t('cart.shipping.country.unknown')}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.shipping.carrier.summary')}</span>
+                      <span className="font-semibold">{selectedCarrierName || t('cart.shipping.carrier.unknown')}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span>{t('cart.shipping.cost')}</span>
+                      <span className="font-semibold">{formatPrice(shippingCost)}</span>
+                    </div>
+                    <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-gray-900 font-bold text-base">
+                      <span>{t('cart.total')}</span>
+                      <span>{formatPrice(orderTotal)}</span>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-yellow-700" />
+                      <span>{paymentMethod === 'card' ? t('cart.order.note') : t('cart.payment.cash.note')}</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        id="terms-agreement"
+                        checked={termsAccepted}
+                        onChange={(e) => {
+                          setTermsAccepted(e.target.checked);
+                          setShowTermsError(false);
+                        }}
+                        className="mt-1"
+                      />
+                      <label htmlFor="terms-agreement" className="leading-snug">
+                        {t('cart.terms.checkbox')}
+                        <button
+                          type="button"
+                          onClick={() => onNavigate?.('terms')}
+                          className="block text-yellow-700 font-semibold hover:underline"
+                        >
+                          {t('cart.terms.link')}
+                        </button>
+                      </label>
+                    </div>
+                    {showTermsError && (
+                      <p className="text-red-600 text-sm">{t('cart.terms.required')}</p>
                     )}
                   </div>
-                </>
+                  <button
+                    className="w-full mt-4 inline-flex justify-center items-center px-4 py-3 bg-gradient-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg shadow hover:from-yellow-600 hover:to-yellow-500 transition disabled:opacity-70"
+                    disabled={sendingOrder || paymentRedirecting}
+                    onClick={() => void handleCheckout()}
+                  >
+                    {paymentRedirecting
+                      ? t('cart.checkout.redirecting')
+                      : sendingOrder
+                        ? language === 'he'
+                          ? 'שולח את פרטי ההזמנה...'
+                          : 'Sending order details...'
+                        : t('cart.checkout')}
+                  </button>
+                  {orderError && (
+                    <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                      {orderError}
+                    </div>
+                  )}
+                  {paymentError && (
+                    <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                      {paymentError}
+                    </div>
+                  )}
+                  {showConfirmation && (
+                    <div className="mt-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                      {t('cart.checkout.confirmation')}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="bg-white border border-yellow-100 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-2">
