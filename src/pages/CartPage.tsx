@@ -237,6 +237,28 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     void loadCarriers();
   }, [loadCarriers]);
 
+  const selectedCountryName = useMemo(
+    () => countries.find((country) => country.id === selectedCountry)?.name || '',
+    [countries, selectedCountry],
+  );
+
+  const mapAddressToFormState = useCallback(
+    (address?: CustomerShippingAddress): ShippingFormState => ({
+      street: address?.street?.trim() ?? '',
+      houseNumber: address?.houseNumber?.trim() ?? '',
+      entrance: address?.entrance?.trim() ?? '',
+      apartment: address?.apartment?.trim() ?? '',
+      city: address?.city?.trim() ?? '',
+      state: address?.state?.trim() ?? '',
+      zip: address?.zip?.trim() ?? '',
+      country: (address?.country?.trim() ?? selectedCountryName) || '',
+      specialInstructions: address?.specialInstructions?.trim() ?? '',
+      callId: address?.callId?.trim() ?? sessionCallId,
+      isDefault: Boolean(address?.isDefault),
+    }),
+    [selectedCountryName, sessionCallId],
+  );
+
   const loadShippingAddresses = useCallback(async () => {
     setShippingAddressesLoading(true);
     setShippingAddressesError(null);
@@ -413,26 +435,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
 
   const goToNextStep = () => goToStep(currentStep + 1);
   const goToPreviousStep = () => goToStep(currentStep - 1);
-  const selectedCountryName = useMemo(
-    () => countries.find((country) => country.id === selectedCountry)?.name || '',
-    [countries, selectedCountry],
-  );
-  const mapAddressToFormState = useCallback(
-    (address?: CustomerShippingAddress): ShippingFormState => ({
-      street: address?.street?.trim() ?? '',
-      houseNumber: address?.houseNumber?.trim() ?? '',
-      entrance: address?.entrance?.trim() ?? '',
-      apartment: address?.apartment?.trim() ?? '',
-      city: address?.city?.trim() ?? '',
-      state: address?.state?.trim() ?? '',
-      zip: address?.zip?.trim() ?? '',
-      country: (address?.country?.trim() ?? selectedCountryName) || '',
-      specialInstructions: address?.specialInstructions?.trim() ?? '',
-      callId: address?.callId?.trim() ?? sessionCallId,
-      isDefault: Boolean(address?.isDefault),
-    }),
-    [selectedCountryName, sessionCallId],
-  );
   const formatShippingAddressDetails = useCallback(
     (address: Partial<CustomerShippingAddress> | Partial<ShippingFormState>) => {
       const parts: string[] = [];
