@@ -490,6 +490,32 @@ function mapShippingAddressRow(row) {
   };
 }
 
+function normalizeShippingAddressPayload(body) {
+  const normalize = (value) => (typeof value === 'string' ? value.trim() : value ?? '');
+
+  return {
+    street: normalize(body.street),
+    houseNumber: normalize(body.houseNumber),
+    entrance: normalize(body.entrance),
+    apartment: normalize(body.apartment),
+    city: normalize(body.city),
+    state: normalize(body.state),
+    zip: normalize(body.zip),
+    country: normalize(body.country),
+    specialInstructions: normalize(body.specialInstructions),
+    callId: normalize(body.callId),
+    isDefault: normalizeBoolean(body.isDefault),
+  };
+}
+
+async function saveDefaultShippingAddress(connection, customerId, skipId = null) {
+  await connection.query('UPDATE shipto SET stdefault = 0 WHERE custid = ? AND (? IS NULL OR ID != ?)', [
+    customerId,
+    skipId,
+    skipId,
+  ]);
+}
+
 function mapItemRowToBook(
   row,
   authorMap = new Map(),
@@ -1203,6 +1229,157 @@ app.get('/api/customers/:id/shipping-addresses', async (req, res) => {
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
+  }
+});
+
+app.post('/api/customers/:id/shipping-addresses', async (req, res) => {
+  const customerId = req.params.id;
+  const payload = normalizeShippingAddressPayload(req.body ?? {});
+
+  if (!customerId) {
+    return res.status(400).json({ status: 'error', message: 'Customer ID is required' });
+  }
+
+  if (!payload.street || !payload.city) {
+    return res.status(400).json({ status: 'error', message: 'Street and city are required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    if (payload.isDefault) {
+      await saveDefaultShippingAddress(connection, customerId);
+    }
+
+    const [insertResult] = await connection.query(
+      `INSERT INTO shipto (custid, stdefault, street, no, ent, apt, city, state, zip, country, specinst, callid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        customerId,
+        payload.isDefault ? 1 : 0,
+        payload.street,
+        payload.houseNumber || null,
+        payload.entrance || null,
+        payload.apartment || null,
+        payload.city,
+        payload.state || null,
+        payload.zip || null,
+        payload.country || null,
+        payload.specialInstructions || null,
+        payload.callId || null,
+      ],
+    );
+
+    const insertedId = insertResult.insertId;
+
+    const [rows] = await connection.query(
+      `SELECT ID, custid, stdefault, street, no, ent, apt, city, state, zip, country, specinst, callid, stamp
+       FROM shipto WHERE ID = ?`,
+      [insertedId],
+    );
+
+    await connection.commit();
+
+    const createdAddress = mapShippingAddressRow(rows[0] || {});
+    return res.status(201).json(createdAddress);
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.error('Error creating shipping address:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+});
+
+app.put('/api/customers/:id/shipping-addresses/:addressId', async (req, res) => {
+  const customerId = req.params.id;
+  const addressId = req.params.addressId;
+  const payload = normalizeShippingAddressPayload(req.body ?? {});
+
+  if (!customerId || !addressId) {
+    return res.status(400).json({ status: 'error', message: 'Customer and address IDs are required' });
+  }
+
+  if (!payload.street || !payload.city) {
+    return res.status(400).json({ status: 'error', message: 'Street and city are required' });
+  }
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query('SELECT ID FROM shipto WHERE ID = ? AND custid = ?', [
+      addressId,
+      customerId,
+    ]);
+
+    if (!existingRows.length) {
+      await connection.rollback();
+      return res.status(404).json({ status: 'error', message: 'Address not found for customer' });
+    }
+
+    if (payload.isDefault) {
+      await saveDefaultShippingAddress(connection, customerId, addressId);
+    }
+
+    await connection.query(
+      `UPDATE shipto
+       SET stdefault = ?, street = ?, no = ?, ent = ?, apt = ?, city = ?, state = ?, zip = ?, country = ?, specinst = ?, callid = ?
+       WHERE ID = ? AND custid = ?`,
+      [
+        payload.isDefault ? 1 : 0,
+        payload.street,
+        payload.houseNumber || null,
+        payload.entrance || null,
+        payload.apartment || null,
+        payload.city,
+        payload.state || null,
+        payload.zip || null,
+        payload.country || null,
+        payload.specialInstructions || null,
+        payload.callId || null,
+        addressId,
+        customerId,
+      ],
+    );
+
+    const [rows] = await connection.query(
+      `SELECT ID, custid, stdefault, street, no, ent, apt, city, state, zip, country, specinst, callid, stamp
+       FROM shipto WHERE ID = ?`,
+      [addressId],
+    );
+
+    await connection.commit();
+
+    const updatedAddress = mapShippingAddressRow(rows[0] || {});
+    return res.json(updatedAddress);
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.error('Error updating shipping address:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 });
 
