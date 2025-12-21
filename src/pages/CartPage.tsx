@@ -426,7 +426,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       city: address?.city?.trim() ?? '',
       state: address?.state?.trim() ?? '',
       zip: address?.zip?.trim() ?? '',
-      country: address?.country?.trim() ?? selectedCountryName || '',
+      country: (address?.country?.trim() ?? selectedCountryName) || '',
       specialInstructions: address?.specialInstructions?.trim() ?? '',
       callId: address?.callId?.trim() ?? sessionCallId,
       isDefault: Boolean(address?.isDefault),
@@ -1978,9 +1978,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             </div>
           </div>
         </div>
-
-          )}
-
       </main>
 
       <Footer onNavigate={onNavigate} />
