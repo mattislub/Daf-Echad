@@ -1975,6 +1975,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
             </div>
           </div>
         </div>
+        )}
       </main>
 
       <Footer onNavigate={onNavigate} />
