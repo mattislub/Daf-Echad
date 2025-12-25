@@ -44,6 +44,16 @@ This project is a Vite + React frontend. A lightweight Node/Express API was adde
 - `ZCREDIT_TERMINAL`: Terminal number supplied by ZCredit.
 - `ZCREDIT_PASSWORD`: Terminal password supplied by ZCredit.
 - `ZCREDIT_KEY`: WebCheckout key supplied by ZCredit.
+- `HFD_BASE_URL`: Base URL for the HFD API (defaults to `https://test.hfd.co.il/RunCom.WebAPI/api/v1`).
+- `HFD_TOKEN`: Bearer token for HFD API requests (example token provided in `.env.example`).
+- `HFD_CLIENT_NUMBER`: HFD client number (example `12916`).
+- `HFD_STAGE_CODE`: HFD shipment stage code (defaults to `5`).
+- `HFD_SHIPMENT_TYPE`: HFD shipment type code (defaults to `35`).
+- `HFD_CARGO_TYPE`: HFD cargo type (`10` by default).
+- `HFD_BASE_RATE_ILS`: Base shipping rate in ILS (defaults to `0`).
+- `HFD_RATE_PER_KG_ILS`: Per-kg shipping rate in ILS (defaults to `0`).
+- `HFD_ORDERER_NAME`: Name sent to HFD as the orderer (defaults to `Daf Echad`).
+- `HFD_TRACKING_BASE_URL`: Base URL for HFD tracking (defaults to `https://test.hfd.co.il/RunCom.Server` or derived from `HFD_BASE_URL`).
 
 ## ZCredit checkout
 
