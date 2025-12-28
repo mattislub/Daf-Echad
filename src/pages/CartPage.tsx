@@ -599,6 +599,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const sendOrderEmail = async (orderId: string) => {
     const storeEmail = import.meta.env.VITE_STORE_EMAIL || 'dafechadout@gmail.com';
     const storeLogoUrl = 'https://dafechad.com/logo.png';
+    const orderTemplateMaxWidth = 640;
+    const orderTemplateMinHeight = 360;
 
     const subject = language === 'he' ? 'אישור קבלת הזמנה חדשה' : 'New Daf Echad order received';
     const thankYouLine = language === 'he' ? 'תודה שהזמנתם מדף אחד!' : 'Thank you for ordering from Daf Echad!';
@@ -670,8 +672,8 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       .join('');
 
     const htmlBody = `
-      <div style="font-family: Arial, sans-serif; color: #1a202c; background: #f7fafc; padding: 24px;">
-        <div style="background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+      <div style="font-family: Arial, sans-serif; color: #1a202c; background: #f7fafc; padding: 24px; display: flex; justify-content: center;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); width: 100%; max-width: ${orderTemplateMaxWidth}px; min-height: ${orderTemplateMinHeight}px;">
           <div style="text-align: center; margin-bottom: 16px;">
             <img src="${storeLogoUrl}" alt="${language === 'he' ? 'דף אחד' : 'Daf Echad'}" style="height: 72px; margin-bottom: 12px;" />
             <h2 style="margin: 0; color: #b7791f;">${thankYouLine}</h2>
