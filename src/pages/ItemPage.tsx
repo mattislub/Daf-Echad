@@ -22,6 +22,7 @@ import {
 import { getBookById, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
 import { CartItem } from '../types';
 import { logSessionEvent } from '../services/session';
+import { resolveBookImages, resolvePrimaryImage } from '../utils/imagePaths';
 
 interface ItemPageProps {
   bookId: string;
@@ -88,19 +89,25 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
           return fallbackCategory ? [fallbackCategory] : [];
         };
 
-        const mapWithCategory = (items: Book[]) =>
-          items.map((item) => {
-            const categories = resolveCategories(item);
-            const category = item.category ?? categories[0] ?? findCategory(item);
+        const enhanceBook = (item: Book) => {
+          const categories = resolveCategories(item);
+          const category = item.category ?? categories[0] ?? findCategory(item);
+          const bookWithCategory = {
+            ...item,
+            category,
+            categories: categories.length ? categories : item.categories,
+            category_id: item.category_id ?? category?.id ?? null,
+            category_ids: item.category_ids ?? categories.map((cat) => cat.id),
+          };
+          const primaryImage = resolvePrimaryImage(bookWithCategory);
 
-            return {
-              ...item,
-              category,
-              categories: categories.length ? categories : item.categories,
-              category_id: item.category_id ?? category?.id ?? null,
-              category_ids: item.category_ids ?? categories.map((cat) => cat.id),
-            };
-          });
+          return {
+            ...bookWithCategory,
+            image_url: primaryImage || bookWithCategory.image_url,
+          };
+        };
+
+        const mapWithCategory = (items: Book[]) => items.map(enhanceBook);
 
         const [bookWithCategory] = mapWithCategory([bookData]);
 
@@ -177,9 +184,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
     );
   }
 
-  const images = book.images && book.images.length > 0
-    ? book.images.sort((a, b) => a.position - b.position).map(img => img.image_url)
-    : [book.image_url];
+  const images = resolveBookImages(book);
 
   const displayCategories =
     book.categories?.length ? book.categories : book.category ? [book.category] : [];
