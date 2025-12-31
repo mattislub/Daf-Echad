@@ -113,11 +113,8 @@ export default function ItemFacts({ book }: ItemFactsProps) {
             <Package className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">
-              {language === 'he' ? 'פרטי המוצר' : 'Product Details'}
-            </p>
             <p className="text-base font-semibold text-gray-900">
-              {language === 'he' ? 'הרחב לפרטים נוספים' : 'Expand for more details'}
+              {language === 'he' ? 'פרטי המוצר' : 'Product Details'}
             </p>
           </div>
         </div>
