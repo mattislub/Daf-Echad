@@ -5,6 +5,8 @@ const PRODUCT_IMAGE_BASE_PATH = (import.meta.env.VITE_PRODUCT_IMAGE_BASE || '/ap
   '',
 );
 
+export const DEFAULT_PRODUCT_IMAGE = import.meta.env.VITE_DEFAULT_PRODUCT_IMAGE || '/logo.png';
+
 const IMAGE_SUFFIXES = ['A', 'B', 'C', 'D'];
 
 function normalizeItemNumber(itemNumber?: string | null): string | null {
@@ -41,7 +43,13 @@ export function resolveBookImages(book: Book): string[] {
       .filter(Boolean) ?? [];
   const fallbackImages = book.image_url ? [book.image_url] : [];
 
-  return Array.from(new Set([...dynamicImages, ...galleryImages, ...fallbackImages]));
+  const uniqueImages = Array.from(new Set([...dynamicImages, ...galleryImages, ...fallbackImages]));
+
+  if (uniqueImages.length === 0) {
+    return [DEFAULT_PRODUCT_IMAGE];
+  }
+
+  return uniqueImages;
 }
 
 export function resolvePrimaryImage(book: Book): string {
