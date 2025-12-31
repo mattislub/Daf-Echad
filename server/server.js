@@ -76,6 +76,8 @@ const HFD_TRACKING_BASE_URL = trimTrailingSlash(
   process.env.HFD_TRACKING_BASE_URL ||
     HFD_BASE_URL.replace(/\/RunCom\.WebAPI\/api\/v1$/i, '/RunCom.Server')
 );
+const PRODUCT_IMAGE_DIRECTORY = path.resolve(process.env.PRODUCT_IMAGE_DIR || '/var/lib/dafe/pics/web');
+const PRODUCT_IMAGE_ROUTE = normalizeRoutePath(process.env.PRODUCT_IMAGE_ROUTE || '/api/product-images');
 
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
@@ -90,6 +92,13 @@ function normalizeBoolean(value) {
 
 function trimTrailingSlash(url = '') {
   return url.replace(/\/+$/, '');
+}
+
+function normalizeRoutePath(route = '') {
+  const trimmed = (route || '').trim();
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+
+  return trimTrailingSlash(withLeadingSlash) || '/api/product-images';
 }
 
 function buildZCreditCreateSessionUrl(baseUrl = '') {
@@ -730,6 +739,20 @@ app.use((_, res, next) => {
 });
 
 app.use(cors());
+
+const productImageStaticOptions = {
+  fallthrough: false,
+  maxAge: '1d',
+  setHeaders(res) {
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+  },
+};
+
+if (fs.existsSync(PRODUCT_IMAGE_DIRECTORY)) {
+  app.use(PRODUCT_IMAGE_ROUTE, express.static(PRODUCT_IMAGE_DIRECTORY, productImageStaticOptions));
+} else {
+  console.warn(`[Product Images] Directory not found: ${PRODUCT_IMAGE_DIRECTORY}`);
+}
 
 app.use((err, req, res, next) => {
   const message = err?.message?.toLowerCase() ?? '';

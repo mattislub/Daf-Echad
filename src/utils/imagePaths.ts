@@ -1,6 +1,6 @@
 import { Book } from '../types/catalog';
 
-const PRODUCT_IMAGE_BASE_PATH = (import.meta.env.VITE_PRODUCT_IMAGE_BASE || '/pics/web').replace(
+const PRODUCT_IMAGE_BASE_PATH = (import.meta.env.VITE_PRODUCT_IMAGE_BASE || '/api/product-images').replace(
   /\/+$/,
   '',
 );
