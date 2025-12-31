@@ -30,6 +30,13 @@ export interface HeaderProps {
   searchTerm?: string;
 }
 
+type Suggestion = {
+  id: string;
+  label: string;
+  type: string;
+  categoryId?: string | null;
+};
+
 export default function Header({ onNavigate, onSearch, searchItems, searchTerm }: HeaderProps = {}) {
   const { language, setLanguage, currency, setCurrency, t } = useLanguage();
   const { getTotalItems, getTotalPrice } = useCart();
@@ -50,33 +57,29 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
 
   const suggestions = useMemo(() => {
     const term = inputValue.trim().toLowerCase();
-    if (!term) return [] as Array<{ id: string; label: string; type: string }>;
+    if (!term) return [] as Suggestion[];
 
-    const uniqueLabels = new Map<string, { id: string; label: string; type: string }>();
+    const uniqueLabels = new Map<string, Suggestion>();
 
     effectiveSearchItems.forEach((item) => {
-      const labelEntries: Array<{ label: string; type: string }> = [];
-
-      if (item.title_he) labelEntries.push({ label: item.title_he, type: 'title' });
-      if (item.title_en) labelEntries.push({ label: item.title_en, type: 'title' });
-      if (item.keywords?.length)
-        labelEntries.push({ label: item.keywords.join(' '), type: 'keyword' });
-      if (item.author?.name) labelEntries.push({ label: item.author.name, type: 'author' });
-      if (item.category)
-        labelEntries.push({
-          label: language === 'he' ? item.category.name_he : item.category.name_en,
-          type: 'category',
-        });
-      if (item.publisher?.name) labelEntries.push({ label: item.publisher.name, type: 'publisher' });
-
-      labelEntries.forEach(({ label, type }) => {
+      const addSuggestion = (label: string, type: string, extra?: Partial<Suggestion>) => {
         if (label.toLowerCase().includes(term)) {
           const key = `${item.id}-${label}-${type}`;
           if (!uniqueLabels.has(key)) {
-            uniqueLabels.set(key, { id: item.id, label, type });
+            uniqueLabels.set(key, { id: item.id, label, type, ...extra });
           }
         }
-      });
+      };
+
+      if (item.title_he) addSuggestion(item.title_he, 'title');
+      if (item.title_en) addSuggestion(item.title_en, 'title');
+      if (item.keywords?.length) addSuggestion(item.keywords.join(' '), 'keyword');
+      if (item.author?.name) addSuggestion(item.author.name, 'author');
+      if (item.category)
+        addSuggestion(language === 'he' ? item.category.name_he : item.category.name_en, 'category', {
+          categoryId: item.category.id ?? item.category_id ?? item.categories?.[0]?.id ?? null,
+        });
+      if (item.publisher?.name) addSuggestion(item.publisher.name, 'publisher');
     });
 
     return Array.from(uniqueLabels.values()).slice(0, 6);
@@ -94,11 +97,34 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
     setIsFocused(false);
   };
 
-  const handleSuggestionSelect = (label: string) => {
-    setInputValue(label);
-    setSearchTerm?.(label);
-    triggerSearch?.(label);
+  const handleSuggestionSelect = (suggestion: Suggestion) => {
+    const selectedBook = effectiveSearchItems.find((book) => book.id === suggestion.id);
+    setInputValue(suggestion.label);
+    setSearchTerm?.(suggestion.label);
     setIsFocused(false);
+
+    if (suggestion.type === 'category') {
+      const targetCategoryId =
+        suggestion.categoryId ??
+        selectedBook?.category_id ??
+        selectedBook?.categories?.[0]?.id ??
+        selectedBook?.category?.id ??
+        null;
+
+      if (targetCategoryId) {
+        setSearchTerm?.('');
+        setInputValue('');
+        window.location.hash = `#/catalog?category=${encodeURIComponent(targetCategoryId)}`;
+        return;
+      }
+    }
+
+    if (selectedBook) {
+      onNavigate?.('item', selectedBook.id);
+      return;
+    }
+
+    triggerSearch?.(suggestion.label);
   };
 
   return (
@@ -176,7 +202,7 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
                     <button
                       type="button"
                       key={`${suggestion.id}-${suggestion.label}`}
-                      onClick={() => handleSuggestionSelect(suggestion.label)}
+                      onClick={() => handleSuggestionSelect(suggestion)}
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex justify-between items-center"
                     >
                       <span className="text-gray-800">{suggestion.label}</span>
