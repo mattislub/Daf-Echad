@@ -15,9 +15,6 @@ import {
   Heart,
   Package,
   ChevronDown,
-  ShieldCheck,
-  Truck,
-  RotateCcw,
 } from 'lucide-react';
 import { getBookById, getCategories, getPopularBooks, getRelatedBooks } from '../services/api';
 import { CartItem } from '../types';
@@ -197,28 +194,6 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
   const shortDescription = book.short_description || (language === 'he' ? book.description_he : book.description_en);
   const originalDescription = book.original_description;
   const descriptionTitle = book.description_title;
-  const perks = [
-    {
-      icon: ShieldCheck,
-      title: language === 'he' ? 'תשלום מאובטח' : 'Secure checkout',
-      description: language === 'he' ? 'הצפנה מלאה ואישור הזמנה ברור' : 'Full encryption and transparent order details',
-    },
-    {
-      icon: Truck,
-      title: language === 'he' ? 'משלוח מהיר' : 'Fast delivery',
-      description: language === 'he' ? 'שליחה מהירה עם עדכון סטטוס בזמן אמת' : 'Rapid dispatch with real-time updates',
-    },
-    {
-      icon: RotateCcw,
-      title: language === 'he' ? 'מדיניות החזרה' : 'Easy returns',
-      description: language === 'he' ? 'אפשרויות החלפה גמישות' : 'Flexible exchange options',
-    },
-  ];
-  const metaHighlights = [
-    { label: language === 'he' ? 'כריכה' : 'Binding', value: book.binding },
-    { label: language === 'he' ? 'שפה' : 'Language', value: book.language },
-    { label: language === 'he' ? 'כרכים' : 'Volumes', value: book.volumes ? String(book.volumes) : null },
-  ].filter((item) => Boolean(item.value));
   const wishlisted = book ? isInWishlist(book.id) : false;
 
   return (
@@ -266,9 +241,6 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
             <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-yellow-50 text-yellow-700 px-3 py-1 text-sm font-medium">
-                    {language === 'he' ? 'מהדורה עדכנית' : 'Latest edition'}
-                  </div>
                   <div className="text-3xl font-bold text-gray-900">
                     {currencySymbol}
                     {price.toFixed(2)}
@@ -289,20 +261,6 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                     : 'Out of Stock'}
                 </div>
               </div>
-
-              {metaHighlights.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                  {metaHighlights.map((item) => (
-                    <div
-                      key={item.label}
-                      className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-3"
-                    >
-                      <p className="text-xs uppercase tracking-wide text-gray-500">{item.label}</p>
-                      <p className="text-sm font-semibold text-gray-900">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               <div className="flex items-center gap-4 pt-2">
                 <label className="font-medium text-gray-700">
@@ -370,39 +328,24 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                   {wishlisted ? (language === 'he' ? 'נשמר ברשימה' : 'Saved to wishlist') : language === 'he' ? 'הוסף לרשימה' : 'Add to wishlist'}
                 </button>
               </div>
-
-              <div className="grid sm:grid-cols-3 gap-3 pt-1">
-                {perks.map((perk) => (
-                  <div
-                    key={perk.title}
-                    className="flex gap-3 items-start rounded-xl bg-gray-50 border border-gray-100 px-3 py-3"
-                  >
-                    <perk.icon className="w-5 h-5 text-yellow-600 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-semibold text-gray-900">{perk.title}</p>
-                      <p className="text-xs text-gray-600 leading-snug">{perk.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {(shortDescription || descriptionTitle) && (
-                <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-3 tracking-tight">
-                    {language === 'he' ? 'תיאור קצר' : 'Short Description'}
-                  </h2>
-                  {descriptionTitle && (
-                    <p className="text-lg font-semibold text-gray-900 mb-2">{descriptionTitle}</p>
-                  )}
-                  {shortDescription && (
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-line">{shortDescription}</p>
-                  )}
-                </div>
-              )}
             </div>
           </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {(shortDescription || descriptionTitle) && (
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-gray-900 mb-3 tracking-tight">
+                {language === 'he' ? 'תיאור קצר' : 'Short Description'}
+              </h2>
+              {descriptionTitle && (
+                <p className="text-lg font-semibold text-gray-900 mb-2">{descriptionTitle}</p>
+              )}
+              {shortDescription && (
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{shortDescription}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {originalDescription && (
