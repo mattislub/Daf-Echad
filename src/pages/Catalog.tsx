@@ -9,6 +9,7 @@ import { Loader2, SlidersHorizontal } from 'lucide-react';
 import { getAuthors, getBooks, getCategories, getPublishers } from '../services/api';
 import { useSearch } from '../context/SearchContext';
 import { useWishlist } from '../context/WishlistContext';
+import { resolvePrimaryImage } from '../utils/imagePaths';
 
 interface CatalogProps {
   onNavigate?: (page: string, bookId?: string) => void;
@@ -77,7 +78,13 @@ export default function Catalog({ onNavigate, initialCategoryFilters = [] }: Cat
         const category = categoriesData?.find((cat) => cat.id === book.category_id);
         const author = authorsData?.find((a) => a.id === book.author_id);
         const publisher = publishersData?.find((p) => p.id === book.publisher_id);
-        return { ...book, category, author, publisher };
+        const bookWithRelations = { ...book, category, author, publisher };
+        const primaryImage = resolvePrimaryImage(bookWithRelations);
+
+        return {
+          ...bookWithRelations,
+          image_url: primaryImage || bookWithRelations.image_url,
+        };
       });
 
       setBooks(booksWithCategories);
