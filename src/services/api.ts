@@ -333,6 +333,15 @@ export interface CustomerLoginPayload {
   password: string;
 }
 
+export interface CustomerProfileUpdatePayload {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+  fax?: string;
+  language?: 'he' | 'en' | null;
+}
+
 export async function loginCustomer(payload: CustomerLoginPayload): Promise<CustomerAccount> {
   const response = await fetch(buildApiUrl('/customers/login'), {
     method: 'POST',
@@ -349,6 +358,30 @@ export async function loginCustomer(payload: CustomerLoginPayload): Promise<Cust
 
   if (!data?.customer) {
     throw new Error('Login failed: invalid server response');
+  }
+
+  return data.customer as CustomerAccount;
+}
+
+export async function updateCustomerProfile(
+  customerId: string,
+  payload: CustomerProfileUpdatePayload,
+): Promise<CustomerAccount> {
+  const response = await fetch(buildApiUrl(`/customers/${customerId}/profile`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = data?.message || `Update failed: ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  if (!data?.customer) {
+    throw new Error('Update failed: invalid server response');
   }
 
   return data.customer as CustomerAccount;

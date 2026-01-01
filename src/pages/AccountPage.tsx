@@ -26,12 +26,14 @@ import {
   getCustomerCredit,
   getCustomerShippingAddresses,
   updateCustomerShippingAddress,
+  updateCustomerProfile,
 } from '../services/api';
 import TrackingWidget from '../components/TrackingWidget';
 
 interface AccountPageProps {
   onNavigate?: (page: string) => void;
   account?: CustomerAccount | null;
+  onAccountUpdate?: (account: CustomerAccount) => void;
 }
 
 interface OrderItem {
@@ -55,10 +57,22 @@ interface AddressItem {
 const tabOrder = ['overview', 'orders', 'addresses', 'preferences', 'support'] as const;
 type TabId = (typeof tabOrder)[number];
 
-export default function AccountPage({ onNavigate, account }: AccountPageProps) {
-  const { language, currency, t } = useLanguage();
+export default function AccountPage({ onNavigate, account, onAccountUpdate }: AccountPageProps) {
+  const { language, currency, t, setLanguage } = useLanguage();
+  const [profileAccount, setProfileAccount] = useState<CustomerAccount | null>(account ?? null);
+  const [profileForm, setProfileForm] = useState({
+    firstName: account?.firstName ?? '',
+    lastName: account?.lastName ?? '',
+    email: account?.email ?? '',
+    phone: account?.phone ?? '',
+    fax: account?.fax ?? '',
+    language: account?.language ?? language,
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const isRTL = language === 'he';
-  const customerId = account?.id ?? '1045';
+  const customerId = profileAccount?.id ?? account?.id ?? '1045';
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [creditSummary, setCreditSummary] = useState<CustomerCreditResponse | null>(null);
   const [creditError, setCreditError] = useState<string | null>(null);
@@ -71,6 +85,25 @@ export default function AccountPage({ onNavigate, account }: AccountPageProps) {
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [addressFormMessage, setAddressFormMessage] = useState<string | null>(null);
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProfileAccount(account ?? null);
+  }, [account]);
+
+  useEffect(() => {
+    const source = profileAccount ?? account ?? null;
+
+    setProfileForm({
+      firstName: source?.firstName ?? '',
+      lastName: source?.lastName ?? '',
+      email: source?.email ?? '',
+      phone: source?.phone ?? '',
+      fax: source?.fax ?? '',
+      language: source?.language ?? language,
+    });
+    setProfileMessage(null);
+    setProfileError(null);
+  }, [account, language, profileAccount]);
 
   const fallbackProfile = useMemo(
     () => ({
@@ -86,17 +119,17 @@ export default function AccountPage({ onNavigate, account }: AccountPageProps) {
   );
 
   const customerProfile = useMemo(() => {
-    const fullName = [account?.firstName, account?.lastName].filter(Boolean).join(' ').trim();
+    const fullName = [profileAccount?.firstName, profileAccount?.lastName].filter(Boolean).join(' ').trim();
 
     const languagePreference =
-      account?.language === 'en'
+      profileAccount?.language === 'en'
         ? { he: 'אנגלית', en: 'English' }
-        : account?.language === 'he'
+        : profileAccount?.language === 'he'
           ? { he: 'עברית', en: 'Hebrew' }
           : fallbackProfile.languagePreference;
 
-    const customerType = account?.customerType
-      ? { he: account.customerType, en: account.customerType }
+    const customerType = profileAccount?.customerType
+      ? { he: profileAccount.customerType, en: profileAccount.customerType }
       : fallbackProfile.customerType;
 
     return {
@@ -105,13 +138,13 @@ export default function AccountPage({ onNavigate, account }: AccountPageProps) {
         he: fullName || fallbackProfile.name.he,
         en: fullName || fallbackProfile.name.en,
       },
-      email: account?.email ?? fallbackProfile.email,
-      phone: account?.phone ?? fallbackProfile.phone,
-      id: account?.id ? `#${account.id}` : fallbackProfile.id,
+      email: profileAccount?.email ?? fallbackProfile.email,
+      phone: profileAccount?.phone ?? fallbackProfile.phone,
+      id: profileAccount?.id ? `#${profileAccount.id}` : fallbackProfile.id,
       customerType,
       languagePreference,
     };
-  }, [account, fallbackProfile]);
+  }, [fallbackProfile, profileAccount]);
 
   const defaultShippingAddresses: CustomerShippingAddress[] = [
     {
@@ -342,6 +375,56 @@ export default function AccountPage({ onNavigate, account }: AccountPageProps) {
     };
   });
 
+  const handleProfileInputChange =
+    (field: keyof typeof profileForm) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setProfileForm((previous) => ({
+        ...previous,
+        [field]: event.target.value,
+      }));
+    };
+
+  const handleSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setProfileError(null);
+    setProfileMessage(null);
+
+    const firstName = profileForm.firstName.trim();
+    const lastName = profileForm.lastName.trim();
+    const preferredLanguage = profileForm.language === 'he' || profileForm.language === 'en' ? profileForm.language : null;
+
+    if (!firstName || !lastName) {
+      setProfileError(t('account.profile.nameRequired'));
+      return;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+      const updatedAccount = await updateCustomerProfile(customerId, {
+        firstName,
+        lastName,
+        email: profileForm.email.trim() || undefined,
+        phone: profileForm.phone.trim() || undefined,
+        fax: profileForm.fax.trim() || undefined,
+        language: preferredLanguage,
+      });
+
+      setProfileAccount(updatedAccount);
+      onAccountUpdate?.(updatedAccount);
+      setProfileMessage(t('account.profile.success'));
+
+      if (updatedAccount.language && updatedAccount.language !== language) {
+        setLanguage(updatedAccount.language);
+      }
+    } catch (error) {
+      console.error('Failed to save customer profile', error);
+      const message = error instanceof Error ? error.message : t('account.profile.error');
+      setProfileError(message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const handleAddressInputChange = (field: keyof CustomerShippingAddressInput) =>
     (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const target = event.target as HTMLInputElement;
@@ -441,6 +524,111 @@ export default function AccountPage({ onNavigate, account }: AccountPageProps) {
 
   const renderOverview = () => (
     <div className="space-y-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm text-gray-500 uppercase tracking-wide">{t('account.customerDetails')}</p>
+            <h2 className="text-xl font-semibold text-gray-900">{t('account.profile.title')}</h2>
+            <p className="text-sm text-gray-600">{t('account.profile.description')}</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="profile-first-name">
+                {t('account.profile.firstName')}
+              </label>
+              <input
+                id="profile-first-name"
+                value={profileForm.firstName}
+                onChange={handleProfileInputChange('firstName')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="profile-last-name">
+                {t('account.profile.lastName')}
+              </label>
+              <input
+                id="profile-last-name"
+                value={profileForm.lastName}
+                onChange={handleProfileInputChange('lastName')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="profile-email">
+                {t('account.profile.email')}
+              </label>
+              <input
+                id="profile-email"
+                type="email"
+                value={profileForm.email}
+                onChange={handleProfileInputChange('email')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="profile-phone">
+                {t('account.profile.phone')}
+              </label>
+              <input
+                id="profile-phone"
+                value={profileForm.phone}
+                onChange={handleProfileInputChange('phone')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="profile-fax">
+                {t('account.profile.fax')}
+              </label>
+              <input
+                id="profile-fax"
+                value={profileForm.fax}
+                onChange={handleProfileInputChange('fax')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700" htmlFor="profile-language">
+                {t('account.profile.language')}
+              </label>
+              <select
+                id="profile-language"
+                value={profileForm.language || ''}
+                onChange={handleProfileInputChange('language')}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="">{t('account.profile.languagePlaceholder')}</option>
+                <option value="he">{t('account.profile.languageHebrew')}</option>
+                <option value="en">{t('account.profile.languageEnglish')}</option>
+              </select>
+            </div>
+          </div>
+
+          {profileError && (
+            <p className="text-sm text-red-600" role="alert">
+              {profileError}
+            </p>
+          )}
+          {profileMessage && <p className="text-sm text-green-700">{profileMessage}</p>}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSavingProfile}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-yellow-700 rounded-lg hover:bg-yellow-800 disabled:opacity-60"
+            >
+              {isSavingProfile ? t('account.profile.saving') : t('account.profile.save')}
+            </button>
+          </div>
+        </form>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
