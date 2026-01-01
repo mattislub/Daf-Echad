@@ -1,5 +1,6 @@
 import { Author, Book, Category, Publisher } from '../types/catalog';
 import { DatabaseSchemaTable } from '../types/database';
+import { CustomerAccount } from '../types';
 
 export interface CustomerCreditEntry {
   id: string;
@@ -325,4 +326,30 @@ If you did not request this, you can ignore this message.`;
     text: bodyText,
     html: bodyHtml,
   });
+}
+
+export interface CustomerLoginPayload {
+  email: string;
+  password: string;
+}
+
+export async function loginCustomer(payload: CustomerLoginPayload): Promise<CustomerAccount> {
+  const response = await fetch(buildApiUrl('/customers/login'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = data?.message || `Login failed: ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  if (!data?.customer) {
+    throw new Error('Login failed: invalid server response');
+  }
+
+  return data.customer as CustomerAccount;
 }

@@ -417,6 +417,18 @@ function mapCustomerRow(row, languageMap = new Map()) {
   };
 }
 
+function mapCustomerAccount(row) {
+  return {
+    id: row.ID ? String(row.ID) : row.id ? String(row.id) : '',
+    email: row.email ?? row.username ?? '',
+    firstName: row.fname ?? row.first_name ?? '',
+    lastName: row.lname ?? row.last_name ?? '',
+    phone: row.telno ?? row.phone ?? null,
+    language: row.lang ? (String(row.lang).toLowerCase().startsWith('he') ? 'he' : 'en') : null,
+    customerType: row.ctype ?? row.customer_type ?? null,
+  };
+}
+
 function buildSizeMap(sizeRows = []) {
   return sizeRows.reduce((map, row) => {
     const code = row.lvalue ?? row.code ?? row.ID ?? row.id;
@@ -1146,6 +1158,41 @@ app.get('/api/db-tables/:tableName/data', async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/api/customers/login', async (req, res) => {
+  const email = (req.body?.email || '').toString().trim();
+  const password = (req.body?.password || '').toString();
+
+  if (!email || !password) {
+    return res.status(400).json({ status: 'error', message: 'Email and password are required' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT ID, email, fname, lname, telno, lang, ctype, username, pass
+       FROM custe
+       WHERE LOWER(email) = LOWER(?)
+       LIMIT 1`,
+      [email],
+    );
+
+    const customer = rows?.[0];
+
+    if (!customer || String(customer.pass ?? '') !== password) {
+      return res.status(401).json({ status: 'error', message: 'Invalid email or password' });
+    }
+
+    const normalizedCustomer = mapCustomerAccount(customer);
+
+    return res.json({ status: 'ok', customer: normalizedCustomer });
+  } catch (error) {
+    console.error('Error during customer login:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Unable to sign in at this time',
     });
   }
 });

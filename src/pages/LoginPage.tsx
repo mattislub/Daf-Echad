@@ -3,7 +3,8 @@ import { ArrowRight, Home, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-reac
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { sendAccountAccessEmail } from '../services/api';
+import { loginCustomer, sendAccountAccessEmail } from '../services/api';
+import { CustomerAccount } from '../types';
 
 interface LoginPageProps {
   onNavigate?: (page: string) => void;
@@ -18,17 +19,42 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountEmail, setAccountEmail] = useState('');
+  const [loginStatus, setLoginStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [loginError, setLoginError] = useState('');
+  const [customerProfile, setCustomerProfile] = useState<CustomerAccount | null>(null);
   const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [requestError, setRequestError] = useState('');
 
   const emailDirection = email ? detectTextDirection(email) : isRTL ? 'rtl' : 'ltr';
   const accountEmailDirection = accountEmail ? detectTextDirection(accountEmail) : isRTL ? 'rtl' : 'ltr';
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!email || !password) return;
+    if (!email || !password) {
+      setLoginError(t('login.error.missingFields'));
+      setLoginStatus('error');
+      return;
+    }
 
-    console.info('Login attempt', { email });
+    setLoginStatus('loading');
+    setLoginError('');
+
+    try {
+      const profile = await loginCustomer({ email, password });
+      setCustomerProfile(profile);
+      setLoginStatus('success');
+      setLoginError('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const normalizedMessage = message.toLowerCase();
+      const userFriendlyMessage = normalizedMessage.includes('invalid email or password')
+        ? t('login.error.invalidCredentials')
+        : t('login.error.generic');
+
+      setCustomerProfile(null);
+      setLoginStatus('error');
+      setLoginError(userFriendlyMessage);
+    }
   };
 
   const handleAccountRequest = async (event: FormEvent) => {
@@ -141,12 +167,29 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
                   <button
                     type="submit"
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-3 text-sm font-semibold text-white shadow-md hover:from-yellow-800 hover:to-yellow-700 disabled:opacity-60"
-                    disabled={!email || !password}
+                    disabled={!email || !password || loginStatus === 'loading'}
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    {t('login.submit')}
+                    {loginStatus === 'loading' ? t('login.status.loading') : t('login.submit')}
                     <ArrowRight className="w-4 h-4" />
                   </button>
+
+                  {loginError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {loginError}
+                    </div>
+                  )}
+
+                  {loginStatus === 'success' && customerProfile && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 space-y-1">
+                      <p className="font-semibold">{t('login.status.success')}</p>
+                      <p className="text-green-900">
+                        {customerProfile.firstName || customerProfile.lastName
+                          ? `${customerProfile.firstName ?? ''} ${customerProfile.lastName ?? ''}`.trim()
+                          : customerProfile.email}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <div className="flex-1 h-px bg-gray-200" />
