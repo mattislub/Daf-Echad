@@ -1,4 +1,5 @@
 import { Book } from './catalog';
+import { CustomerAccount } from './customer';
 
 export interface CartItem {
   id: Book['id'];
@@ -13,3 +14,4 @@ export interface CartItem {
 
 export type Language = 'he' | 'en';
 export type Currency = 'ILS' | 'USD';
+export type { CustomerAccount };
