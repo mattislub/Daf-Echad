@@ -383,6 +383,7 @@ function App() {
               paymentCheckoutUrl={paymentCheckoutUrl}
               paymentOrderId={paymentOrderId}
               customerAccount={customerAccount}
+              onAccountUpdate={setCustomerAccount}
             />
           </SearchProvider>
         </WishlistProvider>
@@ -403,6 +404,7 @@ interface AppContentProps {
   paymentCheckoutUrl: string | null;
   paymentOrderId: string | null;
   customerAccount: CustomerAccount | null;
+  onAccountUpdate?: (account: CustomerAccount) => void;
 }
 
 function AppContent({
@@ -417,6 +419,7 @@ function AppContent({
   paymentCheckoutUrl,
   paymentOrderId,
   customerAccount,
+  onAccountUpdate,
 }: AppContentProps) {
   const { language, t } = useLanguage();
 
@@ -466,7 +469,7 @@ function AppContent({
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
       {currentPage === 'wishlist' && <WishlistPage onNavigate={onNavigate} />}
       {currentPage === 'account' && (
-        <AccountPage onNavigate={onNavigate} account={customerAccount} />
+        <AccountPage onNavigate={onNavigate} account={customerAccount} onAccountUpdate={onAccountUpdate} />
       )}
       {currentPage === 'login' && (
         <LoginPage onNavigate={onNavigate} onLoginSuccess={onLoginSuccess} />

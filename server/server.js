@@ -424,6 +424,7 @@ function mapCustomerAccount(row) {
     firstName: row.fname ?? row.first_name ?? '',
     lastName: row.lname ?? row.last_name ?? '',
     phone: row.telno ?? row.phone ?? null,
+    fax: row.fax ?? null,
     language: row.lang ? (String(row.lang).toLowerCase().startsWith('he') ? 'he' : 'en') : null,
     customerType: row.ctype ?? row.customer_type ?? null,
   };
@@ -1172,7 +1173,7 @@ app.post('/api/customers/login', async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT ID, email, fname, lname, telno, lang, ctype, username, pass
+      `SELECT ID, email, fname, lname, telno, fax, lang, ctype, username, pass
        FROM custe
        WHERE LOWER(email) = LOWER(?)
        LIMIT 1`,
@@ -1193,6 +1194,66 @@ app.post('/api/customers/login', async (req, res) => {
     return res.status(500).json({
       status: 'error',
       message: 'Unable to sign in at this time',
+    });
+  }
+});
+
+app.put('/api/customers/:id/profile', async (req, res) => {
+  const customerId = req.params.id;
+  const firstName = (req.body?.firstName ?? '').toString().trim();
+  const lastName = (req.body?.lastName ?? '').toString().trim();
+  const phone = (req.body?.phone ?? '').toString().trim();
+  const email = (req.body?.email ?? '').toString().trim();
+  const fax = (req.body?.fax ?? '').toString().trim();
+  const language = (req.body?.language ?? '').toString().trim();
+
+  if (!customerId) {
+    return res.status(400).json({ status: 'error', message: 'Customer ID is required' });
+  }
+
+  if (!firstName || !lastName) {
+    return res.status(400).json({ status: 'error', message: 'First and last name are required' });
+  }
+
+  const updates = [
+    { column: 'fname', value: firstName },
+    { column: 'lname', value: lastName },
+  ];
+
+  if (phone) updates.push({ column: 'telno', value: phone });
+  if (email) updates.push({ column: 'email', value: email });
+  if (fax) updates.push({ column: 'fax', value: fax });
+  if (language) updates.push({ column: 'lang', value: language.toLowerCase().startsWith('he') ? 'he' : 'en' });
+
+  if (!updates.length) {
+    return res.status(400).json({ status: 'error', message: 'No profile fields to update' });
+  }
+
+  const setClauses = updates.map((entry) => `${entry.column} = ?`).join(', ');
+  const values = updates.map((entry) => entry.value);
+
+  try {
+    const [result] = await pool.query(`UPDATE custe SET ${setClauses} WHERE ID = ?`, [...values, customerId]);
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ status: 'error', message: 'Customer not found' });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT ID, email, fname, lname, telno, fax, lang, ctype, username, pass
+       FROM custe
+       WHERE ID = ?
+       LIMIT 1`,
+      [customerId],
+    );
+
+    const updatedCustomer = mapCustomerAccount(rows?.[0] || {});
+    return res.json({ status: 'ok', customer: updatedCustomer });
+  } catch (error) {
+    console.error('Error updating customer profile:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unable to update profile',
     });
   }
 });
