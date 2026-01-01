@@ -8,12 +8,13 @@ import { CustomerAccount } from '../types';
 
 interface LoginPageProps {
   onNavigate?: (page: string) => void;
+  onLoginSuccess?: (account: CustomerAccount) => void;
 }
 
 const hebrewCharRegex = /\p{Script=Hebrew}/u;
 const detectTextDirection = (value: string) => (hebrewCharRegex.test(value) ? 'rtl' : 'ltr');
 
-export default function LoginPage({ onNavigate }: LoginPageProps) {
+export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps) {
   const { language, t } = useLanguage();
   const isRTL = language === 'he';
   const [email, setEmail] = useState('');
@@ -44,6 +45,7 @@ export default function LoginPage({ onNavigate }: LoginPageProps) {
       setCustomerProfile(profile);
       setLoginStatus('success');
       setLoginError('');
+      onLoginSuccess?.(profile);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const normalizedMessage = message.toLowerCase();

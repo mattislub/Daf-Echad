@@ -16,6 +16,7 @@ import {
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
+import { CustomerAccount } from '../types';
 import {
   CustomerCreditEntry,
   CustomerCreditResponse,
@@ -30,6 +31,7 @@ import TrackingWidget from '../components/TrackingWidget';
 
 interface AccountPageProps {
   onNavigate?: (page: string) => void;
+  account?: CustomerAccount | null;
 }
 
 interface OrderItem {
@@ -53,10 +55,10 @@ interface AddressItem {
 const tabOrder = ['overview', 'orders', 'addresses', 'preferences', 'support'] as const;
 type TabId = (typeof tabOrder)[number];
 
-export default function AccountPage({ onNavigate }: AccountPageProps) {
+export default function AccountPage({ onNavigate, account }: AccountPageProps) {
   const { language, currency, t } = useLanguage();
   const isRTL = language === 'he';
-  const customerId = '1045';
+  const customerId = account?.id ?? '1045';
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [creditSummary, setCreditSummary] = useState<CustomerCreditResponse | null>(null);
   const [creditError, setCreditError] = useState<string | null>(null);
@@ -70,15 +72,46 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
   const [addressFormMessage, setAddressFormMessage] = useState<string | null>(null);
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
 
-  const customerProfile = {
-    name: { he: 'אברהם כהן', en: 'Avraham Cohen' },
-    email: 'avraham.cohen@example.com',
-    phone: '+972-52-123-4567',
-    city: { he: 'ירושלים', en: 'Jerusalem' },
-    id: `#${customerId}`,
-    customerType: { he: 'לקוח פרטי', en: 'Personal customer' },
-    languagePreference: { he: 'עברית', en: 'Hebrew' },
-  } as const;
+  const fallbackProfile = useMemo(
+    () => ({
+      name: { he: 'אברהם כהן', en: 'Avraham Cohen' },
+      email: 'avraham.cohen@example.com',
+      phone: '+972-52-123-4567',
+      city: { he: 'ירושלים', en: 'Jerusalem' },
+      id: '#1045',
+      customerType: { he: 'לקוח פרטי', en: 'Personal customer' },
+      languagePreference: { he: 'עברית', en: 'Hebrew' },
+    }),
+    [],
+  );
+
+  const customerProfile = useMemo(() => {
+    const fullName = [account?.firstName, account?.lastName].filter(Boolean).join(' ').trim();
+
+    const languagePreference =
+      account?.language === 'en'
+        ? { he: 'אנגלית', en: 'English' }
+        : account?.language === 'he'
+          ? { he: 'עברית', en: 'Hebrew' }
+          : fallbackProfile.languagePreference;
+
+    const customerType = account?.customerType
+      ? { he: account.customerType, en: account.customerType }
+      : fallbackProfile.customerType;
+
+    return {
+      ...fallbackProfile,
+      name: {
+        he: fullName || fallbackProfile.name.he,
+        en: fullName || fallbackProfile.name.en,
+      },
+      email: account?.email ?? fallbackProfile.email,
+      phone: account?.phone ?? fallbackProfile.phone,
+      id: account?.id ? `#${account.id}` : fallbackProfile.id,
+      customerType,
+      languagePreference,
+    };
+  }, [account, fallbackProfile]);
 
   const defaultShippingAddresses: CustomerShippingAddress[] = [
     {
@@ -209,6 +242,17 @@ export default function AccountPage({ onNavigate }: AccountPageProps) {
     }),
     [],
   );
+
+  useEffect(() => {
+    setCreditSummary(null);
+    setCreditError(null);
+    setShippingAddresses([]);
+    setAddressesError(null);
+    setSelectedAddressId('new');
+    setAddressForm(mapAddressToFormState());
+    setAddressFormMessage(null);
+    setAddressFormError(null);
+  }, [customerId, mapAddressToFormState]);
 
   const loadCustomerCredit = useCallback(async () => {
     setIsCreditLoading(true);

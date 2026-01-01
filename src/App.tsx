@@ -23,6 +23,7 @@ import WishlistPage from './pages/WishlistPage';
 import TrackingPage from './pages/TrackingPage';
 import DatabasePage from './pages/DatabasePage';
 import { Book } from './types/catalog';
+import { CustomerAccount } from './types';
 import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
 import { Loader2 } from 'lucide-react';
@@ -99,6 +100,7 @@ function App() {
   const [catalogFiltersFromUrl, setCatalogFiltersFromUrl] = useState<string[]>([]);
   const [paymentCheckoutUrl, setPaymentCheckoutUrl] = useState<string | null>(null);
   const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
+  const [customerAccount, setCustomerAccount] = useState<CustomerAccount | null>(null);
 
   const getBookSlug = useCallback((book: Book | undefined) => {
     if (!book) return '';
@@ -176,6 +178,11 @@ function App() {
     setCurrentPage(page);
     setSelectedBookId(null);
     updateHashForPage(page);
+  };
+
+  const handleLoginSuccess = (account: CustomerAccount) => {
+    setCustomerAccount(account);
+    handleNavigate('account');
   };
 
   useEffect(() => {
@@ -368,12 +375,14 @@ function App() {
               currentPage={currentPage}
               selectedBookId={selectedBookId}
               onNavigate={handleNavigate}
+              onLoginSuccess={handleLoginSuccess}
               books={books}
               loadingBooks={loadingBooks}
               pendingSlug={pendingSlug}
               catalogFiltersFromUrl={catalogFiltersFromUrl}
               paymentCheckoutUrl={paymentCheckoutUrl}
               paymentOrderId={paymentOrderId}
+              customerAccount={customerAccount}
             />
           </SearchProvider>
         </WishlistProvider>
@@ -386,24 +395,28 @@ interface AppContentProps {
   currentPage: string;
   selectedBookId: string | null;
   onNavigate: (page: string, bookId?: string) => void;
+  onLoginSuccess: (account: CustomerAccount) => void;
   books: Book[];
   loadingBooks: boolean;
   pendingSlug: string | null;
   catalogFiltersFromUrl: string[];
   paymentCheckoutUrl: string | null;
   paymentOrderId: string | null;
+  customerAccount: CustomerAccount | null;
 }
 
 function AppContent({
   currentPage,
   selectedBookId,
   onNavigate,
+  onLoginSuccess,
   books,
   loadingBooks,
   pendingSlug,
   catalogFiltersFromUrl,
   paymentCheckoutUrl,
   paymentOrderId,
+  customerAccount,
 }: AppContentProps) {
   const { language, t } = useLanguage();
 
@@ -452,8 +465,12 @@ function AppContent({
       )}
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
       {currentPage === 'wishlist' && <WishlistPage onNavigate={onNavigate} />}
-      {currentPage === 'account' && <AccountPage onNavigate={onNavigate} />}
-      {currentPage === 'login' && <LoginPage onNavigate={onNavigate} />}
+      {currentPage === 'account' && (
+        <AccountPage onNavigate={onNavigate} account={customerAccount} />
+      )}
+      {currentPage === 'login' && (
+        <LoginPage onNavigate={onNavigate} onLoginSuccess={onLoginSuccess} />
+      )}
       {currentPage === 'about' && <AboutPage onNavigate={onNavigate} />}
       {currentPage === 'contact' && <ContactPage onNavigate={onNavigate} />}
       {currentPage === 'tracking' && <TrackingPage onNavigate={onNavigate} />}
