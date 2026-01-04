@@ -386,3 +386,24 @@ export async function updateCustomerProfile(
 
   return data.customer as CustomerAccount;
 }
+
+export async function requestTemporaryPassword({
+  email,
+  language,
+}: {
+  email: string;
+  language: 'he' | 'en';
+}): Promise<void> {
+  const response = await fetch(buildApiUrl('/customers/password-reset'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, language }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = data?.message || `Password reset failed: ${response.statusText}`;
+    throw new Error(message);
+  }
+}
