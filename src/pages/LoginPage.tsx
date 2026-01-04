@@ -3,7 +3,7 @@ import { ArrowRight, Home, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-reac
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { loginCustomer, sendAccountAccessEmail } from '../services/api';
+import { loginCustomer, requestTemporaryPassword, sendAccountAccessEmail } from '../services/api';
 import { CustomerAccount } from '../types';
 
 interface LoginPageProps {
@@ -20,14 +20,18 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountEmail, setAccountEmail] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
   const [loginStatus, setLoginStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [loginError, setLoginError] = useState('');
   const [customerProfile, setCustomerProfile] = useState<CustomerAccount | null>(null);
   const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [requestError, setRequestError] = useState('');
+  const [resetStatus, setResetStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [resetError, setResetError] = useState('');
 
   const emailDirection = email ? detectTextDirection(email) : isRTL ? 'rtl' : 'ltr';
   const accountEmailDirection = accountEmail ? detectTextDirection(accountEmail) : isRTL ? 'rtl' : 'ltr';
+  const resetEmailDirection = resetEmail ? detectTextDirection(resetEmail) : isRTL ? 'rtl' : 'ltr';
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -73,6 +77,23 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     } catch (error) {
       setRequestStatus('error');
       setRequestError(error instanceof Error ? error.message : t('login.accountRequestError'));
+    }
+  };
+
+  const handlePasswordReset = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!resetEmail) return;
+
+    setResetStatus('loading');
+    setResetError('');
+
+    try {
+      await requestTemporaryPassword({ email: resetEmail, language });
+      setResetStatus('success');
+    } catch (error) {
+      setResetStatus('error');
+      setResetError(error instanceof Error ? error.message : t('login.resetError'));
     }
   };
 
@@ -156,15 +177,23 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-sm text-gray-700">
-                    <label className="inline-flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="rounded border-gray-300 text-yellow-700 focus:ring-yellow-500" />
-                      <span className="font-medium">{t('login.remember')}</span>
-                    </label>
-                    <button type="button" className="font-semibold text-yellow-700 hover:text-yellow-800">
-                      {t('login.forgot')}
-                    </button>
-                  </div>
+                <div className="flex items-center justify-between text-sm text-gray-700">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="rounded border-gray-300 text-yellow-700 focus:ring-yellow-500" />
+                    <span className="font-medium">{t('login.remember')}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const resetInput = document.getElementById('reset-email');
+                      resetInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      resetInput?.focus();
+                    }}
+                    className="font-semibold text-yellow-700 hover:text-yellow-800"
+                  >
+                    {t('login.forgot')}
+                  </button>
+                </div>
 
                   <button
                     type="submit"
@@ -272,9 +301,69 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   </p>
                 )}
 
-                {requestStatus === 'error' && (
+                    {requestStatus === 'error' && (
                   <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                     {requestError || t('login.accountRequestError')}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-white border border-blue-100 rounded-2xl shadow-sm p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-blue-700" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-800">{t('login.resetTitle')}</p>
+                    <p className="text-gray-700">{t('login.resetDescription')}</p>
+                  </div>
+                </div>
+
+                <form className="grid grid-cols-1 md:grid-cols-[1.2fr,auto] gap-3" onSubmit={handlePasswordReset}>
+                  <div className="relative">
+                    <Mail
+                      className={`w-4 h-4 text-gray-400 absolute ${
+                        resetEmailDirection === 'rtl' ? 'right-3' : 'left-3'
+                      } top-1/2 -translate-y-1/2`}
+                    />
+                    <input
+                      id="reset-email"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(event) => {
+                        setResetEmail(event.target.value);
+                        if (resetStatus !== 'idle') {
+                          setResetStatus('idle');
+                          setResetError('');
+                        }
+                      }}
+                      dir={resetEmailDirection}
+                      className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-blue-500 focus:ring-blue-200 ${
+                        resetEmailDirection === 'rtl' ? 'pr-10' : 'pl-10'
+                      }`}
+                      placeholder={t('login.resetPlaceholder')}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!resetEmail || resetStatus === 'loading'}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    {resetStatus === 'loading' ? t('login.resetWorking') : t('login.resetSubmit')}
+                  </button>
+                </form>
+
+                {resetStatus === 'success' && (
+                  <p className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                    {t('login.resetSuccess')}
+                  </p>
+                )}
+
+                {resetStatus === 'error' && (
+                  <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    {resetError || t('login.resetError')}
                   </p>
                 )}
               </div>

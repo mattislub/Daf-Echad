@@ -430,6 +430,20 @@ function mapCustomerAccount(row) {
   };
 }
 
+function generateTemporaryPassword(length = 10) {
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#%*';
+  const randomBytes = crypto.randomBytes(length);
+
+  let password = '';
+
+  for (let index = 0; index < length; index += 1) {
+    const byte = randomBytes[index];
+    password += charset[byte % charset.length];
+  }
+
+  return password;
+}
+
 function buildSizeMap(sizeRows = []) {
   return sizeRows.reduce((map, row) => {
     const code = row.lvalue ?? row.code ?? row.ID ?? row.id;
@@ -1194,6 +1208,102 @@ app.post('/api/customers/login', async (req, res) => {
     return res.status(500).json({
       status: 'error',
       message: 'Unable to sign in at this time',
+    });
+  }
+});
+
+app.post('/api/customers/password-reset', async (req, res) => {
+  const email = (req.body?.email || '').toString().trim();
+  const language = (req.body?.language || '').toString().toLowerCase().startsWith('he') ? 'he' : 'en';
+
+  if (!email) {
+    return res.status(400).json({ status: 'error', message: 'Email is required' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT ID, email, fname, lname, lang
+       FROM custe
+       WHERE LOWER(email) = LOWER(?)
+       LIMIT 1`,
+      [email],
+    );
+
+    const customer = rows?.[0];
+
+    if (!customer) {
+      // Avoid leaking which emails exist.
+      return res.json({
+        status: 'ok',
+        message:
+          language === 'he'
+            ? 'אם החשבון קיים שלחנו סיסמה זמנית למייל'
+            : 'If the account exists, we sent a temporary password to the email address',
+      });
+    }
+
+    const temporaryPassword = generateTemporaryPassword();
+    const customerId = customer.ID;
+
+    await pool.query(`UPDATE custe SET pass = ? WHERE ID = ?`, [temporaryPassword, customerId]);
+
+    const subject =
+      language === 'he'
+        ? 'שחזור גישה לדף אחד - סיסמה זמנית'
+        : 'Daf Echad access recovery - temporary password';
+
+    const greetingName = customer.fname || customer.lname ? `${customer.fname ?? ''} ${customer.lname ?? ''}`.trim() : '';
+    const displayName = greetingName || (language === 'he' ? 'לקוח יקר/ה' : 'Dear customer');
+
+    const bodyText =
+      language === 'he'
+        ? `שלום ${displayName},
+קיבלתם סיסמה זמנית עבור החשבון שלכם בדף אחד.
+
+סיסמה זמנית: ${temporaryPassword}
+
+הסיסמה תקפה לזמן מוגבל. אנו ממליצים להיכנס למערכת ולעדכן סיסמה קבועה באזור הפרופיל שלכם.
+אם לא ביקשתם שחזור - ניתן להתעלם מהמייל והסיסמה תישאר ללא שינוי.`
+        : `Hello ${displayName},
+We generated a temporary password for your Daf Echad account.
+
+Temporary password: ${temporaryPassword}
+
+The password is valid for a limited time. Please sign in and change it to a permanent password in your profile.
+If you did not request a reset, you can ignore this email and your password will remain unchanged.`;
+
+    const bodyHtml =
+      language === 'he'
+        ? `<p>שלום ${displayName},</p>
+<p>יצרנו עבורכם סיסמה זמנית לחשבון בדף אחד.</p>
+<p><strong>סיסמה זמנית: ${temporaryPassword}</strong></p>
+<p>הסיסמה תקפה לזמן מוגבל. מומלץ להתחבר ולעדכן סיסמה קבועה באזור הפרופיל.</p>
+<p>אם לא ביקשתם שחזור, ניתן להתעלם מהמייל והסיסמה תישאר ללא שינוי.</p>`
+        : `<p>Hello ${displayName},</p>
+<p>We generated a temporary password for your Daf Echad account.</p>
+<p><strong>Temporary password: ${temporaryPassword}</strong></p>
+<p>The password is valid for a limited time. Please sign in and change it to a permanent password in your profile.</p>
+<p>If you did not request a reset, you can ignore this email and your password will remain unchanged.</p>`;
+
+    await sendEmail({
+      to: email,
+      subject,
+      text: bodyText,
+      html: bodyHtml,
+    });
+
+    return res.json({
+      status: 'ok',
+      message:
+        language === 'he'
+          ? 'שלחנו סיסמה זמנית למייל שלכם'
+          : 'We sent a temporary password to your email address',
+    });
+  } catch (error) {
+    console.error('Error sending temporary password:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unable to send temporary password',
     });
   }
 });
