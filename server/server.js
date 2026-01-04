@@ -1292,6 +1292,12 @@ If you did not request a reset, you can ignore this email and your password will
       html: bodyHtml,
     });
 
+    console.info('Temporary password email sent', {
+      customerId,
+      email,
+      language,
+    });
+
     return res.json({
       status: 'ok',
       message:
