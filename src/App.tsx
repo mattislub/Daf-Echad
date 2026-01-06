@@ -18,6 +18,7 @@ import ContactPage from './pages/ContactPage';
 import PoliciesPage from './pages/PoliciesPage';
 import TermsPage from './pages/TermsPage';
 import AdminPage from './pages/AdminPage';
+import AdminCustomersPage from './pages/AdminCustomersPage';
 import PaymentPage from './pages/PaymentPage';
 import WishlistPage from './pages/WishlistPage';
 import TrackingPage from './pages/TrackingPage';
@@ -338,6 +339,12 @@ function App() {
           setPendingSlug(null);
           setCatalogFiltersFromUrl([]);
           break;
+        case 'admin-customers':
+          setCurrentPage('admin-customers');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
+          break;
         case 'payment':
           setCurrentPage('payment');
           setSelectedBookId(null);
@@ -480,6 +487,7 @@ function AppContent({
       {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
       {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
       {currentPage === 'admin' && <AdminPage onNavigate={onNavigate} />}
+      {currentPage === 'admin-customers' && <AdminCustomersPage onNavigate={onNavigate} />}
       {currentPage === 'database' && <DatabasePage onNavigate={onNavigate} />}
       {currentPage === 'payment' && (
         <PaymentPage

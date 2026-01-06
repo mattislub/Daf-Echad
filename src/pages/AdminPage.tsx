@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   Wrench,
   ArrowRight,
+  Users,
 } from 'lucide-react';
 
 interface AdminOrder {
@@ -444,6 +445,21 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
           </p>
         </section>
       </div>
+
+      <section className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl border border-amber-100 shadow-sm p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm text-amber-700 font-semibold">{t('admin.customersPage.title')}</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t('admin.customersPage.subtitle')}</h2>
+          <p className="text-sm text-gray-700 max-w-2xl">{t('admin.customersPage.previewDescription')}</p>
+        </div>
+        <button
+          onClick={() => onNavigate?.('admin-customers')}
+          className="inline-flex items-center gap-2 px-4 py-3 bg-yellow-700 text-white text-sm font-semibold rounded-lg shadow hover:bg-yellow-800"
+        >
+          {t('admin.customersPage.open')}
+          <Users className="w-4 h-4" />
+        </button>
+      </section>
 
       <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
