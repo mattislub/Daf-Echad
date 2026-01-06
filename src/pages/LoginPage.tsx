@@ -3,7 +3,13 @@ import { ArrowRight, Home, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-reac
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { loginCustomer, requestTemporaryPassword, sendAccountAccessEmail } from '../services/api';
+import {
+  loginCustomer,
+  requestTemporaryPassword,
+  sendAccountAccessEmail,
+  requestCustomerEmailLoginCode,
+  verifyCustomerEmailLoginCode,
+} from '../services/api';
 import { CustomerAccount } from '../types';
 
 interface LoginPageProps {
@@ -24,6 +30,10 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   const [loginStatus, setLoginStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [loginError, setLoginError] = useState('');
   const [customerProfile, setCustomerProfile] = useState<CustomerAccount | null>(null);
+  const [loginMethod, setLoginMethod] = useState<'password' | 'email'>('password');
+  const [emailCode, setEmailCode] = useState('');
+  const [emailCodeStatus, setEmailCodeStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [emailCodeError, setEmailCodeError] = useState('');
   const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [requestError, setRequestError] = useState('');
   const [resetStatus, setResetStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -35,7 +45,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!email || !password) {
+    const isEmailLogin = loginMethod === 'email';
+    const missingPasswordFields = !email || !password;
+    const missingEmailCodeFields = !email || !emailCode;
+
+    if (isEmailLogin ? missingEmailCodeFields : missingPasswordFields) {
       setLoginError(t('login.error.missingFields'));
       setLoginStatus('error');
       return;
@@ -45,7 +59,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     setLoginError('');
 
     try {
-      const profile = await loginCustomer({ email, password });
+      const profile = isEmailLogin
+        ? await verifyCustomerEmailLoginCode({ email, code: emailCode })
+        : await loginCustomer({ email, password });
       setCustomerProfile(profile);
       setLoginStatus('success');
       setLoginError('');
@@ -53,13 +69,32 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const normalizedMessage = message.toLowerCase();
-      const userFriendlyMessage = normalizedMessage.includes('invalid email or password')
-        ? t('login.error.invalidCredentials')
-        : t('login.error.generic');
+      const userFriendlyMessage = (() => {
+        if (normalizedMessage.includes('invalid email or password')) return t('login.error.invalidCredentials');
+        if (normalizedMessage.includes('invalid code')) return t('login.error.invalidCode');
+        if (normalizedMessage.includes('expired') || normalizedMessage.includes('missing code')) return t('login.error.invalidCode');
+        if (normalizedMessage.includes('too many')) return t('login.error.tooManyAttempts');
+        return t('login.error.generic');
+      })();
 
       setCustomerProfile(null);
       setLoginStatus('error');
       setLoginError(userFriendlyMessage);
+    }
+  };
+
+  const handleEmailCodeRequest = async () => {
+    if (!email) return;
+
+    setEmailCodeStatus('loading');
+    setEmailCodeError('');
+
+    try {
+      await requestCustomerEmailLoginCode({ email, language });
+      setEmailCodeStatus('sent');
+    } catch (error) {
+      setEmailCodeStatus('error');
+      setEmailCodeError(error instanceof Error ? error.message : t('login.accountRequestError'));
     }
   };
 
@@ -129,6 +164,31 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   <p className="text-sm text-gray-600">{t('login.security')}</p>
                 </div>
 
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => setLoginMethod('password')}
+                    className={`px-3 py-2 rounded-lg border ${
+                      loginMethod === 'password'
+                        ? 'border-yellow-600 text-yellow-800 bg-yellow-50'
+                        : 'border-transparent text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {t('login.passwordMethod')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLoginMethod('email')}
+                    className={`px-3 py-2 rounded-lg border ${
+                      loginMethod === 'email'
+                        ? 'border-blue-600 text-blue-800 bg-blue-50'
+                        : 'border-transparent text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {t('login.emailMethod')}
+                  </button>
+                </div>
+
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-800" htmlFor="email">
@@ -146,7 +206,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                         type="email"
                         autoComplete="email"
                         value={email}
-                        onChange={(event) => setEmail(event.target.value)}
+                        onChange={(event) => {
+                          setEmail(event.target.value);
+                          setEmailCodeStatus('idle');
+                          setEmailCode('');
+                        }}
                         dir={emailDirection}
                         className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-yellow-500 focus:ring-yellow-200 ${
                           emailDirection === 'rtl' ? 'pr-10' : 'pl-10'
@@ -156,26 +220,74 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-800" htmlFor="password">
-                      {t('login.password')}
-                    </label>
-                    <div className="relative">
-                      <Lock className={`w-5 h-5 text-gray-400 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2`} />
-                      <input
-                        id="password"
-                        name="password"
-                        type="password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-yellow-500 focus:ring-yellow-200 ${
-                          isRTL ? 'pr-10' : 'pl-10'
-                        }`}
-                        placeholder="••••••••"
-                      />
+                  {loginMethod === 'password' ? (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-800" htmlFor="password">
+                        {t('login.password')}
+                      </label>
+                      <div className="relative">
+                        <Lock className={`w-5 h-5 text-gray-400 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2`} />
+                        <input
+                          id="password"
+                          name="password"
+                          type="password"
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-yellow-500 focus:ring-yellow-200 ${
+                            isRTL ? 'pr-10' : 'pl-10'
+                          }`}
+                          placeholder="••••••••"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-800" htmlFor="email-code">
+                        {t('login.emailCode')}
+                      </label>
+                      <div className="flex flex-col gap-3">
+                        <div className="relative">
+                          <ShieldCheck
+                            className={`w-5 h-5 text-gray-400 absolute ${
+                              emailDirection === 'rtl' ? 'right-3' : 'left-3'
+                            } top-1/2 -translate-y-1/2`}
+                          />
+                          <input
+                            id="email-code"
+                            name="email-code"
+                            type="text"
+                            inputMode="numeric"
+                            value={emailCode}
+                            onChange={(event) => setEmailCode(event.target.value)}
+                            className={`w-full rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm focus:border-blue-500 focus:ring-blue-200 ${
+                              emailDirection === 'rtl' ? 'pr-10' : 'pl-10'
+                            }`}
+                            placeholder={t('login.emailCodePlaceholder')}
+                          />
+                        </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={handleEmailCodeRequest}
+                            disabled={!email || emailCodeStatus === 'loading'}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60"
+                          >
+                            {emailCodeStatus === 'loading'
+                              ? t('login.emailCodeRequestWorking')
+                              : t('login.emailCodeRequest')}
+                          </button>
+                          {emailCodeStatus === 'sent' && (
+                            <span className="text-sm text-green-700">{t('login.emailCodeSent')}</span>
+                          )}
+                          {emailCodeStatus === 'error' && (
+                            <span className="text-sm text-red-700">{emailCodeError || t('login.accountRequestError')}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                 <div className="flex items-center justify-between text-sm text-gray-700">
                   <label className="inline-flex items-center gap-2 cursor-pointer">
@@ -198,7 +310,10 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   <button
                     type="submit"
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-3 text-sm font-semibold text-white shadow-md hover:from-yellow-800 hover:to-yellow-700 disabled:opacity-60"
-                    disabled={!email || !password || loginStatus === 'loading'}
+                    disabled={
+                      loginStatus === 'loading' ||
+                      (loginMethod === 'password' ? !email || !password : !email || !emailCode || emailCodeStatus !== 'sent')
+                    }
                   >
                     <ShieldCheck className="w-4 h-4" />
                     {loginStatus === 'loading' ? t('login.status.loading') : t('login.submit')}

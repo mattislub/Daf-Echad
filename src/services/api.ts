@@ -333,6 +333,16 @@ export interface CustomerLoginPayload {
   password: string;
 }
 
+export interface CustomerEmailLoginRequestPayload {
+  email: string;
+  language: 'he' | 'en';
+}
+
+export interface CustomerEmailLoginVerifyPayload {
+  email: string;
+  code: string;
+}
+
 export interface CustomerProfileUpdatePayload {
   firstName: string;
   lastName: string;
@@ -358,6 +368,45 @@ export async function loginCustomer(payload: CustomerLoginPayload): Promise<Cust
 
   if (!data?.customer) {
     throw new Error('Login failed: invalid server response');
+  }
+
+  return data.customer as CustomerAccount;
+}
+
+export async function requestCustomerEmailLoginCode(
+  payload: CustomerEmailLoginRequestPayload,
+): Promise<void> {
+  const response = await fetch(buildApiUrl('/customers/login/email/request'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const message = data?.message || `Request failed: ${response.statusText}`;
+    throw new Error(message);
+  }
+}
+
+export async function verifyCustomerEmailLoginCode(
+  payload: CustomerEmailLoginVerifyPayload,
+): Promise<CustomerAccount> {
+  const response = await fetch(buildApiUrl('/customers/login/email/verify'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = data?.message || `Verification failed: ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  if (!data?.customer) {
+    throw new Error('Verification failed: invalid server response');
   }
 
   return data.customer as CustomerAccount;
