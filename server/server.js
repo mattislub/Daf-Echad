@@ -444,6 +444,45 @@ function generateTemporaryPassword(length = 10) {
   return password;
 }
 
+const EMAIL_LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_LOGIN_MAX_ATTEMPTS = 5;
+const emailLoginRequests = new Map();
+
+function normalizePreferredLanguage(value = '') {
+  return String(value).toLowerCase().startsWith('he') ? 'he' : 'en';
+}
+
+function generateEmailLoginCode() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+function storeEmailLoginCode(email, code) {
+  const key = email.toLowerCase();
+  emailLoginRequests.set(key, {
+    code,
+    expiresAt: Date.now() + EMAIL_LOGIN_CODE_TTL_MS,
+    attempts: 0,
+  });
+}
+
+function getEmailLoginCode(email) {
+  const key = email.toLowerCase();
+  const entry = emailLoginRequests.get(key);
+
+  if (!entry) return null;
+
+  if (entry.expiresAt <= Date.now()) {
+    emailLoginRequests.delete(key);
+    return null;
+  }
+
+  return entry;
+}
+
+function clearEmailLoginCode(email) {
+  emailLoginRequests.delete(email.toLowerCase());
+}
+
 function buildSizeMap(sizeRows = []) {
   return sizeRows.reduce((map, row) => {
     const code = row.lvalue ?? row.code ?? row.ID ?? row.id;
@@ -1209,6 +1248,103 @@ app.post('/api/customers/login', async (req, res) => {
       status: 'error',
       message: 'Unable to sign in at this time',
     });
+  }
+});
+
+app.post('/api/customers/login/email/request', async (req, res) => {
+  const email = (req.body?.email || '').toString().trim();
+  const language = normalizePreferredLanguage(req.body?.language || 'he');
+
+  if (!email) {
+    return res.status(400).json({ status: 'error', message: 'Email is required' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT ID, email, fname, lname, lang
+       FROM custe
+       WHERE LOWER(email) = LOWER(?)
+       LIMIT 1`,
+      [email],
+    );
+
+    const customer = rows?.[0];
+
+    if (!customer) {
+      return res.status(404).json({ status: 'error', message: 'Account not found' });
+    }
+
+    const code = generateEmailLoginCode();
+    storeEmailLoginCode(customer.email, code);
+
+    const subject = language === 'he' ? 'קוד כניסה לחשבון דף אחד' : 'Your Daf Echad login code';
+    const greeting = language === 'he' ? 'שלום' : 'Hello';
+    const instructions =
+      language === 'he'
+        ? 'השתמשו בקוד החד פעמי הבא כדי להיכנס לחשבון שלכם. הקוד תקף ל-10 דקות.'
+        : 'Use the following one-time code to sign in to your account. The code is valid for 10 minutes.';
+    const codeLabel = language === 'he' ? 'קוד כניסה' : 'Login code';
+
+    await sendEmail({
+      to: customer.email,
+      subject,
+      text: `${greeting},\n\n${instructions}\n\n${codeLabel}: ${code}`,
+      html: `<p>${greeting},</p><p>${instructions}</p><p><strong>${codeLabel}: ${code}</strong></p>` ,
+    });
+
+    return res.json({ status: 'ok', message: 'Code sent' });
+  } catch (error) {
+    console.error('Error generating email login code:', error);
+    return res.status(500).json({ status: 'error', message: 'Unable to send login code' });
+  }
+});
+
+app.post('/api/customers/login/email/verify', async (req, res) => {
+  const email = (req.body?.email || '').toString().trim();
+  const code = (req.body?.code || '').toString().trim();
+
+  if (!email || !code) {
+    return res.status(400).json({ status: 'error', message: 'Email and code are required' });
+  }
+
+  const stored = getEmailLoginCode(email);
+
+  if (!stored) {
+    return res.status(400).json({ status: 'error', message: 'Code expired or missing' });
+  }
+
+  if (stored.attempts >= EMAIL_LOGIN_MAX_ATTEMPTS) {
+    clearEmailLoginCode(email);
+    return res.status(429).json({ status: 'error', message: 'Too many attempts. Request a new code.' });
+  }
+
+  if (stored.code !== code) {
+    stored.attempts += 1;
+    return res.status(401).json({ status: 'error', message: 'Invalid code' });
+  }
+
+  clearEmailLoginCode(email);
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT ID, email, fname, lname, telno, fax, lang, ctype
+       FROM custe
+       WHERE LOWER(email) = LOWER(?)
+       LIMIT 1`,
+      [email],
+    );
+
+    const customer = rows?.[0];
+
+    if (!customer) {
+      return res.status(404).json({ status: 'error', message: 'Account not found' });
+    }
+
+    const normalizedCustomer = mapCustomerAccount(customer);
+    return res.json({ status: 'ok', customer: normalizedCustomer });
+  } catch (error) {
+    console.error('Error verifying email login code:', error);
+    return res.status(500).json({ status: 'error', message: 'Unable to verify code' });
   }
 });
 
