@@ -343,15 +343,6 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
   const tierDescription =
     language === 'he' ? 'משלוח מועדף והטבות קבועות' : 'Priority shipping and member rewards';
 
-  const customerDetailsRows = [
-    { label: t('account.customerId'), value: customerProfile.id },
-    { label: t('account.email'), value: customerProfile.email },
-    { label: t('account.phone'), value: customerProfile.phone },
-    { label: t('account.location'), value: customerProfile.city[language] },
-    { label: t('account.customerTypeLabel'), value: customerProfile.customerType[language] },
-    { label: t('account.languagePreference'), value: customerProfile.languagePreference[language] },
-  ];
-
   const nextDelivery = orders[0];
   const pickupOrder = orders.find((order) => order.status.en === 'Awaiting pickup');
 
@@ -527,7 +518,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-sm text-gray-500 uppercase tracking-wide">{t('account.customerDetails')}</p>
+            <p className="text-sm text-gray-500 uppercase tracking-wide">{t('account.profile.title')}</p>
             <h2 className="text-xl font-semibold text-gray-900">{t('account.profile.title')}</h2>
             <p className="text-sm text-gray-600">{t('account.profile.description')}</p>
           </div>
@@ -717,35 +708,6 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
               {t('account.updatePayment')}
             </button>
           </div>
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-gray-500 uppercase tracking-wide">{t('account.customerDetails')}</p>
-            <h3 className="text-lg font-semibold text-gray-900">{t('account.customerDetailsTitle')}</h3>
-            <p className="text-sm text-gray-600">{t('account.customerDetailsDescription')}</p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-100 rounded-lg overflow-hidden">
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {customerDetailsRows.map((row) => (
-                <tr key={row.label} className="hover:bg-yellow-50/40">
-                  <th
-                    className={`w-1/3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600 ${
-                      isRTL ? 'text-right' : 'text-left'
-                    }`}
-                  >
-                    {row.label}
-                  </th>
-                  <td className="px-4 py-3 text-sm text-gray-900">{row.value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
 
