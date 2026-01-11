@@ -108,6 +108,20 @@ export async function getCustomerShippingAddresses(customerId: string): Promise<
   return fetchJson<CustomerShippingAddress[]>(`/customers/${customerId}/shipping-addresses`);
 }
 
+export interface AdminCustomerRecord {
+  id: string;
+  phone?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  language?: string;
+  stamp?: string;
+}
+
+export async function getAdminCustomers(): Promise<AdminCustomerRecord[]> {
+  return fetchJson<AdminCustomerRecord[]>('/customers');
+}
+
 async function mutateShippingAddress(
   path: string,
   payload: CustomerShippingAddressInput,
