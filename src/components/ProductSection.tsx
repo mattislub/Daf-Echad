@@ -24,12 +24,14 @@ export default function ProductSection({
 
   return (
     <section className="mb-12" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight">
+          {title}
+        </h2>
         {onViewAll && (
           <button
             onClick={onViewAll}
-            className="text-yellow-700 hover:text-yellow-800 font-semibold flex items-center gap-2"
+            className="text-base text-yellow-700 hover:text-yellow-800 font-semibold flex items-center gap-2"
           >
             {language === 'he' ? 'הצג הכל' : 'View All'}
           </button>
