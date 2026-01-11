@@ -1,11 +1,13 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
   Globe,
   Mail,
   MapPin,
+  Pencil,
   Phone,
+  UserPlus,
   Save,
   Search,
   ShieldCheck,
@@ -65,6 +67,7 @@ export default function AdminCustomersPage({ onNavigate }: { onNavigate?: (page:
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<AdminCustomer['status'] | 'all'>('all');
   const [recentlySaved, setRecentlySaved] = useState<Record<string, boolean>>({});
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -147,6 +150,28 @@ export default function AdminCustomersPage({ onNavigate }: { onNavigate?: (page:
     }, 2500);
   };
 
+  const handleCreateCustomer = () => {
+    const newCustomer: AdminCustomer = {
+      id: `new-${Date.now()}`,
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      city: '',
+      language: language === 'he' ? 'he' : 'en',
+      tier: 'standard',
+      status: 'prospect',
+      lastOrder: '',
+      totalOrders: 0,
+      balance: 0,
+      notes: '',
+      tags: [],
+    };
+
+    setCustomers((prev) => [newCustomer, ...prev]);
+    setEditingCustomerId(newCustomer.id);
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat(language === 'he' ? 'he-IL' : 'en-US', {
       style: 'currency',
@@ -194,7 +219,14 @@ export default function AdminCustomersPage({ onNavigate }: { onNavigate?: (page:
               <h1 className="text-3xl font-bold text-gray-900">{t('admin.customersPage.title')}</h1>
               <p className="text-sm text-gray-700 max-w-2xl">{t('admin.customersPage.subtitle')}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={handleCreateCustomer}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 shadow-sm"
+              >
+                <UserPlus className="w-4 h-4" />
+                {t('admin.customersPage.add')}
+              </button>
               <button
                 onClick={() => onNavigate?.('admin')}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200"
@@ -274,180 +306,215 @@ export default function AdminCustomersPage({ onNavigate }: { onNavigate?: (page:
 
           <div className="grid grid-cols-1 gap-4">
             {filteredCustomers.length ? (
-              filteredCustomers.map((customer) => (
-                <article key={customer.id} className="border border-gray-200 rounded-xl p-5 bg-white shadow-sm space-y-4">
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-500">{`${t('admin.customersPage.cardTitle')} ${customer.id}`}</p>
-                      <h3 className="text-lg font-semibold text-gray-900">{`${customer.firstName} ${customer.lastName}`}</h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail className="w-4 h-4" />
-                        <span>{customer.email}</span>
-                      </div>
-                    </div>
-                    <StatusBadge status={customer.status} label={t(`admin.customersPage.status.${customer.status}`)} />
-                  </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.cardTitle')}</th>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.contact')}</th>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.email')}</th>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.statusLabel')}</th>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.tier')}</th>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.balance')}</th>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.lastOrder')}</th>
+                      <th className="px-4 py-3 text-start font-semibold">{t('admin.customersPage.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredCustomers.map((customer) => (
+                      <Fragment key={customer.id}>
+                        <tr key={customer.id} className="bg-white">
+                          <td className="px-4 py-3 font-semibold text-gray-900">{customer.id}</td>
+                          <td className="px-4 py-3">
+                            <div className="text-gray-900 font-medium">{`${customer.firstName} ${customer.lastName}`.trim() || '-'}</div>
+                            <div className="text-xs text-gray-500 flex items-center gap-2">
+                              <Phone className="w-3.5 h-3.5" />
+                              <span>{customer.phone || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Mail className="w-4 h-4" />
+                              <span>{customer.email || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={customer.status} label={t(`admin.customersPage.status.${customer.status}`)} />
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">{t(`admin.customersPage.tier.${customer.tier}`)}</td>
+                          <td className="px-4 py-3 text-gray-700">{formatCurrency(customer.balance)}</td>
+                          <td className="px-4 py-3 text-gray-700">{customer.lastOrder || '-'}</td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() =>
+                                setEditingCustomerId((prev) => (prev === customer.id ? null : customer.id))
+                              }
+                              className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              {t('admin.customersPage.edit')}
+                            </button>
+                          </td>
+                        </tr>
+                        {editingCustomerId === customer.id && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={8} className="px-4 py-4">
+                              <div className="grid grid-cols-1 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <label className="text-xs font-medium text-gray-700">
+                                    {t('admin.customersPage.contact')}
+                                    <input
+                                      type="text"
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.firstName}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { firstName: event.target.value })}
+                                    />
+                                  </label>
+                                  <label className="text-xs font-medium text-gray-700">
+                                    {t('admin.customersPage.lastName')}
+                                    <input
+                                      type="text"
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.lastName}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { lastName: event.target.value })}
+                                    />
+                                  </label>
+                                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <MiniStat label={t('admin.customersPage.ordersCount')} value={customer.totalOrders.toString()} />
-                    <MiniStat label={t('admin.customersPage.lastOrder')} value={customer.lastOrder} />
-                    <MiniStat label={t('admin.customersPage.balance')} value={formatCurrency(customer.balance)} tone={customer.balance > 0 ? 'amber' : 'emerald'} />
-                  </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
+                                    <Phone className="w-4 h-4 text-gray-500" />
+                                    <span>{t('admin.customersPage.phone')}</span>
+                                    <input
+                                      type="tel"
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.phone}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { phone: event.target.value })}
+                                    />
+                                  </label>
+                                  <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
+                                    <Mail className="w-4 h-4 text-gray-500" />
+                                    <span>{t('admin.customersPage.email')}</span>
+                                    <input
+                                      type="email"
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.email}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { email: event.target.value })}
+                                    />
+                                  </label>
+                                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label className="text-xs font-medium text-gray-700">
-                          {t('admin.customersPage.contact')}
-                          <input
-                            type="text"
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                            value={customer.firstName}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { firstName: event.target.value })}
-                          />
-                        </label>
-                        <label className="text-xs font-medium text-gray-700">
-                          {t('admin.customersPage.lastName')}
-                          <input
-                            type="text"
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                            value={customer.lastName}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { lastName: event.target.value })}
-                          />
-                        </label>
-                      </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-gray-500" />
+                                    <span>{t('admin.customersPage.city')}</span>
+                                    <input
+                                      type="text"
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.city}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { city: event.target.value })}
+                                    />
+                                  </label>
+                                  <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
+                                    <Globe className="w-4 h-4 text-gray-500" />
+                                    <span>{t('admin.customersPage.language')}</span>
+                                    <select
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.language}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { language: event.target.value as AdminCustomer['language'] })}
+                                    >
+                                      <option value="he">עברית</option>
+                                      <option value="en">English</option>
+                                    </select>
+                                  </label>
+                                  <label className="text-xs font-medium text-gray-700">
+                                    {t('admin.customersPage.tags')}
+                                    <input
+                                      type="text"
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.tags.join(', ')}
+                                      onChange={(event) =>
+                                        handleUpdateCustomer(customer.id, {
+                                          tags: event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean),
+                                        })
+                                      }
+                                    />
+                                  </label>
+                                </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-gray-500" />
-                          <span>{t('admin.customersPage.phone')}</span>
-                          <input
-                            type="tel"
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                            value={customer.phone}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { phone: event.target.value })}
-                          />
-                        </label>
-                        <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-gray-500" />
-                          <span>{t('admin.customersPage.email')}</span>
-                          <input
-                            type="email"
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                            value={customer.email}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { email: event.target.value })}
-                          />
-                        </label>
-                      </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <label className="text-xs font-medium text-gray-700">
+                                    {t('admin.customersPage.statusLabel')}
+                                    <select
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.status}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { status: event.target.value as AdminCustomer['status'] })}
+                                    >
+                                      <option value="active">{t('admin.customersPage.status.active')}</option>
+                                      <option value="paused">{t('admin.customersPage.status.paused')}</option>
+                                      <option value="prospect">{t('admin.customersPage.status.prospect')}</option>
+                                    </select>
+                                  </label>
+                                  <label className="text-xs font-medium text-gray-700">
+                                    {t('admin.customersPage.tier')}
+                                    <select
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.tier}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { tier: event.target.value as AdminCustomer['tier'] })}
+                                    >
+                                      <option value="standard">{t('admin.customersPage.tier.standard')}</option>
+                                      <option value="vip">{t('admin.customersPage.tier.vip')}</option>
+                                      <option value="wholesale">{t('admin.customersPage.tier.wholesale')}</option>
+                                    </select>
+                                  </label>
+                                  <label className="text-xs font-medium text-gray-700">
+                                    {t('admin.customersPage.balance')}
+                                    <input
+                                      type="number"
+                                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                      value={customer.balance}
+                                      onChange={(event) => handleUpdateCustomer(customer.id, { balance: Number(event.target.value) })}
+                                    />
+                                  </label>
+                                </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-gray-500" />
-                          <span>{t('admin.customersPage.city')}</span>
-                          <input
-                            type="text"
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                            value={customer.city}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { city: event.target.value })}
-                          />
-                        </label>
-                        <label className="text-xs font-medium text-gray-700 inline-flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-gray-500" />
-                          <span>{t('admin.customersPage.language')}</span>
-                          <select
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                            value={customer.language}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { language: event.target.value as AdminCustomer['language'] })}
-                          >
-                            <option value="he">עברית</option>
-                            <option value="en">English</option>
-                          </select>
-                        </label>
-                        <label className="text-xs font-medium text-gray-700">
-                          {t('admin.customersPage.tags')}
-                          <input
-                            type="text"
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                            value={customer.tags.join(', ')}
-                            onChange={(event) =>
-                              handleUpdateCustomer(customer.id, {
-                                tags: event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean),
-                              })
-                            }
-                          />
-                        </label>
-                      </div>
-                    </div>
+                                <label className="text-xs font-medium text-gray-700 block">
+                                  {t('admin.customersPage.notes')}
+                                  <textarea
+                                    className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[96px] bg-white"
+                                    value={customer.notes}
+                                    onChange={(event) => handleUpdateCustomer(customer.id, { notes: event.target.value })}
+                                  />
+                                </label>
 
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <label className="text-xs font-medium text-gray-700">
-                          {t('admin.customersPage.statusLabel')}
-                          <select
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                            value={customer.status}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { status: event.target.value as AdminCustomer['status'] })}
-                          >
-                            <option value="active">{t('admin.customersPage.status.active')}</option>
-                            <option value="paused">{t('admin.customersPage.status.paused')}</option>
-                            <option value="prospect">{t('admin.customersPage.status.prospect')}</option>
-                          </select>
-                        </label>
-                        <label className="text-xs font-medium text-gray-700">
-                          {t('admin.customersPage.tier')}
-                          <select
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                            value={customer.tier}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { tier: event.target.value as AdminCustomer['tier'] })}
-                          >
-                            <option value="standard">{t('admin.customersPage.tier.standard')}</option>
-                            <option value="vip">{t('admin.customersPage.tier.vip')}</option>
-                            <option value="wholesale">{t('admin.customersPage.tier.wholesale')}</option>
-                          </select>
-                        </label>
-                        <label className="text-xs font-medium text-gray-700">
-                          {t('admin.customersPage.balance')}
-                          <input
-                            type="number"
-                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                            value={customer.balance}
-                            onChange={(event) => handleUpdateCustomer(customer.id, { balance: Number(event.target.value) })}
-                          />
-                        </label>
-                      </div>
-
-                      <label className="text-xs font-medium text-gray-700 block">
-                        {t('admin.customersPage.notes')}
-                        <textarea
-                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[96px]"
-                          value={customer.notes}
-                          onChange={(event) => handleUpdateCustomer(customer.id, { notes: event.target.value })}
-                        />
-                      </label>
-
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {customer.tags.map((tag) => (
-                            <span key={tag} className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {recentlySaved[customer.id] && <span className="text-sm text-emerald-700">{t('admin.customersPage.saved')}</span>}
-                          <button
-                            onClick={() => handleSaveCustomer(customer.id)}
-                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 shadow-sm"
-                          >
-                            <Save className="w-4 h-4" />
-                            {t('admin.customersPage.save')}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))
+                                <div className="flex items-center justify-between gap-3 flex-wrap">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {customer.tags.map((tag) => (
+                                      <span key={tag} className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {recentlySaved[customer.id] && <span className="text-sm text-emerald-700">{t('admin.customersPage.saved')}</span>}
+                                    <button
+                                      onClick={() => handleSaveCustomer(customer.id)}
+                                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 shadow-sm"
+                                    >
+                                      <Save className="w-4 h-4" />
+                                      {t('admin.customersPage.save')}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="text-center text-gray-500 py-10 border border-dashed border-gray-300 rounded-xl">
                 {isLoading
@@ -511,21 +578,6 @@ function SummaryTile({
         <p className="text-2xl font-bold text-gray-900">{value}</p>
         {helper && <p className="text-xs text-gray-600">{helper}</p>}
       </div>
-    </div>
-  );
-}
-
-function MiniStat({ label, value, tone = 'gray' }: { label: string; value: string; tone?: 'gray' | 'amber' | 'emerald' }) {
-  const toneClasses: Record<'gray' | 'amber' | 'emerald', string> = {
-    gray: 'text-gray-700 bg-gray-50',
-    amber: 'text-amber-700 bg-amber-50',
-    emerald: 'text-emerald-700 bg-emerald-50',
-  };
-
-  return (
-    <div className={`rounded-lg border border-gray-200 px-3 py-2 ${toneClasses[tone]}`}>
-      <p className="text-xs text-gray-600">{label}</p>
-      <p className="text-base font-semibold">{value}</p>
     </div>
   );
 }
