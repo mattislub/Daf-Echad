@@ -122,6 +122,56 @@ export async function getAdminCustomers(): Promise<AdminCustomerRecord[]> {
   return fetchJson<AdminCustomerRecord[]>('/customers');
 }
 
+export interface AdminCustomerPayload {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+  language?: string;
+}
+
+export async function createAdminCustomer(payload: AdminCustomerPayload): Promise<AdminCustomerRecord> {
+  const response = await fetch(buildApiUrl('/customers'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = `API request failed: ${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<AdminCustomerRecord>;
+}
+
+export async function updateAdminCustomer(customerId: string, payload: AdminCustomerPayload): Promise<AdminCustomerRecord> {
+  const response = await fetch(buildApiUrl(`/customers/${customerId}/profile`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = `API request failed: ${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  const data = (await response.json()) as { customer?: CustomerAccount };
+  if (data?.customer) {
+    return {
+      id: data.customer.id,
+      phone: data.customer.phone ?? undefined,
+      first_name: data.customer.firstName ?? '',
+      last_name: data.customer.lastName ?? '',
+      email: data.customer.email ?? '',
+      language: data.customer.language ?? undefined,
+    };
+  }
+
+  throw new Error('API request failed: missing customer in response');
+}
+
 async function mutateShippingAddress(
   path: string,
   payload: CustomerShippingAddressInput,

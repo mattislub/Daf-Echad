@@ -1510,6 +1510,64 @@ app.put('/api/customers/:id/profile', async (req, res) => {
   }
 });
 
+app.post('/api/customers', async (req, res) => {
+  const firstName = (req.body?.firstName ?? '').toString().trim();
+  const lastName = (req.body?.lastName ?? '').toString().trim();
+  const phone = (req.body?.phone ?? '').toString().trim();
+  const email = (req.body?.email ?? '').toString().trim();
+  const language = (req.body?.language ?? '').toString().trim();
+
+  if (!firstName || !lastName) {
+    return res.status(400).json({ status: 'error', message: 'First and last name are required' });
+  }
+
+  const normalizedLanguage = normalizePreferredLanguage(language);
+  const temporaryPassword = generateTemporaryPassword();
+  const username = email || `${firstName}.${lastName}`.replace(/\s+/g, '.').toLowerCase();
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO custe (fname, lname, telno, email, lang, setup, stamp, username, pass, ctype)
+       VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)`,
+      [
+        firstName,
+        lastName,
+        phone || null,
+        email || null,
+        normalizedLanguage,
+        username,
+        temporaryPassword,
+        'standard',
+      ],
+    );
+
+    const insertId = result.insertId;
+    if (!insertId) {
+      return res.status(500).json({ status: 'error', message: 'Unable to create customer' });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT ID, telno, fname, lname, email, fax, lang, setup, comdflt, ctype, username, pass, stamp
+       FROM custe
+       WHERE ID = ?
+       LIMIT 1`,
+      [insertId],
+    );
+
+    const languages = await fetchLanguages();
+    const languageMap = buildLanguageMap(languages);
+    const createdCustomer = mapCustomerRow(rows?.[0] || {}, languageMap);
+
+    return res.status(201).json(createdCustomer);
+  } catch (error) {
+    console.error('Error creating customer:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unable to create customer',
+    });
+  }
+});
+
 app.get('/api/customers', async (_req, res) => {
   try {
     const [customers, languages] = await Promise.all([fetchCustomers(), fetchLanguages()]);
