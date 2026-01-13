@@ -16,7 +16,7 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
-import { AdminCustomerRecord, getAdminCustomers } from '../services/api';
+import { AdminCustomerRecord, createAdminCustomer, getAdminCustomers, updateAdminCustomer } from '../services/api';
 
 type AdminCustomer = {
   id: string;
@@ -68,6 +68,8 @@ export default function AdminCustomersPage({ onNavigate }: { onNavigate?: (page:
   const [statusFilter, setStatusFilter] = useState<AdminCustomer['status'] | 'all'>('all');
   const [recentlySaved, setRecentlySaved] = useState<Record<string, boolean>>({});
   const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
+  const [savingCustomerIds, setSavingCustomerIds] = useState<Record<string, boolean>>({});
+  const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -139,15 +141,67 @@ export default function AdminCustomersPage({ onNavigate }: { onNavigate?: (page:
     setCustomers((prev) => prev.map((customer) => (customer.id === customerId ? { ...customer, ...updates } : customer)));
   };
 
-  const handleSaveCustomer = (customerId: string) => {
-    setRecentlySaved((prev) => ({ ...prev, [customerId]: true }));
-    setTimeout(() => {
-      setRecentlySaved((prev) => {
+  const handleSaveCustomer = async (customerId: string) => {
+    const customer = customers.find((entry) => entry.id === customerId);
+    if (!customer) return;
+
+    setSavingCustomerIds((prev) => ({ ...prev, [customerId]: true }));
+    setSaveErrors((prev) => {
+      const updated = { ...prev };
+      delete updated[customerId];
+      return updated;
+    });
+
+    try {
+      const payload = {
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        phone: customer.phone || undefined,
+        email: customer.email || undefined,
+        language: customer.language,
+      };
+
+      const isNewCustomer = customer.id.startsWith('new-');
+      const response = isNewCustomer
+        ? await createAdminCustomer(payload)
+        : await updateAdminCustomer(customer.id, payload);
+      const normalized = toAdminCustomer(response);
+      const mergedCustomer: AdminCustomer = {
+        ...customer,
+        ...normalized,
+        id: normalized.id,
+        firstName: normalized.firstName,
+        lastName: normalized.lastName,
+        email: normalized.email,
+        phone: normalized.phone,
+        language: normalized.language,
+      };
+
+      setCustomers((prev) => prev.map((entry) => (entry.id === customerId ? mergedCustomer : entry)));
+
+      if (editingCustomerId === customerId) {
+        setEditingCustomerId(mergedCustomer.id);
+      }
+
+      setRecentlySaved((prev) => ({ ...prev, [mergedCustomer.id]: true }));
+      setTimeout(() => {
+        setRecentlySaved((prev) => {
+          const updated = { ...prev };
+          delete updated[mergedCustomer.id];
+          return updated;
+        });
+      }, 2500);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save customer';
+      setSaveErrors((prev) => ({ ...prev, [customerId]: message }));
+      console.error('Failed to save customer', error);
+    } finally {
+      setSavingCustomerIds((prev) => {
         const updated = { ...prev };
         delete updated[customerId];
         return updated;
       });
-    }, 2500);
+    }
   };
 
   const handleCreateCustomer = () => {
@@ -496,13 +550,17 @@ export default function AdminCustomersPage({ onNavigate }: { onNavigate?: (page:
                                     ))}
                                   </div>
                                   <div className="flex items-center gap-2">
+                                    {saveErrors[customer.id] && (
+                                      <span className="text-sm text-rose-600">{saveErrors[customer.id]}</span>
+                                    )}
                                     {recentlySaved[customer.id] && <span className="text-sm text-emerald-700">{t('admin.customersPage.saved')}</span>}
                                     <button
                                       onClick={() => handleSaveCustomer(customer.id)}
+                                      disabled={savingCustomerIds[customer.id]}
                                       className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 shadow-sm"
                                     >
                                       <Save className="w-4 h-4" />
-                                      {t('admin.customersPage.save')}
+                                      {savingCustomerIds[customer.id] ? t('admin.customersPage.loading') : t('admin.customersPage.save')}
                                     </button>
                                   </div>
                                 </div>
