@@ -439,7 +439,7 @@ export async function loginCustomer(payload: CustomerLoginPayload): Promise<Cust
 
 export async function requestCustomerEmailLoginCode(
   payload: CustomerEmailLoginRequestPayload,
-): Promise<void> {
+): Promise<{ mode: 'code' | 'temporary_password' }> {
   const response = await fetch(buildApiUrl('/customers/login/email/request'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -451,6 +451,10 @@ export async function requestCustomerEmailLoginCode(
     const message = data?.message || `Request failed: ${response.statusText}`;
     throw new Error(message);
   }
+
+  const data = await response.json().catch(() => ({}));
+  const mode = data?.mode === 'temporary_password' ? 'temporary_password' : 'code';
+  return { mode };
 }
 
 export async function verifyCustomerEmailLoginCode(
