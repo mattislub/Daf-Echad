@@ -38,7 +38,9 @@ type AdminCustomer = {
 const normalizeLanguage = (value?: string): AdminCustomer['language'] => {
   if (!value) return 'he';
   const normalized = value.trim().toLowerCase();
-  if (normalized.startsWith('he') || normalized.includes('עבר')) return 'he';
+  if (normalized === '1' || normalized === 'h' || normalized.startsWith('he') || normalized.includes('עבר')) {
+    return 'he';
+  }
   return 'en';
 };
 
