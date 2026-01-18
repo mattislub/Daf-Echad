@@ -1295,6 +1295,7 @@ app.get('/api/customers/exists', async (req, res) => {
 app.post('/api/customers/login/email/request', async (req, res) => {
   const email = (req.body?.email || '').toString().trim();
   const language = normalizePreferredLanguage(req.body?.language || 'he');
+  const languageForDb = mapPreferredLanguageToDb(language);
 
   if (!email) {
     return res.status(400).json({ status: 'error', message: 'Email is required' });
