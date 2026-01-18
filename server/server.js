@@ -1295,7 +1295,6 @@ app.get('/api/customers/exists', async (req, res) => {
 app.post('/api/customers/login/email/request', async (req, res) => {
   const email = (req.body?.email || '').toString().trim();
   const language = normalizePreferredLanguage(req.body?.language || 'he');
-  const languageForDb = mapPreferredLanguageToDb(language);
 
   if (!email) {
     return res.status(400).json({ status: 'error', message: 'Email is required' });
@@ -1319,8 +1318,8 @@ app.post('/api/customers/login/email/request', async (req, res) => {
       const username = email || `${fallbackFirstName}.${fallbackLastName}`.replace(/\s+/g, '.').toLowerCase();
 
       const [insertResult] = await pool.query(
-        `INSERT INTO custe (fname, lname, email, lang, setup, stamp, username, pass, ctype)
-         VALUES (?, ?, ?, NULL, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
+        `INSERT INTO custe (fname, lname, email, setup, stamp, username, pass, ctype)
+         VALUES (?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
         [fallbackFirstName, fallbackLastName, email, username, temporaryPassword, 'standard'],
       );
 
