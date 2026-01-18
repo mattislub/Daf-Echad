@@ -418,6 +418,15 @@ function mapCustomerRow(row, languageMap = new Map()) {
 }
 
 function mapCustomerAccount(row) {
+  const rawLanguage = row.lang ? String(row.lang).trim().toLowerCase() : '';
+  const normalizedLanguage = rawLanguage
+    ? rawLanguage === '1' || rawLanguage === 'h' || rawLanguage.startsWith('he')
+      ? 'he'
+      : rawLanguage === '2' || rawLanguage === 'e' || rawLanguage.startsWith('en')
+        ? 'en'
+        : null
+    : null;
+
   return {
     id: row.ID ? String(row.ID) : row.id ? String(row.id) : '',
     email: row.email ?? row.username ?? '',
@@ -425,7 +434,7 @@ function mapCustomerAccount(row) {
     lastName: row.lname ?? row.last_name ?? '',
     phone: row.telno ?? row.phone ?? null,
     fax: row.fax ?? null,
-    language: row.lang ? (String(row.lang).toLowerCase().startsWith('he') ? 'he' : 'en') : null,
+    language: normalizedLanguage,
     customerType: row.ctype ?? row.customer_type ?? null,
   };
 }
@@ -449,7 +458,18 @@ const EMAIL_LOGIN_MAX_ATTEMPTS = 5;
 const emailLoginRequests = new Map();
 
 function normalizePreferredLanguage(value = '') {
-  return String(value).toLowerCase().startsWith('he') ? 'he' : 'en';
+  const normalized = String(value).trim().toLowerCase();
+
+  if (!normalized) return 'en';
+  if (normalized === '1' || normalized === 'h' || normalized.startsWith('he')) return 'he';
+  if (normalized === '2' || normalized === 'e' || normalized.startsWith('en')) return 'en';
+
+  return 'en';
+}
+
+function mapPreferredLanguageToDb(value = '') {
+  const normalized = normalizePreferredLanguage(value);
+  return normalized === 'he' ? '1' : '2';
 }
 
 function generateEmailLoginCode() {
@@ -1280,6 +1300,7 @@ app.get('/api/customers/exists', async (req, res) => {
 app.post('/api/customers/login/email/request', async (req, res) => {
   const email = (req.body?.email || '').toString().trim();
   const language = normalizePreferredLanguage(req.body?.language || 'he');
+  const languageForDb = mapPreferredLanguageToDb(language);
 
   if (!email) {
     return res.status(400).json({ status: 'error', message: 'Email is required' });
@@ -1305,7 +1326,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
       const [insertResult] = await pool.query(
         `INSERT INTO custe (fname, lname, email, lang, setup, stamp, username, pass, ctype)
          VALUES (?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)`,
-        [fallbackFirstName, fallbackLastName, email, language, username, temporaryPassword, 'standard'],
+        [fallbackFirstName, fallbackLastName, email, languageForDb, username, temporaryPassword, 'standard'],
       );
 
       const customerId = insertResult.insertId;
@@ -1532,7 +1553,7 @@ app.put('/api/customers/:id/profile', async (req, res) => {
   if (phone) updates.push({ column: 'telno', value: phone });
   if (email) updates.push({ column: 'email', value: email });
   if (fax) updates.push({ column: 'fax', value: fax });
-  if (language) updates.push({ column: 'lang', value: language.toLowerCase().startsWith('he') ? 'he' : 'en' });
+  if (language) updates.push({ column: 'lang', value: mapPreferredLanguageToDb(language) });
 
   if (!updates.length) {
     return res.status(400).json({ status: 'error', message: 'No profile fields to update' });
@@ -1579,6 +1600,7 @@ app.post('/api/customers', async (req, res) => {
   }
 
   const normalizedLanguage = normalizePreferredLanguage(language);
+  const languageForDb = mapPreferredLanguageToDb(normalizedLanguage);
   const temporaryPassword = generateTemporaryPassword();
   const username = email || `${firstName}.${lastName}`.replace(/\s+/g, '.').toLowerCase();
 
@@ -1591,7 +1613,7 @@ app.post('/api/customers', async (req, res) => {
         lastName,
         phone || null,
         email || null,
-        normalizedLanguage,
+        languageForDb,
         username,
         temporaryPassword,
         'standard',
