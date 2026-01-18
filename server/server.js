@@ -1271,7 +1271,38 @@ app.post('/api/customers/login/email/request', async (req, res) => {
     const customer = rows?.[0];
 
     if (!customer) {
-      return res.status(404).json({ status: 'error', message: 'Account not found' });
+      const temporaryPassword = generateTemporaryPassword();
+      const fallbackFirstName = language === 'he' ? 'לקוח' : 'Customer';
+      const fallbackLastName = language === 'he' ? 'חדש' : 'New';
+      const username = email || `${fallbackFirstName}.${fallbackLastName}`.replace(/\s+/g, '.').toLowerCase();
+
+      const [insertResult] = await pool.query(
+        `INSERT INTO custe (fname, lname, email, lang, setup, stamp, username, pass, ctype)
+         VALUES (?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)`,
+        [fallbackFirstName, fallbackLastName, email, language, username, temporaryPassword, 'standard'],
+      );
+
+      const customerId = insertResult.insertId;
+
+      const subject =
+        language === 'he' ? 'דף אחד - החשבון החדש שלכם וסיסמה זמנית' : 'Your Daf Echad account & temporary password';
+      const greeting = language === 'he' ? 'שלום' : 'Hello';
+      const instructions =
+        language === 'he'
+          ? 'יצרנו עבורכם חשבון חדש. הנה סיסמה זמנית כדי להיכנס מיד.'
+          : 'We created a new account for you. Use the temporary password below to sign in right away.';
+      const passwordLabel = language === 'he' ? 'סיסמה זמנית' : 'Temporary password';
+
+      await sendEmail({
+        to: email,
+        subject,
+        text: `${greeting},\n\n${instructions}\n\n${passwordLabel}: ${temporaryPassword}`,
+        html: `<p>${greeting},</p><p>${instructions}</p><p><strong>${passwordLabel}: ${temporaryPassword}</strong></p>`,
+      });
+
+      console.info('Created customer account for email login request', { customerId, email });
+
+      return res.json({ status: 'ok', mode: 'temporary_password' });
     }
 
     const code = generateEmailLoginCode();
@@ -1292,7 +1323,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
       html: `<p>${greeting},</p><p>${instructions}</p><p><strong>${codeLabel}: ${code}</strong></p>` ,
     });
 
-    return res.json({ status: 'ok', message: 'Code sent' });
+    return res.json({ status: 'ok', mode: 'code', message: 'Code sent' });
   } catch (error) {
     console.error('Error generating email login code:', error);
     return res.status(500).json({ status: 'error', message: 'Unable to send login code' });
