@@ -1325,7 +1325,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
 
       const [insertResult] = await pool.query(
         `INSERT INTO custe (fname, lname, email, setup, stamp, username, pass, ctype)
-         VALUES (?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
+         VALUES (?, ?, ?, DATE_FORMAT(NOW(), '%y%m%d'), NOW(), ?, ?, ?)`,
         [fallbackFirstName, fallbackLastName, email, username, temporaryPassword, 'standard'],
       );
 
@@ -1602,7 +1602,7 @@ app.post('/api/customers', async (req, res) => {
   try {
     const [result] = await pool.query(
       `INSERT INTO custe (fname, lname, telno, email, lang, setup, stamp, username, pass, ctype)
-       VALUES (?, ?, ?, ?, NULL, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, NULL, DATE_FORMAT(NOW(), '%y%m%d'), NOW(), ?, ?, ?)`,
       [firstName, lastName, phone || null, email || null, username, temporaryPassword, 'standard'],
     );
 
