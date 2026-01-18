@@ -467,6 +467,12 @@ function normalizePreferredLanguage(value = '') {
   return 'en';
 }
 
+function mapPreferredLanguageToDb(language) {
+  const normalized = normalizePreferredLanguage(language);
+
+  return normalized === 'he' ? '1' : '2';
+}
+
 function generateEmailLoginCode() {
   return String(crypto.randomInt(100000, 1000000));
 }
@@ -1320,8 +1326,8 @@ app.post('/api/customers/login/email/request', async (req, res) => {
 
       const [insertResult] = await pool.query(
         `INSERT INTO custe (fname, lname, email, lang, setup, stamp, username, pass, ctype)
-         VALUES (?, ?, ?, NULL, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
-        [fallbackFirstName, fallbackLastName, email, username, temporaryPassword, 'standard'],
+         VALUES (?, ?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
+        [fallbackFirstName, fallbackLastName, email, languageForDb, username, temporaryPassword, 'standard'],
       );
 
       const customerId = insertResult.insertId;
