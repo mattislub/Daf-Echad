@@ -467,9 +467,8 @@ function normalizePreferredLanguage(value = '') {
   return 'en';
 }
 
-function mapPreferredLanguageToDb(value = '') {
-  const normalized = normalizePreferredLanguage(value);
-  return normalized === 'he' ? '1' : '2';
+function mapPreferredLanguageToDb() {
+  return null;
 }
 
 function generateEmailLoginCode() {
@@ -1325,7 +1324,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
 
       const [insertResult] = await pool.query(
         `INSERT INTO custe (fname, lname, email, lang, setup, stamp, username, pass, ctype)
-         VALUES (?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
         [fallbackFirstName, fallbackLastName, email, languageForDb, username, temporaryPassword, 'standard'],
       );
 
@@ -1607,7 +1606,7 @@ app.post('/api/customers', async (req, res) => {
   try {
     const [result] = await pool.query(
       `INSERT INTO custe (fname, lname, telno, email, lang, setup, stamp, username, pass, ctype)
-       VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
       [
         firstName,
         lastName,
