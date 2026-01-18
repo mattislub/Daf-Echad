@@ -467,10 +467,6 @@ function normalizePreferredLanguage(value = '') {
   return 'en';
 }
 
-function mapPreferredLanguageToDb() {
-  return null;
-}
-
 function generateEmailLoginCode() {
   return String(crypto.randomInt(100000, 1000000));
 }
@@ -1324,8 +1320,8 @@ app.post('/api/customers/login/email/request', async (req, res) => {
 
       const [insertResult] = await pool.query(
         `INSERT INTO custe (fname, lname, email, lang, setup, stamp, username, pass, ctype)
-         VALUES (?, ?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
-        [fallbackFirstName, fallbackLastName, email, languageForDb, username, temporaryPassword, 'standard'],
+         VALUES (?, ?, ?, NULL, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
+        [fallbackFirstName, fallbackLastName, email, username, temporaryPassword, 'standard'],
       );
 
       const customerId = insertResult.insertId;
@@ -1534,7 +1530,6 @@ app.put('/api/customers/:id/profile', async (req, res) => {
   const phone = (req.body?.phone ?? '').toString().trim();
   const email = (req.body?.email ?? '').toString().trim();
   const fax = (req.body?.fax ?? '').toString().trim();
-  const language = (req.body?.language ?? '').toString().trim();
 
   if (!customerId) {
     return res.status(400).json({ status: 'error', message: 'Customer ID is required' });
@@ -1552,7 +1547,6 @@ app.put('/api/customers/:id/profile', async (req, res) => {
   if (phone) updates.push({ column: 'telno', value: phone });
   if (email) updates.push({ column: 'email', value: email });
   if (fax) updates.push({ column: 'fax', value: fax });
-  if (language) updates.push({ column: 'lang', value: mapPreferredLanguageToDb(language) });
 
   if (!updates.length) {
     return res.status(400).json({ status: 'error', message: 'No profile fields to update' });
@@ -1592,31 +1586,19 @@ app.post('/api/customers', async (req, res) => {
   const lastName = (req.body?.lastName ?? '').toString().trim();
   const phone = (req.body?.phone ?? '').toString().trim();
   const email = (req.body?.email ?? '').toString().trim();
-  const language = (req.body?.language ?? '').toString().trim();
 
   if (!firstName || !lastName) {
     return res.status(400).json({ status: 'error', message: 'First and last name are required' });
   }
 
-  const normalizedLanguage = normalizePreferredLanguage(language);
-  const languageForDb = mapPreferredLanguageToDb(normalizedLanguage);
   const temporaryPassword = generateTemporaryPassword();
   const username = email || `${firstName}.${lastName}`.replace(/\s+/g, '.').toLowerCase();
 
   try {
     const [result] = await pool.query(
       `INSERT INTO custe (fname, lname, telno, email, lang, setup, stamp, username, pass, ctype)
-       VALUES (?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
-      [
-        firstName,
-        lastName,
-        phone || null,
-        email || null,
-        languageForDb,
-        username,
-        temporaryPassword,
-        'standard',
-      ],
+       VALUES (?, ?, ?, ?, NULL, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
+      [firstName, lastName, phone || null, email || null, username, temporaryPassword, 'standard'],
     );
 
     const insertId = result.insertId;
