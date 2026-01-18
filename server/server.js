@@ -1251,6 +1251,32 @@ app.post('/api/customers/login', async (req, res) => {
   }
 });
 
+app.get('/api/customers/exists', async (req, res) => {
+  const email = (req.query?.email || '').toString().trim();
+
+  if (!email) {
+    return res.status(400).json({ status: 'error', message: 'Email is required' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT ID
+       FROM custe
+       WHERE LOWER(email) = LOWER(?)
+       LIMIT 1`,
+      [email],
+    );
+
+    return res.json({ status: 'ok', exists: Boolean(rows?.[0]) });
+  } catch (error) {
+    console.error('Error checking customer email:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Unable to verify email at this time',
+    });
+  }
+});
+
 app.post('/api/customers/login/email/request', async (req, res) => {
   const email = (req.body?.email || '').toString().trim();
   const language = normalizePreferredLanguage(req.body?.language || 'he');
