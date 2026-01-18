@@ -467,6 +467,12 @@ function normalizePreferredLanguage(value = '') {
   return 'en';
 }
 
+function mapPreferredLanguageToDb(language) {
+  const normalized = normalizePreferredLanguage(language);
+
+  return normalized === 'he' ? '1' : '2';
+}
+
 function generateEmailLoginCode() {
   return String(crypto.randomInt(100000, 1000000));
 }
