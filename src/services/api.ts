@@ -416,6 +416,20 @@ export interface CustomerProfileUpdatePayload {
   language?: 'he' | 'en' | null;
 }
 
+export async function checkCustomerEmailExists(email: string): Promise<boolean> {
+  const query = new URLSearchParams({ email });
+  const response = await fetch(buildApiUrl(`/customers/exists?${query.toString()}`));
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const message = data?.message || `Lookup failed: ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  const data = await response.json().catch(() => ({}));
+  return Boolean(data?.exists);
+}
+
 export async function loginCustomer(payload: CustomerLoginPayload): Promise<CustomerAccount> {
   const response = await fetch(buildApiUrl('/customers/login'), {
     method: 'POST',

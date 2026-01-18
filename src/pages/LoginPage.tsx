@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
 import {
+  checkCustomerEmailExists,
   loginCustomer,
   requestCustomerEmailLoginCode,
   verifyCustomerEmailLoginCode,
@@ -33,6 +34,30 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   const [emailCodeMode, setEmailCodeMode] = useState<'code' | 'temporary_password' | null>(null);
 
   const emailDirection = email ? detectTextDirection(email) : isRTL ? 'rtl' : 'ltr';
+
+  const attemptAutoRegistration = async () => {
+    try {
+      const exists = await checkCustomerEmailExists(email);
+      if (exists) {
+        return false;
+      }
+
+      const result = await requestCustomerEmailLoginCode({ email, language });
+      if (result.mode === 'temporary_password') {
+        setEmailCodeStatus('sent');
+        setEmailCodeMode('temporary_password');
+        setEmailCode('');
+        setLoginError('');
+        setLoginStatus('idle');
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Auto registration failed:', error);
+      return false;
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -68,6 +93,13 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         return t('login.error.generic');
       })();
 
+      if (!isEmailLogin && normalizedMessage.includes('invalid email or password')) {
+        const autoRegistered = await attemptAutoRegistration();
+        if (autoRegistered) {
+          return;
+        }
+      }
+
       setCustomerProfile(null);
       setLoginStatus('error');
       setLoginError(userFriendlyMessage);
@@ -90,6 +122,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         setEmailCode('');
       }
     } catch (error) {
+      console.error('Email login request failed:', error);
       setEmailCodeStatus('error');
       setEmailCodeError(error instanceof Error ? error.message : t('login.accountRequestError'));
     }
