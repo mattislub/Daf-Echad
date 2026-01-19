@@ -1337,8 +1337,8 @@ app.post('/api/customers/login/email/request', async (req, res) => {
       );
 
       const customerId = insertResult.insertId;
-      const phoneNumber = String(customerId);
-
+      const phoneNumber = `9900${customerId}`;   
+      
       await pool.query(`UPDATE custe SET telno = ?, email = ?, pass = ? WHERE ID = ?`, [
         phoneNumber,
         email,
@@ -1623,9 +1623,8 @@ app.post('/api/customers', async (req, res) => {
     if (!insertId) {
       return res.status(500).json({ status: 'error', message: 'Unable to create customer' });
     }
-
-    const phoneNumber = String(insertId);
-
+ 
+    const phoneNumber = `9900${insertId}`;
     await pool.query(`UPDATE custe SET telno = ?, email = ?, pass = ? WHERE ID = ?`, [
       phoneNumber,
       email || null,
