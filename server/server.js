@@ -1330,10 +1330,19 @@ app.post('/api/customers/login/email/request', async (req, res) => {
       const fallbackLastName = language === 'he' ? 'חדש' : 'New';
       const username = email || `${fallbackFirstName}.${fallbackLastName}`.replace(/\s+/g, '.').toLowerCase();
 
+      const [autoRows] = await pool.query(
+        `SELECT AUTO_INCREMENT AS nextId
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'custe'`,
+      );
+      const nextCustomerId = autoRows?.[0]?.nextId;
+      const provisionalPhoneNumber = nextCustomerId ? `9900${nextCustomerId}` : '0';
+
       const [insertResult] = await pool.query(
-        `INSERT INTO custe (fname, lname, email, setup, stamp, username, pass, ctype)
-         VALUES (?, ?, ?, NULL, NOW(), ?, ?, ?)`,
-        [fallbackFirstName, fallbackLastName, email, username, temporaryPassword, 0],
+        `INSERT INTO custe (fname, lname, email, setup, stamp, username, pass, ctype, telno)
+         VALUES (?, ?, ?, NULL, NOW(), ?, ?, ?, ?)`,
+        [fallbackFirstName, fallbackLastName, email, username, temporaryPassword, 0, provisionalPhoneNumber],
       );
 
       const customerId = insertResult.insertId;
