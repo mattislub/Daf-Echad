@@ -453,6 +453,13 @@ function generateTemporaryPassword(length = 10) {
   return password;
 }
 
+function generateNumericPassword(length = 6) {
+  const max = 10 ** length;
+  const value = crypto.randomInt(0, max);
+
+  return value.toString().padStart(length, '0');
+}
+
 const EMAIL_LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
 const EMAIL_LOGIN_MAX_ATTEMPTS = 5;
 const emailLoginRequests = new Map();
@@ -1318,18 +1325,26 @@ app.post('/api/customers/login/email/request', async (req, res) => {
     const customer = rows?.[0];
 
     if (!customer) {
-      const temporaryPassword = generateTemporaryPassword();
+      const temporaryPassword = generateNumericPassword(6);
       const fallbackFirstName = language === 'he' ? 'לקוח' : 'Customer';
       const fallbackLastName = language === 'he' ? 'חדש' : 'New';
       const username = email || `${fallbackFirstName}.${fallbackLastName}`.replace(/\s+/g, '.').toLowerCase();
 
       const [insertResult] = await pool.query(
         `INSERT INTO custe (fname, lname, email, setup, stamp, username, pass, ctype)
-         VALUES (?, ?, ?, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
+         VALUES (?, ?, ?, NULL, NOW(), ?, ?, ?)`,
         [fallbackFirstName, fallbackLastName, email, username, temporaryPassword, 'standard'],
       );
 
       const customerId = insertResult.insertId;
+      const phoneNumber = `9900${customerId}`;
+
+      await pool.query(`UPDATE custe SET telno = ?, email = ?, pass = ? WHERE ID = ?`, [
+        phoneNumber,
+        email,
+        temporaryPassword,
+        customerId,
+      ]);
 
       const subject =
         language === 'he' ? 'דף אחד - החשבון החדש שלכם וסיסמה זמנית' : 'Your Daf Echad account & temporary password';
@@ -1532,7 +1547,6 @@ app.put('/api/customers/:id/profile', async (req, res) => {
   const customerId = req.params.id;
   const firstName = (req.body?.firstName ?? '').toString().trim();
   const lastName = (req.body?.lastName ?? '').toString().trim();
-  const phone = (req.body?.phone ?? '').toString().trim();
   const email = (req.body?.email ?? '').toString().trim();
   const fax = (req.body?.fax ?? '').toString().trim();
 
@@ -1589,27 +1603,35 @@ app.put('/api/customers/:id/profile', async (req, res) => {
 app.post('/api/customers', async (req, res) => {
   const firstName = (req.body?.firstName ?? '').toString().trim();
   const lastName = (req.body?.lastName ?? '').toString().trim();
-  const phone = (req.body?.phone ?? '').toString().trim();
   const email = (req.body?.email ?? '').toString().trim();
 
   if (!firstName || !lastName) {
     return res.status(400).json({ status: 'error', message: 'First and last name are required' });
   }
 
-  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPassword = generateNumericPassword(6);
   const username = email || `${firstName}.${lastName}`.replace(/\s+/g, '.').toLowerCase();
 
   try {
     const [result] = await pool.query(
       `INSERT INTO custe (fname, lname, telno, email, lang, setup, stamp, username, pass, ctype)
-       VALUES (?, ?, ?, ?, NULL, DATE_FORMAT(NOW(), '%Y%m%d'), NOW(), ?, ?, ?)`,
-      [firstName, lastName, phone || null, email || null, username, temporaryPassword, 'standard'],
+       VALUES (?, ?, NULL, ?, NULL, NULL, NOW(), ?, ?, ?)`,
+      [firstName, lastName, email || null, username, temporaryPassword, 'standard'],
     );
 
     const insertId = result.insertId;
     if (!insertId) {
       return res.status(500).json({ status: 'error', message: 'Unable to create customer' });
     }
+
+    const phoneNumber = `9900${insertId}`;
+
+    await pool.query(`UPDATE custe SET telno = ?, email = ?, pass = ? WHERE ID = ?`, [
+      phoneNumber,
+      email || null,
+      temporaryPassword,
+      insertId,
+    ]);
 
     const [rows] = await pool.query(
       `SELECT ID, telno, fname, lname, email, fax, lang, setup, comdflt, ctype, username, pass, stamp
