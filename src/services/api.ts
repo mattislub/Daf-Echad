@@ -132,6 +132,16 @@ const toOptionalString = (value: unknown) => {
   return trimmed ? trimmed : undefined;
 };
 
+const toBoolean = (value: unknown) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return ['1', 'true', 'yes', 'y'].includes(normalized);
+  }
+  return false;
+};
+
 export async function getShipToTableAddresses(
   customerId?: string,
   limit = 50,
@@ -147,7 +157,7 @@ export async function getShipToTableAddresses(
       return {
         id: id ? String(id) : '',
         customerId: addressCustomerId,
-        isDefault: Boolean(Number(row.stdefault ?? 0)),
+        isDefault: toBoolean(row.stdefault),
         street: toOptionalString(row.street) ?? '',
         houseNumber: toOptionalString(row.no),
         entrance: toOptionalString(row.ent),
