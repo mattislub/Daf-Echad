@@ -38,6 +38,11 @@ export interface CustomerShippingAddress {
   updatedAt?: string | null;
 }
 
+export interface Country {
+  id: string;
+  name: string;
+}
+
 export type CustomerShippingAddressInput = Partial<
   Pick<
     CustomerShippingAddress,
@@ -106,6 +111,10 @@ export async function getCustomerCredit(customerId: string): Promise<CustomerCre
 
 export async function getCustomerShippingAddresses(customerId: string): Promise<CustomerShippingAddress[]> {
   return fetchJson<CustomerShippingAddress[]>(`/customers/${customerId}/shipping-addresses`);
+}
+
+export async function getCountries(): Promise<Country[]> {
+  return fetchJson<Country[]>('/countries');
 }
 
 type ShipToTableRow = {

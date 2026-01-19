@@ -20,9 +20,11 @@ import { CustomerAccount } from '../types';
 import {
   CustomerCreditEntry,
   CustomerCreditResponse,
+  Country,
   CustomerShippingAddress,
   CustomerShippingAddressInput,
   createCustomerShippingAddress,
+  getCountries,
   getCustomerCredit,
   getShipToTableAddresses,
   updateCustomerShippingAddress,
@@ -85,6 +87,9 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [addressFormMessage, setAddressFormMessage] = useState<string | null>(null);
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [countriesLoading, setCountriesLoading] = useState(false);
+  const [countriesError, setCountriesError] = useState<string | null>(null);
 
   useEffect(() => {
     setProfileAccount(account ?? null);
@@ -219,6 +224,26 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
 
   const formatTotal = (order: OrderItem) => (currency === 'ILS' ? `₪${order.totalILS}` : `$${order.totalUSD}`);
 
+  const resolveCountryName = useCallback(
+    (value?: string) => {
+      if (!value) return '';
+      const trimmed = value.trim();
+      const matched = countries.find((country) => country.id === trimmed);
+      return matched?.name ?? trimmed;
+    },
+    [countries],
+  );
+
+  const resolveCountryId = useCallback(
+    (value?: string) => {
+      if (!value) return '';
+      const trimmed = value.trim();
+      const matched = countries.find((country) => country.id === trimmed || country.name === trimmed);
+      return matched?.id ?? trimmed;
+    },
+    [countries],
+  );
+
   const formatAddressDetails = (address: CustomerShippingAddress, currentLanguage: typeof language) => {
     const parts: string[] = [];
     const streetLine = [address.street, address.houseNumber].filter(Boolean).join(' ');
@@ -230,7 +255,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
     if (address.state) parts.push(address.state);
     if (address.zip)
       parts.push(currentLanguage === 'he' ? `מיקוד ${address.zip}` : `${currentLanguage === 'he' ? 'מיקוד' : 'ZIP'} ${address.zip}`);
-    if (address.country) parts.push(address.country);
+    if (address.country) parts.push(resolveCountryName(address.country));
 
     return parts.join(', ');
   };
@@ -244,12 +269,12 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
       city: address?.city?.trim() ?? '',
       state: address?.state?.trim() ?? '',
       zip: address?.zip?.trim() ?? '',
-      country: address?.country?.trim() ?? '',
+      country: resolveCountryId(address?.country),
       specialInstructions: address?.specialInstructions?.trim() ?? '',
       callId: address?.callId?.trim() ?? '',
       isDefault: Boolean(address?.isDefault),
     }),
-    [],
+    [resolveCountryId],
   );
 
   useEffect(() => {
@@ -302,6 +327,33 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
   useEffect(() => {
     loadShippingAddresses();
   }, [loadShippingAddresses]);
+
+  const loadCountries = useCallback(async () => {
+    setCountriesLoading(true);
+    setCountriesError(null);
+
+    try {
+      const data = await getCountries();
+      setCountries(data);
+    } catch (error) {
+      console.error('Failed to load countries', error);
+      setCountriesError(t('account.addressForm.countryError'));
+      setCountries([]);
+    } finally {
+      setCountriesLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void loadCountries();
+  }, [loadCountries]);
+
+  useEffect(() => {
+    if (!addressForm.country) return;
+    const normalized = resolveCountryId(addressForm.country);
+    if (!normalized || normalized === addressForm.country) return;
+    setAddressForm((previous) => ({ ...previous, country: normalized }));
+  }, [addressForm.country, resolveCountryId]);
 
   useEffect(() => {
     if (shippingAddresses.length > 0) {
@@ -388,7 +440,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
   };
 
   const handleAddressInputChange = (field: keyof CustomerShippingAddressInput) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const target = event.target as HTMLInputElement;
       const value = target.type === 'checkbox' ? target.checked : event.target.value;
 
@@ -412,10 +464,14 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
     setAddressFormError(null);
     setAddressFormMessage(null);
 
+    const normalizedCountry = addressForm.country?.trim() ?? '';
+    const countryId = countries.some((country) => country.id === normalizedCountry) ? normalizedCountry : '';
+
     const payload: CustomerShippingAddressInput = {
       ...addressForm,
       street: addressForm.street.trim(),
       city: addressForm.city.trim(),
+      country: countryId || undefined,
     };
 
     if (!payload.street || !payload.city) {
@@ -982,12 +1038,24 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
               <label className="text-xs font-semibold text-gray-700" htmlFor="address-country">
                 {t('account.addressForm.country')}
               </label>
-              <input
+              <select
                 id="address-country"
                 value={addressForm.country || ''}
                 onChange={handleAddressInputChange('country')}
                 className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-              />
+                disabled={countriesLoading || countries.length === 0}
+              >
+                <option value="">{t('account.addressForm.countryPlaceholder')}</option>
+                {countries.map((country) => (
+                  <option key={country.id} value={country.id}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
+              {countriesLoading && (
+                <p className="text-xs text-gray-500">{t('account.addressForm.countryLoading')}</p>
+              )}
+              {countriesError && <p className="text-xs text-red-600">{countriesError}</p>}
             </div>
           </div>
 
