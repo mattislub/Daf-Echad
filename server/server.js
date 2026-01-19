@@ -612,7 +612,8 @@ function normalizeShippingAddressPayload(body) {
 }
 
 async function saveDefaultShippingAddress(connection, customerId, skipId = null) {
-  await connection.query('UPDATE shipto SET stdefault = 0 WHERE custid = ? AND (? IS NULL OR ID != ?)', [
+  await connection.query('UPDATE shipto SET stdefault = ? WHERE custid = ? AND (? IS NULL OR ID != ?)', [
+    'N',
     customerId,
     skipId,
     skipId,
@@ -1795,7 +1796,7 @@ app.post('/api/customers/:id/shipping-addresses', async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         customerId,
-        payload.isDefault ? 1 : 0,
+        payload.isDefault ? 'Y' : 'N',
         payload.street,
         payload.houseNumber || null,
         payload.entrance || null,
@@ -1876,7 +1877,7 @@ app.put('/api/customers/:id/shipping-addresses/:addressId', async (req, res) => 
        SET stdefault = ?, street = ?, no = ?, ent = ?, apt = ?, city = ?, state = ?, zip = ?, country = ?, specinst = ?, callid = ?
        WHERE ID = ? AND custid = ?`,
       [
-        payload.isDefault ? 1 : 0,
+        payload.isDefault ? 'Y' : 'N',
         payload.street,
         payload.houseNumber || null,
         payload.entrance || null,
