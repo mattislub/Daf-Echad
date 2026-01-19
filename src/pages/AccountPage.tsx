@@ -24,7 +24,7 @@ import {
   CustomerShippingAddressInput,
   createCustomerShippingAddress,
   getCustomerCredit,
-  getCustomerShippingAddresses,
+  getShipToTableAddresses,
   updateCustomerShippingAddress,
   updateCustomerProfile,
 } from '../services/api';
@@ -145,30 +145,6 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
       languagePreference,
     };
   }, [fallbackProfile, profileAccount]);
-
-  const defaultShippingAddresses: CustomerShippingAddress[] = [
-    {
-      id: 'primary',
-      customerId,
-      isDefault: true,
-      street: 'רח׳ הקבלה',
-      houseNumber: '12',
-      city: 'ירושלים',
-      country: 'ישראל',
-      callId: '+972-52-123-4567',
-    },
-    {
-      id: 'backup',
-      customerId,
-      isDefault: false,
-      street: 'Kedumim Ave',
-      houseNumber: '45',
-      city: 'Lakewood',
-      state: 'NJ',
-      country: 'USA',
-      callId: '+1-848-555-2211',
-    },
-  ];
 
   const customerName = customerProfile.name[language];
 
@@ -308,7 +284,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
     setAddressesError(null);
 
     try {
-      const addresses = await getCustomerShippingAddresses(customerId);
+      const addresses = await getShipToTableAddresses(customerId, 50);
       setShippingAddresses(addresses);
     } catch (error) {
       console.error('Failed to load shipping addresses', error);
@@ -346,23 +322,18 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
   const nextDelivery = orders[0];
   const pickupOrder = orders.find((order) => order.status.en === 'Awaiting pickup');
 
-  const addressSource = shippingAddresses.length ? shippingAddresses : defaultShippingAddresses;
-  const addressItems: AddressItem[] = addressSource.map((address, index) => {
+  const addressItems: AddressItem[] = shippingAddresses.map((address, index) => {
     const detailsHe = formatAddressDetails(address, 'he');
     const detailsEn = formatAddressDetails(address, 'en');
 
-    const isDefault = shippingAddresses.length ? address.isDefault : index === 0;
-
     return {
-      label: shippingAddresses.length
-        ? {
-            he: address.isDefault ? 'כתובת ברירת מחדל' : `כתובת ${index + 1}`,
-            en: address.isDefault ? 'Default address' : `Address ${index + 1}`,
-          }
-        : { he: index === 0 ? 'כתובת ראשית' : 'כתובת נוספת', en: index === 0 ? 'Primary address' : 'Additional address' },
+      label: {
+        he: address.isDefault ? 'כתובת ברירת מחדל' : `כתובת ${index + 1}`,
+        en: address.isDefault ? 'Default address' : `Address ${index + 1}`,
+      },
       details: { he: detailsHe, en: detailsEn },
       phone: address.callId || customerProfile.phone,
-      primary: isDefault,
+      primary: address.isDefault,
     };
   });
 

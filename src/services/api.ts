@@ -108,6 +108,62 @@ export async function getCustomerShippingAddresses(customerId: string): Promise<
   return fetchJson<CustomerShippingAddress[]>(`/customers/${customerId}/shipping-addresses`);
 }
 
+type ShipToTableRow = {
+  ID?: number | string;
+  id?: number | string;
+  custid?: number | string;
+  stdefault?: number | string;
+  street?: string;
+  no?: string | number;
+  ent?: string | number;
+  apt?: string | number;
+  city?: string;
+  state?: string;
+  zip?: string | number;
+  country?: string;
+  specinst?: string;
+  callid?: string | number;
+  stamp?: string;
+};
+
+const toOptionalString = (value: unknown) => {
+  if (value === null || value === undefined) return undefined;
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed : undefined;
+};
+
+export async function getShipToTableAddresses(
+  customerId?: string,
+  limit = 50,
+): Promise<CustomerShippingAddress[]> {
+  const rows = (await getTableData('shipto', limit)) as ShipToTableRow[];
+  const normalizedCustomerId = customerId ? String(customerId) : null;
+
+  return rows
+    .map((row) => {
+      const id = row.ID ?? row.id;
+      const addressCustomerId = row.custid ? String(row.custid) : '';
+
+      return {
+        id: id ? String(id) : '',
+        customerId: addressCustomerId,
+        isDefault: Boolean(Number(row.stdefault ?? 0)),
+        street: toOptionalString(row.street) ?? '',
+        houseNumber: toOptionalString(row.no),
+        entrance: toOptionalString(row.ent),
+        apartment: toOptionalString(row.apt),
+        city: toOptionalString(row.city) ?? '',
+        state: toOptionalString(row.state),
+        zip: toOptionalString(row.zip),
+        country: toOptionalString(row.country),
+        specialInstructions: toOptionalString(row.specinst),
+        callId: toOptionalString(row.callid),
+        updatedAt: toOptionalString(row.stamp) ?? null,
+      } satisfies CustomerShippingAddress;
+    })
+    .filter((address) => address.id && (!normalizedCustomerId || address.customerId === normalizedCustomerId));
+}
+
 export interface AdminCustomerRecord {
   id: string;
   phone?: string;
