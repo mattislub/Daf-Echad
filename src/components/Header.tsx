@@ -15,7 +15,6 @@ import {
   FileText,
   Mail,
   ShieldCheck,
-  Newspaper,
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
@@ -316,13 +315,6 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
           >
             <Mail className="w-4 h-4" />
             <span>{t('nav.contact')}</span>
-          </button>
-          <button
-            onClick={() => onNavigate?.('news')}
-            className="flex items-center gap-2 text-gray-700 hover:text-yellow-700 font-medium transition-colors"
-          >
-            <Newspaper className="w-4 h-4" />
-            <span>{t('nav.news')}</span>
           </button>
           <button
             onClick={() => onNavigate?.('terms')}
