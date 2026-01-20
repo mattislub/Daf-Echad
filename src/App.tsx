@@ -15,6 +15,7 @@ import AccountPage from './pages/AccountPage';
 import LoginPage from './pages/LoginPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
+import NewsPage from './pages/NewsPage';
 import PoliciesPage from './pages/PoliciesPage';
 import TermsPage from './pages/TermsPage';
 import AdminPage from './pages/AdminPage';
@@ -303,6 +304,12 @@ function App() {
           setPendingSlug(null);
           setCatalogFiltersFromUrl([]);
           break;
+        case 'news':
+          setCurrentPage('news');
+          setSelectedBookId(null);
+          setPendingSlug(null);
+          setCatalogFiltersFromUrl([]);
+          break;
         case 'policies':
           setCurrentPage('policies');
           setSelectedBookId(null);
@@ -483,6 +490,7 @@ function AppContent({
       )}
       {currentPage === 'about' && <AboutPage onNavigate={onNavigate} />}
       {currentPage === 'contact' && <ContactPage onNavigate={onNavigate} />}
+      {currentPage === 'news' && <NewsPage onNavigate={onNavigate} />}
       {currentPage === 'tracking' && <TrackingPage onNavigate={onNavigate} />}
       {currentPage === 'policies' && <PoliciesPage onNavigate={onNavigate} />}
       {currentPage === 'terms' && <TermsPage onNavigate={onNavigate} />}
