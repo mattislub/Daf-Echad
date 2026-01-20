@@ -18,6 +18,7 @@ import {
   fetchItemKeywords,
   fetchItemPrices,
   fetchItems,
+  fetchGalleries,
   fetchLanguages,
   fetchPublishers,
   fetchSizes,
@@ -2134,6 +2135,19 @@ app.get('/api/books/:id', async (req, res) => {
     res.json(book);
   } catch (error) {
     console.error('Error fetching book:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.get('/api/galleries', async (_req, res) => {
+  try {
+    const galleries = await fetchGalleries();
+    res.json(galleries ?? []);
+  } catch (error) {
+    console.error('Error fetching galleries:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',

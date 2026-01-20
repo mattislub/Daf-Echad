@@ -205,6 +205,10 @@ discpct, discval, multple, sponsorid, active, public, filename FROM disce`
   );
 }
 
+export async function fetchGalleries() {
+  return runQuery('fetching galleries', 'SELECT * FROM galleries');
+}
+
 export async function fetchCustomerCredits(customerId) {
   return runQuery(
     'fetching customer credit history',
