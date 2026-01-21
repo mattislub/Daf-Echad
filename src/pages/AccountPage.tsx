@@ -1059,31 +1059,6 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-700" htmlFor="address-phone">
-              {t('account.addressForm.phone')}
-            </label>
-            <input
-              id="address-phone"
-              value={addressForm.callId || ''}
-              onChange={handleAddressInputChange('callId')}
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-700" htmlFor="address-notes">
-              {t('account.addressForm.instructions')}
-            </label>
-            <textarea
-              id="address-notes"
-              value={addressForm.specialInstructions || ''}
-              onChange={handleAddressInputChange('specialInstructions')}
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-              rows={2}
-            />
-          </div>
-
           <label className="inline-flex items-center gap-2 text-sm text-gray-800">
             <input
               type="checkbox"
