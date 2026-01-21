@@ -916,9 +916,13 @@ async function upsertSessionRecord(sessionId) {
       'INSERT INTO sessione (sessionid) VALUES (?) ON DUPLICATE KEY UPDATE sessionid = VALUES(sessionid)',
       [sessionId]
     );
+    const [rows] = await pool.query('SELECT ID FROM sessione WHERE sessionid = ? LIMIT 1', [sessionId]);
+    return Array.isArray(rows) && rows.length > 0 ? rows[0].ID : null;
   } catch (error) {
     console.error('Failed to update sessione table with session id:', error);
   }
+
+  return null;
 }
 
 app.use((_, res, next) => {
@@ -966,11 +970,13 @@ app.use(async (req, res, next) => {
   req.sessionId = sessionId;
 
   if (isNewSession) {
-    await upsertSessionRecord(sessionId);
+    req.sessionDbId = await upsertSessionRecord(sessionId);
     logSessionEvent(req, 'session-start', {
       path: req.path,
       query: req.query,
     });
+  } else {
+    req.sessionDbId = await upsertSessionRecord(sessionId);
   }
 
   setSessionCookie(res, sessionId);
@@ -1211,10 +1217,12 @@ app.post('/api/wishlist', async (req, res) => {
   }
 
   const sessionId = req.sessionId || null;
+  const sessionDbId = req.sessionDbId ?? null;
   const wishlistLogContext = {
     customerId,
     itemId,
     sessionId,
+    sessionDbId,
     hasEmail: Boolean(customerEmail),
     itemsCount: Array.isArray(items) ? items.length : 0,
   };
@@ -1226,7 +1234,7 @@ app.post('/api/wishlist', async (req, res) => {
       `INSERT INTO wishlist (custid, itemid, callid, updcallid, source)
        VALUES (?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE updcallid = VALUES(updcallid), source = VALUES(source)`,
-      [customerId, itemId, sessionId, sessionId, 'web'],
+      [customerId, itemId, sessionDbId, sessionDbId, 'web'],
     );
   } catch (error) {
     const errorDetails = error instanceof Error ? { message: error.message, stack: error.stack } : { error };
