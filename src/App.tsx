@@ -29,99 +29,19 @@ import { applySeoForPage } from './services/seo';
 import { getAuthors, getBooks, getCategories, getPublishers } from './services/api';
 import { Loader2 } from 'lucide-react';
 import {
+  CUSTOMER_ACCOUNT_SESSION_MS,
+  clearStoredCustomerAccount,
+  getStoredCustomerExpiry,
+  loadStoredCustomerAccount,
+  persistCustomerAccount,
+} from './utils/customerSession';
+import {
   buildProductPath,
   buildProductSlug,
   extractSkuFromSlug,
   normalizeSlug,
 } from './utils/slug';
 import { resolvePrimaryImage } from './utils/imagePaths';
-
-const CUSTOMER_ACCOUNT_STORAGE_KEY = 'daf_customer_account';
-const CUSTOMER_ACCOUNT_SESSION_MS = 1000 * 60 * 60 * 24 * 7;
-
-type StoredCustomerAccount = {
-  account: CustomerAccount;
-  expiresAt: number;
-};
-
-function loadStoredCustomerAccount(): CustomerAccount | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const stored = window.localStorage.getItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(stored) as StoredCustomerAccount;
-    if (!parsed?.account || !parsed?.expiresAt) {
-      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-      return null;
-    }
-
-    if (parsed.expiresAt <= Date.now()) {
-      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-      return null;
-    }
-
-    return parsed.account;
-  } catch (error) {
-    console.warn('Failed to parse stored customer account', error);
-    window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-    return null;
-  }
-}
-
-function getStoredCustomerExpiry(): number | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const stored = window.localStorage.getItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(stored) as StoredCustomerAccount;
-    if (!parsed?.expiresAt) {
-      return null;
-    }
-
-    if (parsed.expiresAt <= Date.now()) {
-      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-      return null;
-    }
-
-    return parsed.expiresAt;
-  } catch (error) {
-    console.warn('Failed to parse stored customer expiry', error);
-    window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-    return null;
-  }
-}
-
-function persistCustomerAccount(account: CustomerAccount, expiresAt?: number) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const payload: StoredCustomerAccount = {
-    account,
-    expiresAt: expiresAt ?? Date.now() + CUSTOMER_ACCOUNT_SESSION_MS,
-  };
-  window.localStorage.setItem(CUSTOMER_ACCOUNT_STORAGE_KEY, JSON.stringify(payload));
-}
-
-function clearStoredCustomerAccount() {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-}
 
 function HomePage({
   books,
