@@ -117,6 +117,37 @@ export async function getCountries(): Promise<Country[]> {
   return fetchJson<Country[]>('/countries');
 }
 
+export interface WishlistEmailItem {
+  id: string;
+  title: string;
+  imageUrl?: string;
+  priceLabel?: string;
+  productUrl?: string;
+}
+
+export interface WishlistAddPayload {
+  customerId: string;
+  itemId: string;
+  customerEmail?: string;
+  customerName?: string;
+  language?: 'he' | 'en';
+  items: WishlistEmailItem[];
+}
+
+export async function addWishlistItem(payload: WishlistAddPayload): Promise<void> {
+  const response = await fetch(buildApiUrl('/wishlist'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
+    const message = errorBody?.message || `Wishlist request failed: ${response.statusText}`;
+    throw new Error(message);
+  }
+}
+
 type ShipToTableRow = {
   ID?: number | string;
   id?: number | string;
