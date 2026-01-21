@@ -830,6 +830,19 @@ function logSessionEvent(req, type, details = {}) {
   sessionLogStream.write(`${JSON.stringify(logEntry)}\n`);
 }
 
+async function upsertSessionRecord(sessionId) {
+  if (!sessionId) return;
+
+  try {
+    await pool.query(
+      'INSERT INTO sessione (sessionid) VALUES (?) ON DUPLICATE KEY UPDATE sessionid = VALUES(sessionid)',
+      [sessionId]
+    );
+  } catch (error) {
+    console.error('Failed to update sessione table with session id:', error);
+  }
+}
+
 app.use((_, res, next) => {
   res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   next();
@@ -863,7 +876,7 @@ app.use((err, req, res, next) => {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const cookies = parseCookies(req.headers.cookie || '');
   let sessionId = cookies[SESSION_COOKIE_NAME];
   const isNewSession = !sessionId;
@@ -875,6 +888,7 @@ app.use((req, res, next) => {
   req.sessionId = sessionId;
 
   if (isNewSession) {
+    await upsertSessionRecord(sessionId);
     logSessionEvent(req, 'session-start', {
       path: req.path,
       query: req.query,
