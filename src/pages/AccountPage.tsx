@@ -154,7 +154,19 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
     };
   }, [fallbackProfile, profileAccount]);
 
-  const customerName = customerProfile.name[language];
+  const headerName = useMemo(() => {
+    const fullName = [profileAccount?.firstName, profileAccount?.lastName].filter(Boolean).join(' ').trim();
+
+    if (fullName) {
+      return fullName;
+    }
+
+    if (profileAccount?.email) {
+      return profileAccount.email;
+    }
+
+    return '';
+  }, [profileAccount]);
 
   const orders: OrderItem[] = [
     {
@@ -1222,7 +1234,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="space-y-1">
               <p className="text-sm text-yellow-700 font-semibold">{t('account.title')}</p>
-              <h1 className="text-3xl font-bold text-gray-900">{customerName}</h1>
+              {headerName ? <h1 className="text-3xl font-bold text-gray-900">{headerName}</h1> : null}
               <p className="text-gray-600">{t('account.subtitle')}</p>
             </div>
             <div className="flex items-center gap-3">

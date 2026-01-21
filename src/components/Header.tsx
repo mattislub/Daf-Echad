@@ -1,7 +1,6 @@
 import {
   Search,
   ShoppingCart,
-  User,
   Phone,
   Globe,
   Home,
@@ -222,14 +221,6 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
               <LogIn className="w-5 h-5" />
               <span>{t('nav.login')}</span>
             </button>
-            <button
-              onClick={() => onNavigate?.('account')}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <User className="w-5 h-5 text-gray-700" />
-              <span className="text-gray-700 font-medium">{t('nav.account')}</span>
-            </button>
-
             <button
               onClick={() => onNavigate?.('wishlist')}
               className="relative flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-yellow-600/40 text-gray-800 rounded-lg transition-colors shadow-sm"
