@@ -1211,15 +1211,34 @@ app.post('/api/wishlist', async (req, res) => {
   }
 
   const sessionId = req.sessionId || null;
+  const wishlistLogContext = {
+    customerId,
+    itemId,
+    sessionId,
+    hasEmail: Boolean(customerEmail),
+    itemsCount: Array.isArray(items) ? items.length : 0,
+  };
+
+  console.info('[wishlist] add request', wishlistLogContext);
 
   try {
     await pool.query(
       `INSERT INTO wishlist (custid, itemid, callid, updcallid, source)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE updcallid = VALUES(updcallid), source = VALUES(source)`,
       [customerId, itemId, sessionId, sessionId, 'web'],
     );
   } catch (error) {
-    console.error('Failed to update wishlist table', error);
+    const errorDetails = error instanceof Error ? { message: error.message, stack: error.stack } : { error };
+    const mysqlError = error && typeof error === 'object' ? error : null;
+    console.error('Failed to update wishlist table', {
+      ...wishlistLogContext,
+      code: mysqlError?.code,
+      errno: mysqlError?.errno,
+      sqlState: mysqlError?.sqlState,
+      sqlMessage: mysqlError?.sqlMessage,
+      ...errorDetails,
+    });
     return res.status(500).json({ status: 'error', message: 'Failed to update wishlist' });
   }
 
