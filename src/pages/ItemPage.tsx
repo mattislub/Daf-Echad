@@ -55,6 +55,17 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
     });
   }, [book]);
 
+  const buildCartItem = (targetBook: Book, itemQuantity = 1): CartItem => ({
+    id: targetBook.id,
+    title_he: targetBook.title_he,
+    title_en: targetBook.title_en,
+    price_ils: targetBook.price_ils,
+    price_usd: targetBook.price_usd,
+    image_url: targetBook.image_url,
+    weight: targetBook.weight,
+    quantity: itemQuantity,
+  });
+
   const fetchBookData = async () => {
     try {
       setLoading(true);
@@ -121,17 +132,7 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
 
   const handleAddToCart = () => {
     if (!book) return;
-
-    const cartItem: CartItem = {
-      id: book.id,
-      title_he: book.title_he,
-      title_en: book.title_en,
-      price_ils: book.price_ils,
-      price_usd: book.price_usd,
-      image_url: book.image_url,
-      weight: book.weight,
-      quantity,
-    };
+    const cartItem = buildCartItem(book, quantity);
 
     addToCart(cartItem);
 
@@ -402,7 +403,23 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                       : ''
                   }
                   onViewDetails={() => onNavigate?.('item', relatedBook.id)}
+                  onAddToCart={
+                    relatedBook.in_stock
+                      ? () => {
+                          addToCart(buildCartItem(relatedBook));
+                        }
+                      : undefined
+                  }
+                  onImmediateCheckout={
+                    relatedBook.in_stock
+                      ? () => {
+                          addToCart(buildCartItem(relatedBook));
+                          onNavigate?.('cart');
+                        }
+                      : undefined
+                  }
                   onGoToCart={() => onNavigate?.('cart')}
+                  inStock={relatedBook.in_stock}
                 />
               ))}
             </div>
@@ -430,7 +447,23 @@ export default function ItemPage({ bookId, onNavigate }: ItemPageProps) {
                       : ''
                   }
                   onViewDetails={() => onNavigate?.('item', popularBook.id)}
+                  onAddToCart={
+                    popularBook.in_stock
+                      ? () => {
+                          addToCart(buildCartItem(popularBook));
+                        }
+                      : undefined
+                  }
+                  onImmediateCheckout={
+                    popularBook.in_stock
+                      ? () => {
+                          addToCart(buildCartItem(popularBook));
+                          onNavigate?.('cart');
+                        }
+                      : undefined
+                  }
                   onGoToCart={() => onNavigate?.('cart')}
+                  inStock={popularBook.in_stock}
                 />
               ))}
             </div>
