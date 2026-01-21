@@ -8,7 +8,6 @@ import {
   MapPin,
   Loader2,
   Package,
-  ShieldCheck,
   Sparkles,
   Trash2,
   Truck,
@@ -422,30 +421,22 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     () => [
       {
         key: 'items',
-        title: t('cart.items'),
-        description: t('cart.subtitle'),
         icon: Package,
       },
       {
         key: 'shipping',
-        title: t('cart.shipping.title'),
-        description: t('cart.shipping.description'),
         icon: Truck,
       },
       {
         key: 'details',
-        title: t('cart.customer.title'),
-        description: t('cart.customer.subtitle'),
         icon: User,
       },
       {
         key: 'payment',
-        title: t('cart.payment.title'),
-        description: t('cart.checkout.tip'),
         icon: CreditCard,
       },
     ],
-    [t],
+    [],
   );
 
   const selectedShippingOption = shippingOptions.find((option) => option.id === selectedShipping) || shippingOptions[0];
@@ -894,43 +885,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
       <Header onNavigate={onNavigate} />
 
       <main className="mx-auto max-w-6xl px-4 py-10">
-        <div className="flex flex-col gap-2 mb-10">
-          <p className="text-sm text-yellow-700 font-semibold">{t('cart.delivery.worldwide')}</p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{t('cart.title')}</h1>
-              <p className="text-gray-600">{t('cart.subtitle')}</p>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <ShieldCheck className="w-4 h-4 text-yellow-700" />
-              <span>{t('cart.checkout.secure')}</span>
-            </div>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <Truck className="w-5 h-5 text-yellow-700" />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-gray-900">{t('cart.delivery.multi')}</p>
-                <p className="text-xs text-gray-600">{t('cart.shipping.description')}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <Sparkles className="w-5 h-5 text-yellow-700" />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-gray-900">{t('cart.checkout.tip')}</p>
-                <p className="text-xs text-gray-600">{t('cart.checkout.cardCtaDescription')}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <Wallet className="w-5 h-5 text-yellow-700" />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-gray-900">{t('cart.payment.title')}</p>
-                <p className="text-xs text-gray-600">{t('cart.order.note')}</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {paymentStatusBanner && (
           <div
@@ -980,6 +934,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                     key={step.key}
                     type="button"
                     onClick={() => goToStep(index)}
+                    aria-label={step.key}
                     className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition ${
                       isActive
                         ? 'border-yellow-600 bg-white ring-2 ring-yellow-100'
@@ -997,10 +952,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                   >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-900">{step.title}</p>
-                      <p className="text-xs text-gray-600">{step.description}</p>
-                    </div>
                     {isComplete && <span className="text-lg font-semibold text-green-600">✓</span>}
                   </button>
                 );
@@ -1012,10 +963,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 {currentStep === 0 && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.delivery.multi')}</p>
-                        <h2 className="text-xl font-semibold text-gray-900">{t('cart.items')}</h2>
-                      </div>
                       <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
                         {cartItems.length}
                       </span>
@@ -1091,12 +1038,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
                   <div className="flex items-center gap-2">
                     <Truck className="w-5 h-5 text-yellow-700" />
-                    <div>
-                      <p className="text-sm text-gray-500 uppercase tracking-wide">{t('cart.shipping.worldwide')}</p>
-                      <h2 className="text-xl font-semibold text-gray-900">{t('cart.shipping.title')}</h2>
-                    </div>
                   </div>
-                  <p className="text-gray-600">{t('cart.shipping.description')}</p>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -1420,10 +1362,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2">
                     <User className="w-5 h-5 text-yellow-700" />
-                    <div>
-                      <h2 className="text-xl font-semibold text-gray-900">{t('cart.customer.title')}</h2>
-                      <p className="text-sm text-gray-600">{t('cart.customer.subtitle')}</p>
-                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-gray-800">
@@ -1752,7 +1690,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-yellow-700" />
-                    <h2 className="text-xl font-semibold text-gray-900">{t('cart.payment.title')}</h2>
                   </div>
 
                   <div className="space-y-3">
@@ -1776,7 +1713,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                           <p className="font-semibold text-gray-900">{t('cart.payment.card')}</p>
                         </div>
                         <p className="text-sm text-gray-600">{t('cart.payment.card.note')}</p>
-                        <p className="text-xs text-gray-500">{t('cart.order.note')}</p>
 
                         <div className="mt-3 flex flex-wrap gap-3 items-center">
                           <button
@@ -1918,10 +1854,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                       <span>{t('cart.total')}</span>
                       <span>{formatPrice(orderTotal)}</span>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-yellow-700" />
-                      <span>{paymentMethod === 'card' ? t('cart.order.note') : t('cart.payment.cash.note')}</span>
-                    </div>
                     <div className="flex items-start gap-2 text-sm text-gray-700">
                       <input
                         type="checkbox"
@@ -1988,13 +1920,6 @@ export default function CartPage({ onNavigate }: CartPageProps) {
                 </div>
               )}
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 space-y-2">
-                <div className="flex items-center gap-2 font-semibold">
-                  <Globe2 className="w-4 h-4" />
-                  <span>{t('cart.delivery.worldwide')}</span>
-                </div>
-                <p>{t('cart.delivery.multi')}</p>
-              </div>
             </div>
           </div>
         </div>
