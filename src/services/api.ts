@@ -120,7 +120,12 @@ export async function getCountries(): Promise<Country[]> {
 type ShipToTableRow = {
   ID?: number | string;
   id?: number | string;
+  Id?: number | string;
   custid?: number | string;
+  custId?: number | string;
+  CUSTID?: number | string;
+  customerId?: number | string;
+  customer_id?: number | string;
   stdefault?: number | string;
   street?: string;
   no?: string | number;
@@ -141,6 +146,12 @@ const toOptionalString = (value: unknown) => {
   return trimmed ? trimmed : undefined;
 };
 
+const normalizeCustomerId = (value: unknown) => {
+  const trimmed = toOptionalString(value);
+  if (!trimmed) return '';
+  return trimmed.replace(/^#/, '');
+};
+
 const toBoolean = (value: unknown) => {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
@@ -156,12 +167,14 @@ export async function getShipToTableAddresses(
   limit = 50,
 ): Promise<CustomerShippingAddress[]> {
   const rows = (await getTableData('shipto', limit)) as ShipToTableRow[];
-  const normalizedCustomerId = customerId ? String(customerId) : null;
+  const normalizedCustomerId = customerId ? normalizeCustomerId(customerId) : null;
 
   return rows
     .map((row) => {
-      const id = row.ID ?? row.id;
-      const addressCustomerId = row.custid ? String(row.custid) : '';
+      const id = row.ID ?? row.id ?? row.Id;
+      const addressCustomerId = normalizeCustomerId(
+        row.custid ?? row.custId ?? row.CUSTID ?? row.customerId ?? row.customer_id,
+      );
 
       return {
         id: id ? String(id) : '',

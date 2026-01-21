@@ -262,6 +262,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
   const loadShippingAddresses = useCallback(async () => {
     setShippingAddressesLoading(true);
     setShippingAddressesError(null);
+    console.info('Loading customer shipping addresses (cart)', { customerId });
 
     try {
       const [savedResult, legacyResult] = await Promise.allSettled([
@@ -286,6 +287,7 @@ export default function CartPage({ onNavigate }: CartPageProps) {
         ...legacyAddresses.filter((address) => !savedAddresses.some((saved) => saved.id === address.id)),
       ];
       setShippingAddresses(addresses);
+      console.info('Loaded customer shipping addresses (cart)', { customerId, count: addresses.length });
 
       if (addresses.length > 0) {
         const defaultAddress = addresses.find((address) => address.isDefault) ?? addresses[0];
