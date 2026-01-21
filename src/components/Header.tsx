@@ -21,6 +21,7 @@ import { useCart } from '../context/CartContext';
 import { useSearch } from '../context/SearchContext';
 import { Book } from '../types/catalog';
 import { useWishlist } from '../context/WishlistContext';
+import { buildProductPath } from '../utils/slug';
 
 export interface HeaderProps {
   onNavigate?: (page: string) => void;
@@ -86,10 +87,79 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
 
   const isRTL = language === 'he';
 
+  const navigateToItem = (book: Book) => {
+    if (onNavigate) {
+      onNavigate('item', book.id);
+      return;
+    }
+
+    window.location.hash = buildProductPath(book);
+  };
+
+  const navigateToCategory = (categoryId: string) => {
+    setSearchTerm?.('');
+    setInputValue('');
+    window.location.hash = `#/catalog?category=${encodeURIComponent(categoryId)}`;
+  };
+
+  const normalizeQuery = (value: string) => value.trim().toLowerCase();
+
+  const matchCategoryByQuery = (query: string) => {
+    const normalizedQuery = normalizeQuery(query);
+
+    return effectiveSearchItems.find((item) => {
+      const nameHe = item.category?.name_he;
+      const nameEn = item.category?.name_en;
+
+      return (
+        (nameHe && normalizeQuery(nameHe) === normalizedQuery) ||
+        (nameEn && normalizeQuery(nameEn) === normalizedQuery)
+      );
+    });
+  };
+
+  const matchBookByQuery = (query: string) => {
+    const normalizedQuery = normalizeQuery(query);
+
+    return effectiveSearchItems.find((item) => {
+      const titleHe = item.title_he;
+      const titleEn = item.title_en;
+      const itemNumber = item.item_number;
+
+      return (
+        (titleHe && normalizeQuery(titleHe) === normalizedQuery) ||
+        (titleEn && normalizeQuery(titleEn) === normalizedQuery) ||
+        (itemNumber && normalizeQuery(itemNumber) === normalizedQuery)
+      );
+    });
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = inputValue.trim();
     if (!query) return;
+
+    const matchedCategory = matchCategoryByQuery(query);
+    if (matchedCategory) {
+      const targetCategoryId =
+        matchedCategory.category?.id ??
+        matchedCategory.category_id ??
+        matchedCategory.categories?.[0]?.id ??
+        null;
+
+      if (targetCategoryId) {
+        navigateToCategory(targetCategoryId);
+        setIsFocused(false);
+        return;
+      }
+    }
+
+    const matchedBook = matchBookByQuery(query);
+    if (matchedBook) {
+      navigateToItem(matchedBook);
+      setIsFocused(false);
+      return;
+    }
 
     setSearchTerm?.(query);
     triggerSearch?.(query);
@@ -111,18 +181,17 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
         null;
 
       if (targetCategoryId) {
-        setSearchTerm?.('');
-        setInputValue('');
-        window.location.hash = `#/catalog?category=${encodeURIComponent(targetCategoryId)}`;
+        navigateToCategory(targetCategoryId);
         return;
       }
     }
 
-    if (selectedBook) {
-      onNavigate?.('item', selectedBook.id);
+    if (suggestion.type === 'title' && selectedBook) {
+      navigateToItem(selectedBook);
       return;
     }
 
+    setSearchTerm?.(suggestion.label);
     triggerSearch?.(suggestion.label);
   };
 
