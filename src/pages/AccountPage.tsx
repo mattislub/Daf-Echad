@@ -37,6 +37,7 @@ interface AccountPageProps {
   onNavigate?: (page: string) => void;
   account?: CustomerAccount | null;
   onAccountUpdate?: (account: CustomerAccount) => void;
+  onLogout?: () => void;
 }
 
 interface OrderItem {
@@ -61,7 +62,7 @@ interface AddressItem {
 const tabOrder = ['overview', 'orders', 'addresses', 'preferences', 'support'] as const;
 type TabId = (typeof tabOrder)[number];
 
-export default function AccountPage({ onNavigate, account, onAccountUpdate }: AccountPageProps) {
+export default function AccountPage({ onNavigate, account, onAccountUpdate, onLogout }: AccountPageProps) {
   const { language, currency, t, setLanguage } = useLanguage();
   const [profileAccount, setProfileAccount] = useState<CustomerAccount | null>(account ?? null);
   const [profileForm, setProfileForm] = useState({
@@ -154,7 +155,19 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
     };
   }, [fallbackProfile, profileAccount]);
 
-  const customerName = customerProfile.name[language];
+  const headerName = useMemo(() => {
+    const fullName = [profileAccount?.firstName, profileAccount?.lastName].filter(Boolean).join(' ').trim();
+
+    if (fullName) {
+      return fullName;
+    }
+
+    if (profileAccount?.email) {
+      return profileAccount.email;
+    }
+
+    return '';
+  }, [profileAccount]);
 
   const orders: OrderItem[] = [
     {
@@ -1222,7 +1235,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="space-y-1">
               <p className="text-sm text-yellow-700 font-semibold">{t('account.title')}</p>
-              <h1 className="text-3xl font-bold text-gray-900">{customerName}</h1>
+              {headerName ? <h1 className="text-3xl font-bold text-gray-900">{headerName}</h1> : null}
               <p className="text-gray-600">{t('account.subtitle')}</p>
             </div>
             <div className="flex items-center gap-3">
@@ -1233,7 +1246,16 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
                 <Home className="w-4 h-4" />
                 {t('account.backToStore')}
               </button>
-              <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100">
+              <button
+                onClick={() => {
+                  if (onLogout) {
+                    onLogout();
+                    return;
+                  }
+                  onNavigate?.('home');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100"
+              >
                 <LogOut className="w-4 h-4" />
                 {t('account.logout')}
               </button>
