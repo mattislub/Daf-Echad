@@ -120,7 +120,12 @@ export async function getCountries(): Promise<Country[]> {
 type ShipToTableRow = {
   ID?: number | string;
   id?: number | string;
+  Id?: number | string;
   custid?: number | string;
+  custId?: number | string;
+  CUSTID?: number | string;
+  customerId?: number | string;
+  customer_id?: number | string;
   stdefault?: number | string;
   street?: string;
   no?: string | number;
@@ -156,12 +161,13 @@ export async function getShipToTableAddresses(
   limit = 50,
 ): Promise<CustomerShippingAddress[]> {
   const rows = (await getTableData('shipto', limit)) as ShipToTableRow[];
-  const normalizedCustomerId = customerId ? String(customerId) : null;
+  const normalizedCustomerId = customerId ? String(customerId).trim() : null;
 
   return rows
     .map((row) => {
-      const id = row.ID ?? row.id;
-      const addressCustomerId = row.custid ? String(row.custid) : '';
+      const id = row.ID ?? row.id ?? row.Id;
+      const addressCustomerId =
+        toOptionalString(row.custid ?? row.custId ?? row.CUSTID ?? row.customerId ?? row.customer_id) ?? '';
 
       return {
         id: id ? String(id) : '',
