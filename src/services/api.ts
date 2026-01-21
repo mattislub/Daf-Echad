@@ -281,6 +281,17 @@ export async function updateCustomerShippingAddress(
   return mutateShippingAddress(`/customers/${customerId}/shipping-addresses/${addressId}`, payload, 'PUT');
 }
 
+export async function deleteCustomerShippingAddress(customerId: string, addressId: string): Promise<void> {
+  const response = await fetch(buildApiUrl(`/customers/${customerId}/shipping-addresses/${addressId}`), {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const message = `API request failed: ${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
+}
+
 export async function getBookById(bookId: string): Promise<Book | null> {
   return fetchJson<Book | null>(`/books/${bookId}`);
 }

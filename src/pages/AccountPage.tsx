@@ -24,6 +24,7 @@ import {
   CustomerShippingAddress,
   CustomerShippingAddressInput,
   createCustomerShippingAddress,
+  deleteCustomerShippingAddress,
   getCountries,
   getCustomerCredit,
   getShipToTableAddresses,
@@ -50,6 +51,7 @@ interface OrderItem {
 }
 
 interface AddressItem {
+  id: string;
   label: { he: string; en: string };
   details: { he: string; en: string };
   phone: string;
@@ -85,6 +87,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
   const [addressForm, setAddressForm] = useState<CustomerShippingAddressInput>({ street: '', city: '' });
   const [selectedAddressId, setSelectedAddressId] = useState<string>('new');
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [isDeletingAddressId, setIsDeletingAddressId] = useState<string | null>(null);
   const [addressFormMessage, setAddressFormMessage] = useState<string | null>(null);
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
@@ -379,6 +382,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
     const detailsEn = formatAddressDetails(address, 'en');
 
     return {
+      id: address.id,
       label: {
         he: address.isDefault ? 'כתובת ברירת מחדל' : `כתובת ${index + 1}`,
         en: address.isDefault ? 'Default address' : `Address ${index + 1}`,
@@ -494,6 +498,34 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
       setAddressFormError(t('account.addressesSaveError'));
     } finally {
       setIsSavingAddress(false);
+    }
+  };
+
+  const handleEditAddress = (addressId: string) => {
+    handleSelectSavedAddress(addressId);
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    const confirmMessage = t('account.addressDeleteConfirm');
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsDeletingAddressId(addressId);
+    setAddressFormError(null);
+    setAddressFormMessage(null);
+
+    try {
+      await deleteCustomerShippingAddress(customerId, addressId);
+      if (selectedAddressId === addressId) {
+        setSelectedAddressId('new');
+        setAddressForm(mapAddressToFormState());
+      }
+      setAddressFormMessage(t('account.addressDeleted'));
+      await loadShippingAddresses();
+    } catch (error) {
+      console.error('Failed to delete address', error);
+      setAddressFormError(t('account.addressDeleteError'));
+    } finally {
+      setIsDeletingAddressId(null);
     }
   };
 
@@ -906,14 +938,31 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate }: Ac
           )}
           {addressesError && <p className="text-sm text-red-600">{addressesError}</p>}
           {addressItems.map((address) => (
-            <div key={address.details.en} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
+            <div key={address.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <p className="font-semibold text-gray-900">{address.label[language]}</p>
-                {address.primary && (
-                  <span className="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
-                    {t('account.primary')}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {address.primary && (
+                    <span className="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+                      {t('account.primary')}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleEditAddress(address.id)}
+                    className="text-xs font-semibold text-yellow-700 hover:text-yellow-800"
+                  >
+                    {t('account.addressesEdit')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAddress(address.id)}
+                    disabled={isDeletingAddressId === address.id}
+                    className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
+                  >
+                    {isDeletingAddressId === address.id ? t('account.addressesDeleting') : t('account.addressesDelete')}
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-gray-700">{address.details[language]}</p>
               <p className="text-sm text-gray-600">{address.phone}</p>
