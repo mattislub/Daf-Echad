@@ -323,10 +323,12 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate, onLo
   const loadShippingAddresses = useCallback(async () => {
     setIsAddressesLoading(true);
     setAddressesError(null);
+    console.info('Loading customer shipping addresses (account)', { customerId });
 
     try {
       const addresses = await getShipToTableAddresses(customerId, 50);
       setShippingAddresses(addresses);
+      console.info('Loaded customer shipping addresses (account)', { customerId, count: addresses.length });
     } catch (error) {
       console.error('Failed to load shipping addresses', error);
       setAddressesError(language === 'he' ? 'לא הצלחנו לטעון כתובות משלוח.' : 'Unable to load shipping addresses.');
