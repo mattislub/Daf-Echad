@@ -22,6 +22,8 @@ import { useSearch } from '../context/SearchContext';
 import { Book } from '../types/catalog';
 import { useWishlist } from '../context/WishlistContext';
 import { buildProductPath } from '../utils/slug';
+import { CustomerAccount } from '../types';
+import { loadStoredCustomerAccount } from '../utils/customerSession';
 
 export interface HeaderProps {
   onNavigate?: (page: string) => void;
@@ -42,6 +44,7 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
   const { getTotalItems, getTotalPrice } = useCart();
   const { wishlistItems } = useWishlist();
   const searchContext = useSearch();
+  const [customerAccount, setCustomerAccount] = useState<CustomerAccount | null>(() => loadStoredCustomerAccount());
 
   const effectiveSearchItems = searchItems ?? searchContext.searchItems;
   const currentSearchTerm = searchTerm ?? searchContext.searchTerm;
@@ -54,6 +57,30 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
   useEffect(() => {
     setInputValue(currentSearchTerm);
   }, [currentSearchTerm]);
+
+  useEffect(() => {
+    const handleAccountUpdate = () => setCustomerAccount(loadStoredCustomerAccount());
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'daf_customer_account') {
+        handleAccountUpdate();
+      }
+    };
+
+    handleAccountUpdate();
+    window.addEventListener('customer-account-updated', handleAccountUpdate);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('customer-account-updated', handleAccountUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  const customerDisplayName = useMemo(() => {
+    if (!customerAccount) return null;
+    const fullName = [customerAccount.firstName, customerAccount.lastName].filter(Boolean).join(' ').trim();
+    return fullName || customerAccount.email || null;
+  }, [customerAccount]);
 
   const suggestions = useMemo(() => {
     const term = inputValue.trim().toLowerCase();
@@ -205,6 +232,12 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
             <span className="font-bold tracking-wider text-yellow-400">{t('kav.phone')}</span>
           </div>
           <div className="flex items-center gap-4">
+            {customerDisplayName && (
+              <div className="flex items-center gap-2 text-yellow-100">
+                <span className="text-xs uppercase tracking-wide text-yellow-200">{t('nav.welcome')}</span>
+                <span className="font-semibold text-white">{customerDisplayName}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Globe className="w-4 h-4 text-yellow-500" />
               <select

@@ -1,10 +1,10 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Book } from '../types/catalog';
-import { CustomerAccount } from '../types';
 import { addWishlistItem } from '../services/api';
 import { useLanguage } from './LanguageContext';
 import { buildProductPath } from '../utils/slug';
 import { resolvePrimaryImage } from '../utils/imagePaths';
+import { loadStoredCustomerAccount } from '../utils/customerSession';
 
 interface WishlistContextType {
   wishlistItems: Book[];
@@ -16,43 +16,6 @@ interface WishlistContextType {
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
-const CUSTOMER_ACCOUNT_STORAGE_KEY = 'daf_customer_account';
-
-type StoredCustomerAccount = {
-  account: CustomerAccount;
-  expiresAt: number;
-};
-
-function loadStoredCustomerAccount(): CustomerAccount | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const stored = window.localStorage.getItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(stored) as StoredCustomerAccount;
-    if (!parsed?.account || !parsed?.expiresAt) {
-      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-      return null;
-    }
-
-    if (parsed.expiresAt <= Date.now()) {
-      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-      return null;
-    }
-
-    return parsed.account;
-  } catch (error) {
-    console.warn('Failed to parse stored customer account', error);
-    window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
-    return null;
-  }
-}
-
 function buildAbsoluteUrl(path: string): string {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
