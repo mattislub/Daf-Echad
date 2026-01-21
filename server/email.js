@@ -44,8 +44,8 @@ function buildStyledHtml({ subject, bodyHtml, bodyText }) {
   const encodedSubject = escapeHtml(subject || '');
 
   return `
-    <div style="font-family: 'Segoe UI', Arial, sans-serif; background:${BRAND_COLORS.background}; padding:24px; color:${BRAND_COLORS.muted};">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px; margin:0 auto; background:${BRAND_COLORS.card}; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08); border:1px solid ${BRAND_COLORS.border}; overflow:hidden;">
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; background:${BRAND_COLORS.background}; padding:24px; color:${BRAND_COLORS.muted}; direction: rtl; text-align: center;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px; margin:0 auto; background:${BRAND_COLORS.card}; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08); border:1px solid ${BRAND_COLORS.border}; overflow:hidden; direction: rtl; text-align: center;">
         <tr>
           <td style="background:${BRAND_COLORS.primary}; color:#fff; padding:18px 22px;">
             <div style="font-size:18px; font-weight:700;">${headerTitle}</div>
@@ -53,7 +53,7 @@ function buildStyledHtml({ subject, bodyHtml, bodyText }) {
           </td>
         </tr>
         <tr>
-          <td style="padding:20px 22px;">
+          <td style="padding:20px 22px; text-align: center;">
             ${content}
           </td>
         </tr>

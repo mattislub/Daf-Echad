@@ -149,6 +149,84 @@ function buildDimensions({ length, width, depth, size }) {
   return size ? String(size) : '';
 }
 
+function escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function buildWishlistEmailContent({ customerName, items, language }) {
+  const isHebrew = language === 'he';
+  const direction = isHebrew ? 'rtl' : 'ltr';
+  const textAlign = isHebrew ? 'right' : 'left';
+  const greeting = isHebrew ? 'שלום' : 'Hello';
+  const intro = isHebrew
+    ? 'הפריטים הבאים נשמרו ברשימת המשאלות שלך בדף אחד.'
+    : 'The following items were saved to your Daf Echad wishlist.';
+  const closing = isHebrew
+    ? 'נשמח לראות אותך חוזר להזמנה בכל זמן.'
+    : 'We hope to see you back whenever you are ready to order.';
+
+  const safeName = customerName ? ` ${escapeHtml(customerName)}` : '';
+  const normalizedItems = Array.isArray(items) ? items : [];
+
+  const listHtml = normalizedItems
+    .map((item) => {
+      const title = escapeHtml(item?.title || '');
+      const price = item?.priceLabel ? `<div style="font-size:13px; color:#4a5568;">${escapeHtml(item.priceLabel)}</div>` : '';
+      const imageTag = item?.imageUrl
+        ? `<img src="${escapeHtml(item.imageUrl)}" alt="${title}" style="width:72px; height:auto; border-radius:8px; border:1px solid #e2e8f0;" />`
+        : '';
+      const titleContent = item?.productUrl
+        ? `<a href="${escapeHtml(item.productUrl)}" style="color:#b7791f; text-decoration:none; font-weight:600;">${title}</a>`
+        : `<span style="color:#2d3748; font-weight:600;">${title}</span>`;
+
+      return `
+        <tr>
+          <td style="padding:12px 0; border-bottom:1px solid #edf2f7;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                ${imageTag ? `<td width="90" style="vertical-align:top;">${imageTag}</td>` : ''}
+                <td style="vertical-align:top; padding-${isHebrew ? 'right' : 'left'}: ${imageTag ? '12px' : '0'};">
+                  ${titleContent}
+                  ${price}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  const html = `
+    <div style="direction:${direction}; text-align:${textAlign}; font-family:'Segoe UI', Arial, sans-serif;">
+      <p style="margin:0 0 12px; font-size:16px; color:#2d3748;">${greeting}${safeName},</p>
+      <p style="margin:0 0 16px; color:#4a5568;">${intro}</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+        ${listHtml}
+      </table>
+      <p style="margin:16px 0 0; color:#4a5568;">${closing}</p>
+    </div>
+  `;
+
+  const textLines = normalizedItems
+    .map((item, index) => {
+      const parts = [`${index + 1}. ${item?.title || ''}`];
+      if (item?.priceLabel) parts.push(item.priceLabel);
+      if (item?.productUrl) parts.push(item.productUrl);
+      return parts.filter(Boolean).join(' - ');
+    })
+    .join('\n');
+
+  const text = `${greeting}${customerName ? ` ${customerName}` : ''},\n${intro}\n\n${textLines}\n\n${closing}`;
+
+  return { html, text };
+}
+
 function buildAuthorMap(authorRows) {
   const defaultDate = new Date().toISOString();
 
@@ -1111,6 +1189,52 @@ app.post('/api/zcredit/create-checkout', async (req, res) => {
   }
 });
 
+app.post('/api/wishlist', async (req, res) => {
+  const { customerId, itemId, customerEmail, customerName, language, items } = req.body ?? {};
+
+  if (!customerId || !itemId) {
+    return res.status(400).json({ status: 'error', message: 'Customer ID and item ID are required' });
+  }
+
+  const sessionId = req.sessionId || null;
+
+  try {
+    await pool.query(
+      `INSERT INTO wishlist (custid, itemid, callid, updcallid, source)
+       VALUES (?, ?, ?, ?, ?)`,
+      [customerId, itemId, sessionId, sessionId, 'web'],
+    );
+  } catch (error) {
+    console.error('Failed to update wishlist table', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to update wishlist' });
+  }
+
+  let emailSent = false;
+  if (customerEmail && Array.isArray(items) && items.length > 0) {
+    try {
+      const subject =
+        language === 'en' ? 'Your Daf Echad wishlist' : 'רשימת המשאלות שלך בדף אחד';
+      const { html, text } = buildWishlistEmailContent({
+        customerName,
+        items,
+        language,
+      });
+
+      await sendEmail({
+        to: customerEmail,
+        subject,
+        text,
+        html,
+      });
+      emailSent = true;
+    } catch (error) {
+      console.error('Error sending wishlist email:', error);
+    }
+  }
+
+  return res.json({ status: 'ok', emailSent });
+});
+
 app.post('/api/email/send', async (req, res) => {
   const { to, subject, text, html, bcc } = req.body ?? {};
 
@@ -1371,7 +1495,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
         to: email,
         subject,
         text: `${greeting},\n\n${instructions}\n\n${passwordLabel}: ${temporaryPassword}`,
-        html: `<p>${greeting},</p><p>${instructions}</p><p><strong>${passwordLabel}: ${temporaryPassword}</strong></p>`,
+        html: `<p>${greeting},</p><p>${instructions}</p><p>${passwordLabel}:</p><div style="font-size:24px; font-weight:700; letter-spacing:1px; direction:ltr;">${temporaryPassword}</div>`,
       });
 
       console.info('Created customer account for email login request', { customerId, email });
@@ -1394,7 +1518,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
       to: customer.email,
       subject,
       text: `${greeting},\n\n${instructions}\n\n${codeLabel}: ${code}`,
-      html: `<p>${greeting},</p><p>${instructions}</p><p><strong>${codeLabel}: ${code}</strong></p>` ,
+      html: `<p>${greeting},</p><p>${instructions}</p><p>${codeLabel}:</p><div style="font-size:26px; font-weight:700; letter-spacing:2px; direction:ltr;">${code}</div>` ,
     });
 
     return res.json({ status: 'ok', mode: 'code', message: 'Code sent' });
@@ -1517,12 +1641,14 @@ If you did not request a reset, you can ignore this email and your password will
       language === 'he'
         ? `<p>שלום ${displayName},</p>
 <p>יצרנו עבורכם סיסמה זמנית לחשבון בדף אחד.</p>
-<p><strong>סיסמה זמנית: ${temporaryPassword}</strong></p>
+<p>סיסמה זמנית:</p>
+<div style="font-size:24px; font-weight:700; letter-spacing:1px; direction:ltr;">${temporaryPassword}</div>
 <p>הסיסמה תקפה לזמן מוגבל. מומלץ להתחבר ולעדכן סיסמה קבועה באזור הפרופיל.</p>
 <p>אם לא ביקשתם שחזור, ניתן להתעלם מהמייל והסיסמה תישאר ללא שינוי.</p>`
         : `<p>Hello ${displayName},</p>
 <p>We generated a temporary password for your Daf Echad account.</p>
-<p><strong>Temporary password: ${temporaryPassword}</strong></p>
+<p>Temporary password:</p>
+<div style="font-size:24px; font-weight:700; letter-spacing:1px; direction:ltr;">${temporaryPassword}</div>
 <p>The password is valid for a limited time. Please sign in and change it to a permanent password in your profile.</p>
 <p>If you did not request a reset, you can ignore this email and your password will remain unchanged.</p>`;
 
