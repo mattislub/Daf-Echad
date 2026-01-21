@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   CreditCard,
@@ -94,6 +94,7 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate, onLo
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
   const [countriesError, setCountriesError] = useState<string | null>(null);
+  const previousTabRef = useRef<TabId | null>(null);
 
   useEffect(() => {
     setProfileAccount(account ?? null);
@@ -345,6 +346,16 @@ export default function AccountPage({ onNavigate, account, onAccountUpdate, onLo
   useEffect(() => {
     loadShippingAddresses();
   }, [loadShippingAddresses]);
+
+  useEffect(() => {
+    const previousTab = previousTabRef.current;
+
+    if (activeTab === 'addresses' && previousTab !== 'addresses') {
+      loadShippingAddresses();
+    }
+
+    previousTabRef.current = activeTab;
+  }, [activeTab, loadShippingAddresses]);
 
   const loadCountries = useCallback(async () => {
     setCountriesLoading(true);
