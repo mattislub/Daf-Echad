@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { Book } from '../types/catalog';
-import { addWishlistItem } from '../services/api';
+import { addWishlistItem, getBookById, getCustomerWishlist } from '../services/api';
 import { useLanguage } from './LanguageContext';
 import { buildProductPath } from '../utils/slug';
 import { resolvePrimaryImage } from '../utils/imagePaths';
@@ -28,6 +28,67 @@ function buildAbsoluteUrl(path: string): string {
 export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const [wishlistItems, setWishlistItems] = useState<Book[]>([]);
   const { language } = useLanguage();
+  const [customerId, setCustomerId] = useState<string | null>(() => loadStoredCustomerAccount()?.id ?? null);
+
+  useEffect(() => {
+    const handleAccountUpdate = () => {
+      const account = loadStoredCustomerAccount();
+      setCustomerId(account?.id ?? null);
+    };
+
+    handleAccountUpdate();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('customer-account-updated', handleAccountUpdate);
+      return () => window.removeEventListener('customer-account-updated', handleAccountUpdate);
+    }
+
+    return undefined;
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadWishlist = async () => {
+      if (!customerId) {
+        setWishlistItems([]);
+        return;
+      }
+
+      try {
+        const itemIds = await getCustomerWishlist(customerId, 200);
+        if (!itemIds.length) {
+          if (isActive) {
+            setWishlistItems([]);
+          }
+          return;
+        }
+
+        const books = await Promise.all(
+          itemIds.map(async (itemId) => {
+            try {
+              return await getBookById(itemId);
+            } catch (error) {
+              console.error('Failed to load wishlist item', error);
+              return null;
+            }
+          }),
+        );
+
+        if (isActive) {
+          setWishlistItems(books.filter((book): book is Book => Boolean(book)));
+        }
+      } catch (error) {
+        console.error('Failed to load customer wishlist', error);
+      }
+    };
+
+    loadWishlist();
+
+    return () => {
+      isActive = false;
+    };
+  }, [customerId]);
 
   const logWishlistAdd = useCallback(
     async (item: Book, items: Book[]) => {
