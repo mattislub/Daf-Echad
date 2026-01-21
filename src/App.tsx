@@ -36,6 +36,93 @@ import {
 } from './utils/slug';
 import { resolvePrimaryImage } from './utils/imagePaths';
 
+const CUSTOMER_ACCOUNT_STORAGE_KEY = 'daf_customer_account';
+const CUSTOMER_ACCOUNT_SESSION_MS = 1000 * 60 * 60 * 24 * 7;
+
+type StoredCustomerAccount = {
+  account: CustomerAccount;
+  expiresAt: number;
+};
+
+function loadStoredCustomerAccount(): CustomerAccount | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as StoredCustomerAccount;
+    if (!parsed?.account || !parsed?.expiresAt) {
+      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+      return null;
+    }
+
+    if (parsed.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+      return null;
+    }
+
+    return parsed.account;
+  } catch (error) {
+    console.warn('Failed to parse stored customer account', error);
+    window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+    return null;
+  }
+}
+
+function getStoredCustomerExpiry(): number | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as StoredCustomerAccount;
+    if (!parsed?.expiresAt) {
+      return null;
+    }
+
+    if (parsed.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+      return null;
+    }
+
+    return parsed.expiresAt;
+  } catch (error) {
+    console.warn('Failed to parse stored customer expiry', error);
+    window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+    return null;
+  }
+}
+
+function persistCustomerAccount(account: CustomerAccount, expiresAt?: number) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const payload: StoredCustomerAccount = {
+    account,
+    expiresAt: expiresAt ?? Date.now() + CUSTOMER_ACCOUNT_SESSION_MS,
+  };
+  window.localStorage.setItem(CUSTOMER_ACCOUNT_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function clearStoredCustomerAccount() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.removeItem(CUSTOMER_ACCOUNT_STORAGE_KEY);
+}
+
 function HomePage({
   books,
   loading,
@@ -101,7 +188,9 @@ function App() {
   const [catalogFiltersFromUrl, setCatalogFiltersFromUrl] = useState<string[]>([]);
   const [paymentCheckoutUrl, setPaymentCheckoutUrl] = useState<string | null>(null);
   const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
-  const [customerAccount, setCustomerAccount] = useState<CustomerAccount | null>(null);
+  const [customerAccount, setCustomerAccount] = useState<CustomerAccount | null>(() =>
+    loadStoredCustomerAccount(),
+  );
 
   const getBookSlug = useCallback((book: Book | undefined) => {
     if (!book) return '';
@@ -183,7 +272,20 @@ function App() {
 
   const handleLoginSuccess = (account: CustomerAccount) => {
     setCustomerAccount(account);
+    persistCustomerAccount(account);
     handleNavigate('account');
+  };
+
+  const handleAccountUpdate = (account: CustomerAccount) => {
+    setCustomerAccount(account);
+    const existingExpiry = getStoredCustomerExpiry();
+    persistCustomerAccount(account, existingExpiry ?? Date.now() + CUSTOMER_ACCOUNT_SESSION_MS);
+  };
+
+  const handleLogout = () => {
+    setCustomerAccount(null);
+    clearStoredCustomerAccount();
+    handleNavigate('home');
   };
 
   useEffect(() => {
@@ -390,7 +492,8 @@ function App() {
               paymentCheckoutUrl={paymentCheckoutUrl}
               paymentOrderId={paymentOrderId}
               customerAccount={customerAccount}
-              onAccountUpdate={setCustomerAccount}
+              onAccountUpdate={handleAccountUpdate}
+              onLogout={handleLogout}
             />
           </SearchProvider>
         </WishlistProvider>
@@ -412,6 +515,7 @@ interface AppContentProps {
   paymentOrderId: string | null;
   customerAccount: CustomerAccount | null;
   onAccountUpdate?: (account: CustomerAccount) => void;
+  onLogout?: () => void;
 }
 
 function AppContent({
@@ -427,6 +531,7 @@ function AppContent({
   paymentOrderId,
   customerAccount,
   onAccountUpdate,
+  onLogout,
 }: AppContentProps) {
   const { language, t } = useLanguage();
 
@@ -476,7 +581,12 @@ function AppContent({
       {currentPage === 'cart' && <CartPage onNavigate={onNavigate} />}
       {currentPage === 'wishlist' && <WishlistPage onNavigate={onNavigate} />}
       {currentPage === 'account' && (
-        <AccountPage onNavigate={onNavigate} account={customerAccount} onAccountUpdate={onAccountUpdate} />
+        <AccountPage
+          onNavigate={onNavigate}
+          account={customerAccount}
+          onAccountUpdate={onAccountUpdate}
+          onLogout={onLogout}
+        />
       )}
       {currentPage === 'login' && (
         <LoginPage onNavigate={onNavigate} onLoginSuccess={onLoginSuccess} />
