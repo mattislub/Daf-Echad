@@ -1371,7 +1371,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
         to: email,
         subject,
         text: `${greeting},\n\n${instructions}\n\n${passwordLabel}: ${temporaryPassword}`,
-        html: `<p>${greeting},</p><p>${instructions}</p><p><strong>${passwordLabel}: ${temporaryPassword}</strong></p>`,
+        html: `<p>${greeting},</p><p>${instructions}</p><p>${passwordLabel}:</p><div style="font-size:24px; font-weight:700; letter-spacing:1px; direction:ltr;">${temporaryPassword}</div>`,
       });
 
       console.info('Created customer account for email login request', { customerId, email });
@@ -1394,7 +1394,7 @@ app.post('/api/customers/login/email/request', async (req, res) => {
       to: customer.email,
       subject,
       text: `${greeting},\n\n${instructions}\n\n${codeLabel}: ${code}`,
-      html: `<p>${greeting},</p><p>${instructions}</p><p><strong>${codeLabel}: ${code}</strong></p>` ,
+      html: `<p>${greeting},</p><p>${instructions}</p><p>${codeLabel}:</p><div style="font-size:26px; font-weight:700; letter-spacing:2px; direction:ltr;">${code}</div>` ,
     });
 
     return res.json({ status: 'ok', mode: 'code', message: 'Code sent' });
@@ -1517,12 +1517,14 @@ If you did not request a reset, you can ignore this email and your password will
       language === 'he'
         ? `<p>שלום ${displayName},</p>
 <p>יצרנו עבורכם סיסמה זמנית לחשבון בדף אחד.</p>
-<p><strong>סיסמה זמנית: ${temporaryPassword}</strong></p>
+<p>סיסמה זמנית:</p>
+<div style="font-size:24px; font-weight:700; letter-spacing:1px; direction:ltr;">${temporaryPassword}</div>
 <p>הסיסמה תקפה לזמן מוגבל. מומלץ להתחבר ולעדכן סיסמה קבועה באזור הפרופיל.</p>
 <p>אם לא ביקשתם שחזור, ניתן להתעלם מהמייל והסיסמה תישאר ללא שינוי.</p>`
         : `<p>Hello ${displayName},</p>
 <p>We generated a temporary password for your Daf Echad account.</p>
-<p><strong>Temporary password: ${temporaryPassword}</strong></p>
+<p>Temporary password:</p>
+<div style="font-size:24px; font-weight:700; letter-spacing:1px; direction:ltr;">${temporaryPassword}</div>
 <p>The password is valid for a limited time. Please sign in and change it to a permanent password in your profile.</p>
 <p>If you did not request a reset, you can ignore this email and your password will remain unchanged.</p>`;
 
