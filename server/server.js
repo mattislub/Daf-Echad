@@ -1249,6 +1249,35 @@ app.post('/api/wishlist', async (req, res) => {
   return res.json({ status: 'ok', emailSent });
 });
 
+app.get('/api/customers/:customerId/wishlist', async (req, res) => {
+  const customerId = req.params.customerId?.toString().trim();
+  const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 200);
+
+  if (!customerId) {
+    return res.status(400).json({ status: 'error', message: 'Customer ID is required' });
+  }
+
+  try {
+    const [rows] = await pool.query('SELECT itemid FROM wishlist WHERE custid = ? LIMIT ?', [
+      customerId,
+      limit,
+    ]);
+    const itemIds = Array.from(
+      new Set(
+        (rows ?? [])
+          .map((row) => row?.itemid ?? row?.itemId ?? row?.ITEMID)
+          .filter(Boolean)
+          .map((value) => String(value)),
+      ),
+    );
+
+    return res.json({ status: 'ok', itemIds });
+  } catch (error) {
+    console.error('Failed to fetch wishlist items', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to fetch wishlist items' });
+  }
+});
+
 app.post('/api/email/send', async (req, res) => {
   const { to, subject, text, html, bcc } = req.body ?? {};
 
