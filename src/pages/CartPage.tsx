@@ -28,6 +28,7 @@ import {
   HfdRateResponse,
   CustomerShippingAddress,
   getCustomerShippingAddresses,
+  getShipToTableAddresses,
 } from '../services/api';
 
 interface CartPageProps {
@@ -264,7 +265,27 @@ export default function CartPage({ onNavigate }: CartPageProps) {
     setShippingAddressesError(null);
 
     try {
-      const addresses = await getCustomerShippingAddresses(customerId);
+      const [savedResult, legacyResult] = await Promise.allSettled([
+        getCustomerShippingAddresses(customerId),
+        getShipToTableAddresses(customerId, 50),
+      ]);
+      const savedAddresses = savedResult.status === 'fulfilled' ? savedResult.value : [];
+      const legacyAddresses = legacyResult.status === 'fulfilled' ? legacyResult.value : [];
+
+      if (savedResult.status === 'rejected') {
+        console.warn('Failed to load shipping addresses from customer endpoint', savedResult.reason);
+      }
+      if (legacyResult.status === 'rejected') {
+        console.warn('Failed to load shipping addresses from shipto table', legacyResult.reason);
+      }
+      if (savedResult.status === 'rejected' && legacyResult.status === 'rejected') {
+        throw savedResult.reason;
+      }
+
+      const addresses = [
+        ...savedAddresses,
+        ...legacyAddresses.filter((address) => !savedAddresses.some((saved) => saved.id === address.id)),
+      ];
       setShippingAddresses(addresses);
 
       if (addresses.length > 0) {
