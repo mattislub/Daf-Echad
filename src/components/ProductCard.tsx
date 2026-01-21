@@ -1,4 +1,4 @@
-import { ShoppingCart, Star, Book, Eye, Heart } from 'lucide-react';
+import { ShoppingCart, Star, Book, Eye, Heart, CreditCard } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface ProductCardProps {
@@ -10,6 +10,7 @@ interface ProductCardProps {
   onAddToCart?: () => void;
   onViewDetails?: () => void;
   onGoToCart?: () => void;
+  onImmediateCheckout?: () => void;
   isFeatured?: boolean;
   inStock?: boolean;
   onToggleWishlist?: () => void;
@@ -24,6 +25,7 @@ export default function ProductCard({
   onAddToCart,
   onViewDetails,
   onGoToCart,
+  onImmediateCheckout,
   isFeatured = false,
   inStock = true,
   onToggleWishlist,
@@ -52,19 +54,6 @@ export default function ProductCard({
           <div className="absolute top-3 left-3 bg-gray-800 text-white p-2 rounded shadow-lg">
             <Star className="w-4 h-4 fill-white" />
           </div>
-        )}
-        {onToggleWishlist && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleWishlist();
-            }}
-            className="absolute top-3 right-3 bg-white/90 hover:bg-white text-yellow-700 p-2 rounded-full shadow-md border border-yellow-100 transition"
-            aria-label={isInWishlist ? (isRTL ? 'הסר מרשימת המשאלות' : 'Remove from wishlist') : isRTL ? 'הוסף לרשימת המשאלות' : 'Add to wishlist'}
-          >
-            <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-yellow-600 text-yellow-700' : 'text-yellow-700'}`} />
-          </button>
         )}
         {onViewDetails && (
           <button
@@ -103,26 +92,51 @@ export default function ProductCard({
           )}
         </div>
 
-        {(onAddToCart || onGoToCart) && (
-          <div className="flex flex-col gap-2">
+        {(onAddToCart || onViewDetails || onImmediateCheckout || onToggleWishlist) && (
+          <div className="flex items-center gap-2 mb-4">
             {onAddToCart && (
               <button
+                type="button"
                 onClick={onAddToCart}
                 disabled={!inStock}
-                className="w-full bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded font-semibold flex items-center justify-center gap-2 transition-all border border-yellow-600/30"
+                aria-label={isRTL ? 'הוסף לעגלה' : 'Add to cart'}
+                title={isRTL ? 'הוסף לעגלה' : 'Add to cart'}
+                className="p-2 rounded-full border border-yellow-100 bg-white text-gray-700 hover:text-yellow-700 hover:border-yellow-200 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ShoppingCart className="w-5 h-5" />
-                <span>{isRTL ? 'הוסף לעגלה' : 'Add to Cart'}</span>
               </button>
             )}
-            {onGoToCart && (
+            {onViewDetails && (
               <button
                 type="button"
-                onClick={onGoToCart}
-                className="w-full border-2 border-yellow-600/60 text-yellow-800 bg-yellow-50 hover:bg-yellow-100 py-3 rounded font-semibold flex items-center justify-center gap-2 transition-all"
+                onClick={onViewDetails}
+                aria-label={isRTL ? 'צפה בדף מוצר' : 'View product page'}
+                title={isRTL ? 'צפה בדף מוצר' : 'View product page'}
+                className="p-2 rounded-full border border-yellow-100 bg-white text-gray-700 hover:text-yellow-700 hover:border-yellow-200 shadow-sm transition"
               >
-                <ShoppingCart className="w-5 h-5" />
-                <span>{isRTL ? 'מעבר לעגלה' : 'Go to Cart'}</span>
+                <Eye className="w-5 h-5" />
+              </button>
+            )}
+            {onImmediateCheckout && (
+              <button
+                type="button"
+                onClick={onImmediateCheckout}
+                aria-label={isRTL ? 'מעבר לתשלום מיידי' : 'Immediate checkout'}
+                title={isRTL ? 'מעבר לתשלום מיידי' : 'Immediate checkout'}
+                className="p-2 rounded-full border border-yellow-100 bg-white text-gray-700 hover:text-yellow-700 hover:border-yellow-200 shadow-sm transition"
+              >
+                <CreditCard className="w-5 h-5" />
+              </button>
+            )}
+            {onToggleWishlist && (
+              <button
+                type="button"
+                onClick={onToggleWishlist}
+                aria-label={isInWishlist ? (isRTL ? 'הסר מרשימת המשאלות' : 'Remove from wishlist') : isRTL ? 'הוסף לרשימת המשאלות' : 'Add to wishlist'}
+                title={isInWishlist ? (isRTL ? 'הסר מרשימת המשאלות' : 'Remove from wishlist') : isRTL ? 'הוסף לרשימת המשאלות' : 'Add to wishlist'}
+                className="p-2 rounded-full border border-yellow-100 bg-white text-gray-700 hover:text-yellow-700 hover:border-yellow-200 shadow-sm transition"
+              >
+                <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-yellow-600 text-yellow-700' : 'text-yellow-700'}`} />
               </button>
             )}
           </div>
