@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from 'react';
 import { Book } from '../types/catalog';
-import { addWishlistItem } from '../services/api';
+import { addWishlistItem, getBookById, getCustomerWishlist } from '../services/api';
 import { useLanguage } from './LanguageContext';
 import { buildProductPath } from '../utils/slug';
 import { resolvePrimaryImage } from '../utils/imagePaths';

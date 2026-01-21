@@ -148,6 +148,16 @@ export async function addWishlistItem(payload: WishlistAddPayload): Promise<void
   }
 }
 
+export async function getCustomerWishlist(customerId: string, limit = 100): Promise<string[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(buildApiUrl(`/customers/${customerId}/wishlist?${params.toString()}`));
+  if (!response.ok) {
+    throw new Error(`Wishlist request failed: ${response.status} ${response.statusText}`);
+  }
+  const data = (await response.json().catch(() => ({}))) as { itemIds?: string[] };
+  return Array.isArray(data?.itemIds) ? data.itemIds : [];
+}
+
 type ShipToTableRow = {
   ID?: number | string;
   id?: number | string;
