@@ -9,7 +9,9 @@ import { Loader2, SlidersHorizontal } from 'lucide-react';
 import { getAuthors, getBooks, getCategories, getPublishers } from '../services/api';
 import { useSearch } from '../context/SearchContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useCart } from '../context/CartContext';
 import { resolvePrimaryImage } from '../utils/imagePaths';
+import { CartItem } from '../types';
 
 interface CatalogProps {
   onNavigate?: (page: string, bookId?: string) => void;
@@ -20,6 +22,7 @@ export default function Catalog({ onNavigate, initialCategoryFilters = [] }: Cat
   const { language, currency } = useLanguage();
   const { searchTerm } = useSearch();
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const { addToCart } = useCart();
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -39,6 +42,17 @@ export default function Catalog({ onNavigate, initialCategoryFilters = [] }: Cat
     originalText: null,
     priceRange: { min: 0, max: 1000 },
     inStockOnly: false,
+  });
+
+  const buildCartItem = (book: Book): CartItem => ({
+    id: book.id,
+    title_he: book.title_he,
+    title_en: book.title_en,
+    price_ils: book.price_ils,
+    price_usd: book.price_usd,
+    image_url: book.image_url,
+    weight: book.weight,
+    quantity: 1,
   });
 
   useEffect(() => {
@@ -271,9 +285,25 @@ export default function Catalog({ onNavigate, initialCategoryFilters = [] }: Cat
                         : ''
                     }
                     onViewDetails={() => onNavigate?.('item', book.id)}
+                    onAddToCart={
+                      book.in_stock
+                        ? () => {
+                            addToCart(buildCartItem(book));
+                          }
+                        : undefined
+                    }
+                    onImmediateCheckout={
+                      book.in_stock
+                        ? () => {
+                            addToCart(buildCartItem(book));
+                            onNavigate?.('cart');
+                          }
+                        : undefined
+                    }
                     onGoToCart={() => onNavigate?.('cart')}
                     onToggleWishlist={() => toggleWishlist(book)}
                     isInWishlist={isInWishlist(book.id)}
+                    inStock={book.in_stock}
                   />
                 ))}
               </div>

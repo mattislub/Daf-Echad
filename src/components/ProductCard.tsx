@@ -1,4 +1,4 @@
-import { ShoppingCart, Star, Book, Eye, Heart } from 'lucide-react';
+import { ShoppingCart, Star, Book, Eye, Heart, CreditCard } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface ProductCardProps {
@@ -10,6 +10,7 @@ interface ProductCardProps {
   onAddToCart?: () => void;
   onViewDetails?: () => void;
   onGoToCart?: () => void;
+  onImmediateCheckout?: () => void;
   isFeatured?: boolean;
   inStock?: boolean;
   onToggleWishlist?: () => void;
@@ -24,6 +25,7 @@ export default function ProductCard({
   onAddToCart,
   onViewDetails,
   onGoToCart,
+  onImmediateCheckout,
   isFeatured = false,
   inStock = true,
   onToggleWishlist,
@@ -102,6 +104,45 @@ export default function ProductCard({
             </span>
           )}
         </div>
+
+        {(onAddToCart || onViewDetails || onImmediateCheckout) && (
+          <div className="flex items-center gap-2 mb-4">
+            {onAddToCart && (
+              <button
+                type="button"
+                onClick={onAddToCart}
+                disabled={!inStock}
+                aria-label={isRTL ? 'הוסף לעגלה' : 'Add to cart'}
+                title={isRTL ? 'הוסף לעגלה' : 'Add to cart'}
+                className="p-2 rounded-full border border-yellow-100 bg-white text-gray-700 hover:text-yellow-700 hover:border-yellow-200 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ShoppingCart className="w-5 h-5" />
+              </button>
+            )}
+            {onViewDetails && (
+              <button
+                type="button"
+                onClick={onViewDetails}
+                aria-label={isRTL ? 'צפה בדף מוצר' : 'View product page'}
+                title={isRTL ? 'צפה בדף מוצר' : 'View product page'}
+                className="p-2 rounded-full border border-yellow-100 bg-white text-gray-700 hover:text-yellow-700 hover:border-yellow-200 shadow-sm transition"
+              >
+                <Eye className="w-5 h-5" />
+              </button>
+            )}
+            {onImmediateCheckout && (
+              <button
+                type="button"
+                onClick={onImmediateCheckout}
+                aria-label={isRTL ? 'מעבר לתשלום מיידי' : 'Immediate checkout'}
+                title={isRTL ? 'מעבר לתשלום מיידי' : 'Immediate checkout'}
+                className="p-2 rounded-full border border-yellow-100 bg-white text-gray-700 hover:text-yellow-700 hover:border-yellow-200 shadow-sm transition"
+              >
+                <CreditCard className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        )}
 
         {(onAddToCart || onGoToCart) && (
           <div className="flex flex-col gap-2">
