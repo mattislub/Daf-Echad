@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from 'react';
 import { Book } from '../types/catalog';
 import { addWishlistItem, getBookById, getCustomerWishlist } from '../services/api';
 import { useLanguage } from './LanguageContext';
 import { buildProductPath } from '../utils/slug';
 import { resolvePrimaryImage } from '../utils/imagePaths';
 import { loadStoredCustomerAccount } from '../utils/customerSession';
+import { CustomerAccount } from '../types';
 
 interface WishlistContextType {
   wishlistItems: Book[];
@@ -28,71 +29,43 @@ function buildAbsoluteUrl(path: string): string {
 export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const [wishlistItems, setWishlistItems] = useState<Book[]>([]);
   const { language } = useLanguage();
-  const [customerId, setCustomerId] = useState<string | null>(() => loadStoredCustomerAccount()?.id ?? null);
+  const [customerAccount, setCustomerAccount] = useState<CustomerAccount | null>(() => loadStoredCustomerAccount());
+  const syncedWishlistIds = useRef<Set<string>>(new Set());
+  const previousCustomerId = useRef<string | null>(customerAccount?.id ?? null);
 
   useEffect(() => {
-    const handleAccountUpdate = () => {
-      const account = loadStoredCustomerAccount();
-      setCustomerId(account?.id ?? null);
-    };
-
-    handleAccountUpdate();
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('customer-account-updated', handleAccountUpdate);
-      return () => window.removeEventListener('customer-account-updated', handleAccountUpdate);
+    if (typeof window === 'undefined') {
+      return;
     }
 
-    return undefined;
+    const handleAccountUpdate = () => {
+      setCustomerAccount(loadStoredCustomerAccount());
+    };
+
+    window.addEventListener('customer-account-updated', handleAccountUpdate);
+    window.addEventListener('storage', handleAccountUpdate);
+
+    return () => {
+      window.removeEventListener('customer-account-updated', handleAccountUpdate);
+      window.removeEventListener('storage', handleAccountUpdate);
+    };
   }, []);
 
   useEffect(() => {
-    let isActive = true;
-
-    const loadWishlist = async () => {
-      if (!customerId) {
-        setWishlistItems([]);
-        return;
-      }
-
-      try {
-        const itemIds = await getCustomerWishlist(customerId, 200);
-        if (!itemIds.length) {
-          if (isActive) {
-            setWishlistItems([]);
-          }
-          return;
-        }
-
-        const books = await Promise.all(
-          itemIds.map(async (itemId) => {
-            try {
-              return await getBookById(itemId);
-            } catch (error) {
-              console.error('Failed to load wishlist item', error);
-              return null;
-            }
-          }),
-        );
-
-        if (isActive) {
-          setWishlistItems(books.filter((book): book is Book => Boolean(book)));
-        }
-      } catch (error) {
-        console.error('Failed to load customer wishlist', error);
-      }
-    };
-
-    loadWishlist();
-
-    return () => {
-      isActive = false;
-    };
-  }, [customerId]);
+    const currentCustomerId = customerAccount?.id ?? null;
+    if (previousCustomerId.current && previousCustomerId.current !== currentCustomerId) {
+      syncedWishlistIds.current.clear();
+    }
+    previousCustomerId.current = currentCustomerId;
+  }, [customerAccount?.id]);
 
   const logWishlistAdd = useCallback(
     async (item: Book, items: Book[]) => {
-      const account = loadStoredCustomerAccount();
+      if (syncedWishlistIds.current.has(item.id)) {
+        return;
+      }
+
+      const account = customerAccount;
       if (!account?.id) {
         return;
       }
@@ -129,22 +102,33 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
           language,
           items: payloadItems,
         });
+        syncedWishlistIds.current.add(item.id);
       } catch (error) {
         console.error('Failed to log wishlist update', error);
       }
     },
-    [language],
+    [customerAccount, language],
   );
+
+  useEffect(() => {
+    if (!customerAccount?.id || wishlistItems.length === 0) {
+      return;
+    }
+
+    wishlistItems.forEach((item) => {
+      if (!syncedWishlistIds.current.has(item.id)) {
+        Promise.resolve().then(() => logWishlistAdd(item, wishlistItems));
+      }
+    });
+  }, [customerAccount?.id, logWishlistAdd, wishlistItems]);
 
   const addToWishlist = useCallback((item: Book) => {
     setWishlistItems((prev) => {
       const exists = prev.some((existing) => existing.id === item.id);
       if (exists) return prev;
-      const next = [...prev, item];
-      Promise.resolve().then(() => logWishlistAdd(item, next));
-      return next;
+      return [...prev, item];
     });
-  }, [logWishlistAdd]);
+  }, []);
 
   const removeFromWishlist = useCallback((id: string) => {
     setWishlistItems((prev) => prev.filter((item) => item.id !== id));
@@ -157,12 +141,10 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
         if (exists) {
           return prev.filter((existing) => existing.id !== item.id);
         }
-        const next = [...prev, item];
-        Promise.resolve().then(() => logWishlistAdd(item, next));
-        return next;
+        return [...prev, item];
       });
     },
-    [logWishlistAdd],
+    [],
   );
 
   const isInWishlist = useCallback(
