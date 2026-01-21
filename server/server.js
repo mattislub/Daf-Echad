@@ -575,19 +575,21 @@ function mapDiscountRow(row) {
 }
 
 function mapShippingAddressRow(row) {
+  const s = (value) => (value === null || value === undefined ? null : String(value).trim());
+
   return {
     id: row.ID ? String(row.ID) : row.id ? String(row.id) : '',
     customerId: row.custid ? String(row.custid) : '',
     isDefault: normalizeBoolean(row.stdefault),
-    street: row.street?.trim() ?? '',
+    street: s(row.street),
     houseNumber: row.no !== undefined && row.no !== null ? String(row.no).trim() : '',
-    entrance: row.ent?.trim() ?? '',
-    apartment: row.apt?.trim() ?? '',
-    city: row.city?.trim() ?? '',
-    state: row.state?.trim() ?? '',
-    zip: row.zip !== undefined && row.zip !== null ? String(row.zip).trim() : '',
-    country: row.country?.trim() ?? '',
-    specialInstructions: row.specinst?.trim() ?? '',
+    entrance: s(row.ent),
+    apartment: s(row.apt),
+    city: s(row.city),
+    state: s(row.state),
+    zip: s(row.zip),
+    country: s(row.country),
+    specialInstructions: s(row.specinst),
     callId: row.callid !== undefined && row.callid !== null ? String(row.callid).trim() : '',
     updatedAt: toIsoDateString(row.stamp),
   };
