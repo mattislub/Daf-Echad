@@ -541,6 +541,8 @@ function generateNumericPassword(length = 6) {
 const EMAIL_LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
 const EMAIL_LOGIN_MAX_ATTEMPTS = 5;
 const emailLoginRequests = new Map();
+const WISHLIST_EMAIL_COOLDOWN_MS = 60 * 60 * 1000;
+const wishlistEmailLastSentAt = new Map();
 
 function normalizePreferredLanguage(value = '') {
   const normalized = String(value).trim().toLowerCase();
@@ -587,6 +589,31 @@ function getEmailLoginCode(email) {
 
 function clearEmailLoginCode(email) {
   emailLoginRequests.delete(email.toLowerCase());
+}
+
+function getWishlistEmailSendEligibility(email) {
+  const key = email.toLowerCase();
+  const lastSentAt = wishlistEmailLastSentAt.get(key);
+
+  if (!lastSentAt) {
+    return { allowed: true, lastSentAt: null, remainingMs: 0 };
+  }
+
+  const elapsedMs = Date.now() - lastSentAt;
+
+  if (elapsedMs >= WISHLIST_EMAIL_COOLDOWN_MS) {
+    return { allowed: true, lastSentAt, remainingMs: 0 };
+  }
+
+  return {
+    allowed: false,
+    lastSentAt,
+    remainingMs: WISHLIST_EMAIL_COOLDOWN_MS - elapsedMs,
+  };
+}
+
+function markWishlistEmailSent(email) {
+  wishlistEmailLastSentAt.set(email.toLowerCase(), Date.now());
 }
 
 function buildSizeMap(sizeRows = []) {
@@ -1251,23 +1278,36 @@ app.post('/api/wishlist', async (req, res) => {
   }
 
   let emailSent = false;
-  if (customerEmail && Array.isArray(items) && items.length > 0) {
+  const normalizedCustomerEmail = typeof customerEmail === 'string' ? customerEmail.trim() : '';
+  if (normalizedCustomerEmail && Array.isArray(items) && items.length > 0) {
     try {
-      const subject =
-        language === 'en' ? 'Your Daf Echad wishlist' : 'רשימת המשאלות שלך בדף אחד';
-      const { html, text } = buildWishlistEmailContent({
-        customerName,
-        items,
-        language,
-      });
+      const eligibility = getWishlistEmailSendEligibility(normalizedCustomerEmail);
 
-      await sendEmail({
-        to: customerEmail,
-        subject,
-        text,
-        html,
-      });
-      emailSent = true;
+      if (!eligibility.allowed) {
+        console.info('[wishlist] email suppressed (rate limit)', {
+          ...wishlistLogContext,
+          customerEmail: normalizedCustomerEmail,
+          lastSentAt: eligibility.lastSentAt,
+          remainingMs: eligibility.remainingMs,
+        });
+      } else {
+        const subject =
+          language === 'en' ? 'Your Daf Echad wishlist' : 'רשימת המשאלות שלך בדף אחד';
+        const { html, text } = buildWishlistEmailContent({
+          customerName,
+          items,
+          language,
+        });
+
+        await sendEmail({
+          to: normalizedCustomerEmail,
+          subject,
+          text,
+          html,
+        });
+        emailSent = true;
+        markWishlistEmailSent(normalizedCustomerEmail);
+      }
     } catch (error) {
       console.error('Error sending wishlist email:', error);
     }
