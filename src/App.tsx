@@ -112,6 +112,23 @@ function App() {
     loadStoredCustomerAccount(),
   );
 
+  useEffect(() => {
+    const handleAccountUpdate = () => setCustomerAccount(loadStoredCustomerAccount());
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'daf_customer_account') {
+        handleAccountUpdate();
+      }
+    };
+
+    window.addEventListener('customer-account-updated', handleAccountUpdate);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('customer-account-updated', handleAccountUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
   const getBookSlug = useCallback((book: Book | undefined) => {
     if (!book) return '';
     return buildProductSlug(book);
