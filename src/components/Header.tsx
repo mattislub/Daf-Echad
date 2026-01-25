@@ -10,10 +10,12 @@ import {
   Truck,
   Heart,
   LogIn,
+  LogOut,
   Info,
   FileText,
   Mail,
   ShieldCheck,
+  User,
 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
@@ -23,7 +25,7 @@ import { Book } from '../types/catalog';
 import { useWishlist } from '../context/WishlistContext';
 import { buildProductPath } from '../utils/slug';
 import { CustomerAccount } from '../types';
-import { loadStoredCustomerAccount } from '../utils/customerSession';
+import { clearStoredCustomerAccount, loadStoredCustomerAccount } from '../utils/customerSession';
 
 export interface HeaderProps {
   onNavigate?: (page: string) => void;
@@ -81,6 +83,12 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
     const fullName = [customerAccount.firstName, customerAccount.lastName].filter(Boolean).join(' ').trim();
     return fullName || customerAccount.email || null;
   }, [customerAccount]);
+
+  const handleLogout = () => {
+    clearStoredCustomerAccount();
+    setCustomerAccount(null);
+    onNavigate?.('home');
+  };
 
   const suggestions = useMemo(() => {
     const term = inputValue.trim().toLowerCase();
@@ -316,13 +324,32 @@ export default function Header({ onNavigate, onSearch, searchItems, searchTerm }
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => onNavigate?.('login')}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100 transition-colors"
-            >
-              <LogIn className="w-5 h-5" />
-              <span>{t('nav.login')}</span>
-            </button>
+            {customerAccount ? (
+              <>
+                <button
+                  onClick={() => onNavigate?.('account')}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100 transition-colors"
+                >
+                  <User className="w-5 h-5" />
+                  <span>{t('nav.account')}</span>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-yellow-600/40 hover:text-yellow-700 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>{t('account.logout')}</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => onNavigate?.('login')}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-yellow-700 bg-yellow-50 border border-yellow-100 rounded-lg hover:bg-yellow-100 transition-colors"
+              >
+                <LogIn className="w-5 h-5" />
+                <span>{t('nav.login')}</span>
+              </button>
+            )}
             <button
               onClick={() => onNavigate?.('wishlist')}
               className="relative flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-yellow-600/40 text-gray-800 rounded-lg transition-colors shadow-sm"
