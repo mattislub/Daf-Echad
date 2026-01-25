@@ -1,121 +1,59 @@
-import { FormEvent, ReactNode, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { Book } from '../types/catalog';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
+import { getBooks } from '../services/api';
 import {
-  ArrowUpRight,
-  BarChart3,
-  Calendar,
+  BookOpen,
   CheckCircle2,
-  FileText,
+  CircleOff,
   Lock,
   LogOut,
-  Package,
+  PackageCheck,
   RefreshCcw,
   ShieldCheck,
-  Target,
+  ShoppingBag,
+  Wrench,
+  ArrowRight,
   Users,
 } from 'lucide-react';
 
-type UserRole = 'admin' | 'manager' | 'coordinator' | 'support';
-
-type UserStatus = 'active' | 'invited' | 'suspended';
-
-type DonationPageStatus = 'active' | 'draft' | 'paused';
+interface AdminOrder {
+  id: string;
+  customer: string;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered';
+  total: number;
+  items: number;
+  createdAt: string;
+}
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? 'admin123';
 
-const crmUsers = [
-  {
-    id: 'USR-102',
-    name: 'מיה כהן',
-    role: 'manager' as UserRole,
-    status: 'active' as UserStatus,
-    lastLogin: '2024-09-18',
-  },
-  {
-    id: 'USR-108',
-    name: 'יונתן גולד',
-    role: 'coordinator' as UserRole,
-    status: 'invited' as UserStatus,
-    lastLogin: '2024-09-16',
-  },
-  {
-    id: 'USR-121',
-    name: 'נועה ברק',
-    role: 'support' as UserRole,
-    status: 'active' as UserStatus,
-    lastLogin: '2024-09-17',
-  },
-  {
-    id: 'USR-135',
-    name: 'איתן וייס',
-    role: 'admin' as UserRole,
-    status: 'suspended' as UserStatus,
-    lastLogin: '2024-09-12',
-  },
-];
-
-const donationPages = [
-  {
-    id: 'PAGE-401',
-    owner: 'משפחת לוי',
-    title: 'סיוע למרכז חלוקת מזון',
-    status: 'active' as DonationPageStatus,
-    raised: 18500,
-    goal: 25000,
-    updatedAt: '2024-09-18',
-  },
-  {
-    id: 'PAGE-418',
-    owner: 'עמותת לב חם',
-    title: 'מלגות לימודים חירום',
-    status: 'paused' as DonationPageStatus,
-    raised: 9200,
-    goal: 20000,
-    updatedAt: '2024-09-15',
-  },
-  {
-    id: 'PAGE-439',
-    owner: 'יעל שקד',
-    title: 'ציוד לחיילים בודדים',
-    status: 'draft' as DonationPageStatus,
-    raised: 0,
-    goal: 15000,
-    updatedAt: '2024-09-14',
-  },
-];
-
-const donationItems = [
-  {
-    id: 'ITEM-18',
-    name: 'אריזות מזון לשבת',
-    category: 'סיוע חודשי',
-    stock: 120,
-    reserved: 24,
-  },
-  {
-    id: 'ITEM-27',
-    name: 'ערכות חורף לילדים',
-    category: 'ציוד חירום',
-    stock: 80,
-    reserved: 12,
-  },
-  {
-    id: 'ITEM-33',
-    name: 'שוברי קניה למשפחות',
-    category: 'סיוע מידי',
-    stock: 60,
-    reserved: 18,
-  },
-];
-
-const generalGoal = {
-  title: 'יעד תרומות כללי לשנת 2024',
-  raised: 178000,
-  target: 250000,
-  donors: 842,
-  updatedAt: '2024-09-18',
+const defaultBook: Book = {
+  id: 'placeholder',
+  title_en: '',
+  title_he: '',
+  description_en: '',
+  description_he: '',
+  author_id: null,
+  publisher_id: null,
+  category_id: null,
+  price_usd: 0,
+  price_ils: 0,
+  image_url: '',
+  size: '',
+  color: '',
+  volumes: 1,
+  binding: '',
+  language: 'he',
+  original_text: true,
+  in_stock: true,
+  featured: false,
+  item_number: null,
+  dimensions: '',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
 };
 
 export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
@@ -123,29 +61,61 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
   const isRTL = language === 'he';
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('admin-auth') === 'true');
+  const [books, setBooks] = useState<Book[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([
+    {
+      id: 'ORD-1001',
+      customer: 'Leah Levi',
+      status: 'pending',
+      total: 280,
+      items: 3,
+      createdAt: '2024-09-12',
+    },
+    {
+      id: 'ORD-1002',
+      customer: 'David Cohen',
+      status: 'processing',
+      total: 450,
+      items: 5,
+      createdAt: '2024-09-10',
+    },
+    {
+      id: 'ORD-1003',
+      customer: 'Sarah Azulay',
+      status: 'shipped',
+      total: 180,
+      items: 2,
+      createdAt: '2024-09-08',
+    },
+  ]);
+  const [loadingBooks, setLoadingBooks] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [newBook, setNewBook] = useState<Pick<Book, 'title_en' | 'title_he' | 'price_ils' | 'price_usd'>>({
+    title_en: '',
+    title_he: '',
+    price_ils: 0,
+    price_usd: 0,
+  });
 
-  const numberFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat(language === 'he' ? 'he-IL' : 'en-US', {
-        maximumFractionDigits: 0,
-      }),
-    [language],
-  );
+  useEffect(() => {
+    if (!isAuthenticated) return;
 
-  const summary = useMemo(() => {
-    const activePages = donationPages.filter((page) => page.status === 'active').length;
-    const availableItems = donationItems.reduce((total, item) => total + (item.stock - item.reserved), 0);
-    const goalProgress = Math.min(100, Math.round((generalGoal.raised / generalGoal.target) * 100));
-
-    return {
-      usersTotal: crmUsers.length,
-      activePages,
-      availableItems,
-      goalProgress,
+    const loadBooks = async () => {
+      try {
+        setLoadingBooks(true);
+        const fetchedBooks = await getBooks();
+        setBooks(fetchedBooks);
+      } catch (error) {
+        console.error('Failed to load books for admin panel', error);
+        setBooks([]);
+      } finally {
+        setLoadingBooks(false);
+      }
     };
-  }, []);
+
+    loadBooks();
+  }, [isAuthenticated]);
 
   const handleLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -166,9 +136,47 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
     sessionStorage.removeItem('admin-auth');
   };
 
-  const formatCurrency = (value: number) => numberFormatter.format(value);
+  const handleBookUpdate = (bookId: string, updates: Partial<Book>) => {
+    setBooks((prev) => prev.map((book) => (book.id === bookId ? { ...book, ...updates, updated_at: new Date().toISOString() } : book)));
+  };
 
-  const progressWidth = `${summary.goalProgress}%`;
+  const handleAddBook = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const now = new Date().toISOString();
+    const createdBook: Book = {
+      ...defaultBook,
+      id: `book-${Date.now()}`,
+      title_en: newBook.title_en || newBook.title_he || 'Untitled',
+      title_he: newBook.title_he || newBook.title_en || 'ללא שם',
+      description_en: t('admin.newBookDefaultDescription'),
+      description_he: t('admin.newBookDefaultDescription'),
+      price_ils: Number(newBook.price_ils) || 0,
+      price_usd: Number(newBook.price_usd) || 0,
+      created_at: now,
+      updated_at: now,
+    };
+
+    setBooks((prev) => [createdBook, ...prev]);
+    setNewBook({ title_en: '', title_he: '', price_ils: 0, price_usd: 0 });
+  };
+
+  const handleOrderStatusChange = (orderId: string, status: AdminOrder['status']) => {
+    setOrders((prev) => prev.map((order) => (order.id === orderId ? { ...order, status } : order)));
+  };
+
+  const summary = useMemo(() => {
+    const pendingOrders = orders.filter((order) => order.status === 'pending').length;
+    const processingOrders = orders.filter((order) => order.status === 'processing').length;
+    const inStockBooks = books.filter((book) => book.in_stock).length;
+    const featuredBooks = books.filter((book) => book.featured).length;
+
+    return {
+      pendingOrders,
+      processingOrders,
+      inStockBooks,
+      featuredBooks,
+    };
+  }, [books, orders]);
 
   if (!isAuthenticated) {
     return (
@@ -251,239 +259,269 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <SummaryCard
-            icon={<Users className="w-6 h-6 text-amber-700" />}
-            title={t('admin.crm.summaryUsers')}
-            value={summary.usersTotal}
+            icon={<ShoppingBag className="w-6 h-6 text-yellow-700" />}
+            title={t('admin.ordersPending')}
+            value={summary.pendingOrders}
             tone="amber"
           />
           <SummaryCard
-            icon={<FileText className="w-6 h-6 text-blue-700" />}
-            title={t('admin.crm.summaryPages')}
-            value={summary.activePages}
+            icon={<Wrench className="w-6 h-6 text-blue-700" />}
+            title={t('admin.ordersProcessing')}
+            value={summary.processingOrders}
             tone="blue"
           />
           <SummaryCard
-            icon={<Package className="w-6 h-6 text-emerald-700" />}
-            title={t('admin.crm.summaryItems')}
-            value={summary.availableItems}
+            icon={<BookOpen className="w-6 h-6 text-emerald-700" />}
+            title={t('admin.inStockBooks')}
+            value={summary.inStockBooks}
             tone="emerald"
           />
           <SummaryCard
-            icon={<Target className="w-6 h-6 text-purple-700" />}
-            title={t('admin.crm.summaryGoal')}
-            value={summary.goalProgress}
+            icon={<CheckCircle2 className="w-6 h-6 text-purple-700" />}
+            title={t('admin.featuredBooks')}
+            value={summary.featuredBooks}
             tone="purple"
-            suffix="%"
           />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <section className="xl:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">{t('admin.crm.usersTitle')}</h2>
-                <p className="text-sm text-gray-600">{t('admin.crm.usersSubtitle')}</p>
+                <h2 className="text-xl font-semibold text-gray-900">{t('admin.books')}</h2>
+                <p className="text-sm text-gray-600">{t('admin.booksDescription')}</p>
               </div>
-              <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700">
-                {t('admin.crm.addUser')}
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
+              <span className="text-sm text-gray-600">{`${t('admin.totalItems')}: ${books.length}`}</span>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-gray-100">
-              <table className="min-w-full text-sm text-gray-700">
-                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                  <tr>
-                    <th className="px-4 py-3 text-start">{t('admin.crm.userName')}</th>
-                    <th className="px-4 py-3 text-start">{t('admin.crm.userRole')}</th>
-                    <th className="px-4 py-3 text-start">{t('admin.crm.userStatus')}</th>
-                    <th className="px-4 py-3 text-start">{t('admin.crm.lastLogin')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {crmUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-gray-900">{user.name}</div>
-                        <div className="text-xs text-gray-500">{user.id}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{t(`admin.crm.roles.${user.role}`)}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge label={t(`admin.crm.status.${user.status}`)} tone={userStatusTone[user.status]} />
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{user.lastLogin}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {loadingBooks ? (
+              <div className="flex items-center justify-center py-10 text-gray-500">{t('admin.loading')}</div>
+            ) : (
+              <div className="space-y-3">
+                {books.slice(0, 6).map((book) => (
+                  <article key={book.id} className="border border-gray-200 rounded-xl p-4 flex items-start gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">{book.id}</p>
+                          <h3 className="text-lg font-semibold text-gray-900">{book.title_he || book.title_en}</h3>
+                          <p className="text-sm text-gray-600">{book.title_en}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge
+                            label={book.in_stock ? t('admin.inStock') : t('admin.outOfStock')}
+                            tone={book.in_stock ? 'emerald' : 'red'}
+                          />
+                          {book.featured && <StatusBadge label={t('admin.featured')} tone="purple" />}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <PackageCheck className="w-4 h-4 text-gray-500" />
+                          <span>
+                            {t('admin.priceIls')}: ₪{book.price_ils.toFixed(2)} | {t('admin.priceUsd')}: ${book.price_usd.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleBookUpdate(book.id, { in_stock: !book.in_stock })}
+                            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100"
+                          >
+                            <CircleOff className="w-4 h-4" />
+                            {book.in_stock ? t('admin.markOutOfStock') : t('admin.markInStock')}
+                          </button>
+                          <button
+                            onClick={() => handleBookUpdate(book.id, { featured: !book.featured })}
+                            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100"
+                          >
+                            <StarIcon active={book.featured} />
+                            {book.featured ? t('admin.removeFeatured') : t('admin.addFeatured')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-40 space-y-2">
+                      <label className="text-xs font-medium text-gray-700">
+                        {t('admin.priceIls')}
+                        <input
+                          type="number"
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                          value={book.price_ils}
+                          onChange={(event) => handleBookUpdate(book.id, { price_ils: Number(event.target.value) })}
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-gray-700">
+                        {t('admin.priceUsd')}
+                        <input
+                          type="number"
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                          value={book.price_usd}
+                          onChange={(event) => handleBookUpdate(book.id, { price_usd: Number(event.target.value) })}
+                        />
+                      </label>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">{t('admin.crm.goalTitle')}</h2>
-                <p className="text-sm text-gray-600">{t('admin.crm.goalSubtitle')}</p>
-              </div>
-              <button className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100">
-                {t('admin.crm.goalUpdate')}
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{generalGoal.title}</p>
-                <p className="text-xs text-gray-500">{t('admin.crm.goalUpdated')}: {generalGoal.updatedAt}</p>
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">{t('admin.addBook')}</h2>
+          <p className="text-sm text-gray-600">{t('admin.addBookDescription')}</p>
+            <form className="space-y-4" onSubmit={handleAddBook}>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-800" htmlFor="title-he">
+                  {t('admin.titleHebrew')}
+                </label>
+                <input
+                  id="title-he"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  value={newBook.title_he}
+                  onChange={(event) => setNewBook((prev) => ({ ...prev, title_he: event.target.value }))}
+                  required
+                />
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>{t('admin.crm.goalProgress')}</span>
-                  <span className="font-semibold text-gray-900">{summary.goalProgress}%</span>
+                <label className="text-sm font-medium text-gray-800" htmlFor="title-en">
+                  {t('admin.titleEnglish')}
+                </label>
+                <input
+                  id="title-en"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  value={newBook.title_en}
+                  onChange={(event) => setNewBook((prev) => ({ ...prev, title_en: event.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-800" htmlFor="price-ils">
+                    {t('admin.priceIls')}
+                  </label>
+                  <input
+                    id="price-ils"
+                    type="number"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    value={newBook.price_ils}
+                    onChange={(event) => setNewBook((prev) => ({ ...prev, price_ils: Number(event.target.value) }))}
+                    min={0}
+                    step={1}
+                    required
+                  />
                 </div>
-                <div className="h-2 rounded-full bg-gray-100">
-                  <div className="h-2 rounded-full bg-emerald-500" style={{ width: progressWidth }} />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-800" htmlFor="price-usd">
+                    {t('admin.priceUsd')}
+                  </label>
+                  <input
+                    id="price-usd"
+                    type="number"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    value={newBook.price_usd}
+                    onChange={(event) => setNewBook((prev) => ({ ...prev, price_usd: Number(event.target.value) }))}
+                    min={0}
+                    step={1}
+                    required
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">{t('admin.crm.goalRaised')}</p>
-                  <p className="text-lg font-semibold text-gray-900">₪{formatCurrency(generalGoal.raised)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">{t('admin.crm.goalTarget')}</p>
-                  <p className="text-lg font-semibold text-gray-900">₪{formatCurrency(generalGoal.target)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">{t('admin.crm.goalDonors')}</p>
-                  <p className="text-lg font-semibold text-gray-900">{formatCurrency(generalGoal.donors)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">{t('admin.crm.goalProgress')}</p>
-                  <p className="text-lg font-semibold text-gray-900">{summary.goalProgress}%</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">{t('admin.crm.pagesTitle')}</h2>
-                <p className="text-sm text-gray-600">{t('admin.crm.pagesSubtitle')}</p>
-              </div>
-              <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100">
-                {t('admin.crm.pagesCreate')}
-                <ArrowUpRight className="w-4 h-4" />
+              <button
+                type="submit"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-700 text-white px-4 py-3 text-sm font-semibold hover:bg-yellow-800"
+              >
+                <BookOpen className="w-4 h-4" />
+                {t('admin.createBook')}
               </button>
-            </div>
+            </form>
+          <p className="text-xs text-gray-500 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            {t('admin.environmentNotice')}
+          </p>
+        </section>
+      </div>
 
-            <div className="space-y-4">
-              {donationPages.map((page) => {
-                const progress = Math.min(100, Math.round((page.raised / page.goal) * 100));
-                return (
-                  <article key={page.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs text-gray-500">{page.id}</p>
-                        <h3 className="text-lg font-semibold text-gray-900">{page.title}</h3>
-                        <p className="text-sm text-gray-600">{page.owner}</p>
-                      </div>
-                      <StatusBadge label={t(`admin.crm.pageStatus.${page.status}`)} tone={pageStatusTone[page.status]} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{t('admin.crm.pageRaised')} ₪{formatCurrency(page.raised)}</span>
-                        <span className="font-semibold text-gray-900">{progress}%</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-gray-100">
-                        <div className="h-2 rounded-full bg-blue-500" style={{ width: `${progress}%` }} />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{t('admin.crm.pageGoal')} ₪{formatCurrency(page.goal)}</span>
-                        <span>{t('admin.crm.pageUpdated')} {page.updatedAt}</span>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">{t('admin.crm.itemsTitle')}</h2>
-                <p className="text-sm text-gray-600">{t('admin.crm.itemsSubtitle')}</p>
-              </div>
-              <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100">
-                {t('admin.crm.itemsManage')}
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {donationItems.map((item) => (
-                <article key={item.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-gray-500">{item.id}</p>
-                      <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                      <p className="text-sm text-gray-600">{item.category}</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Package className="w-4 h-4" />
-                      <span>{item.stock - item.reserved} {t('admin.crm.itemAvailable')}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-500">{t('admin.crm.itemStock')}</p>
-                      <p className="font-semibold text-gray-900">{item.stock}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-500">{t('admin.crm.itemReserved')}</p>
-                      <p className="font-semibold text-gray-900">{item.reserved}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-500">{t('admin.crm.itemAvailable')}</p>
-                      <p className="font-semibold text-gray-900">{item.stock - item.reserved}</p>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+      <section className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl border border-amber-100 shadow-sm p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm text-amber-700 font-semibold">{t('admin.customersPage.title')}</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t('admin.customersPage.subtitle')}</h2>
+          <p className="text-sm text-gray-700 max-w-2xl">{t('admin.customersPage.previewDescription')}</p>
         </div>
+        <button
+          onClick={() => onNavigate?.('admin-customers')}
+          className="inline-flex items-center gap-2 px-4 py-3 bg-yellow-700 text-white text-sm font-semibold rounded-lg shadow hover:bg-yellow-800"
+        >
+          {t('admin.customersPage.open')}
+          <Users className="w-4 h-4" />
+        </button>
+      </section>
 
-        <section className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <p className="text-sm text-slate-600 font-semibold">{t('admin.crm.insightsTitle')}</p>
-            <h2 className="text-2xl font-bold text-gray-900">{t('admin.crm.insightsHeading')}</h2>
-            <p className="text-sm text-gray-600 max-w-2xl">{t('admin.crm.insightsSubtitle')}</p>
+      <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm text-blue-700 font-semibold">{t('admin.databasePreviewTitle')}</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t('admin.databasePreviewHeading')}</h2>
+          <p className="text-sm text-gray-700 max-w-2xl">{t('admin.databasePreviewDescription')}</p>
+        </div>
+        <button
+          onClick={() => onNavigate?.('database')}
+          className="inline-flex items-center gap-2 px-4 py-3 bg-blue-700 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-800"
+        >
+          {t('admin.databasePreviewCta')}
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </section>
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">{t('admin.orders')}</h2>
+            <p className="text-sm text-gray-600">{t('admin.ordersDescription')}</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
-            <QuickStat
-              icon={<BarChart3 className="w-5 h-5 text-blue-700" />}
-              label={t('admin.crm.insightsDonationVelocity')}
-              value="+18%"
-            />
-            <QuickStat
-              icon={<Calendar className="w-5 h-5 text-emerald-700" />}
-              label={t('admin.crm.insightsNextCycle')}
-              value={t('admin.crm.insightsNextCycleValue')}
-            />
-            <QuickStat
-              icon={<Target className="w-5 h-5 text-purple-700" />}
-              label={t('admin.crm.insightsConversion')}
-              value="62%"
-            />
+          <span className="text-sm text-gray-600">{`${t('admin.totalItems')}: ${orders.length}`}</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {orders.map((order) => (
+              <article key={order.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">{order.id}</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{order.customer}</h3>
+                  </div>
+                  <StatusBadge label={t(`admin.status.${order.status}`)} tone="blue" />
+                </div>
+
+                <div className="text-sm text-gray-700 space-y-1">
+                  <p>
+                    {t('admin.orderDate')}: {order.createdAt}
+                  </p>
+                  <p>
+                    {`${t('admin.itemsCount')}: ${order.items}`} · {t('admin.totalAmount')}: ₪{order.total.toFixed(2)}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-700" htmlFor={`status-${order.id}`}>
+                    {t('admin.updateStatus')}
+                  </label>
+                  <select
+                    id={`status-${order.id}`}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={order.status}
+                    onChange={(event) => handleOrderStatusChange(order.id, event.target.value as AdminOrder['status'])}
+                  >
+                    <option value="pending">{t('admin.status.pending')}</option>
+                    <option value="processing">{t('admin.status.processing')}</option>
+                    <option value="shipped">{t('admin.status.shipped')}</option>
+                    <option value="delivered">{t('admin.status.delivered')}</option>
+                  </select>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       </main>
@@ -494,20 +532,6 @@ export default function AdminPage({ onNavigate }: { onNavigate?: (page: string) 
 }
 
 type BadgeTone = 'emerald' | 'red' | 'purple' | 'blue' | 'amber';
-
-type SummaryTone = 'amber' | 'blue' | 'emerald' | 'purple';
-
-const userStatusTone: Record<UserStatus, BadgeTone> = {
-  active: 'emerald',
-  invited: 'amber',
-  suspended: 'red',
-};
-
-const pageStatusTone: Record<DonationPageStatus, BadgeTone> = {
-  active: 'blue',
-  draft: 'amber',
-  paused: 'red',
-};
 
 function StatusBadge({ label, tone }: { label: string; tone: BadgeTone }) {
   const toneClasses: Record<BadgeTone, string> = {
@@ -526,19 +550,9 @@ function StatusBadge({ label, tone }: { label: string; tone: BadgeTone }) {
   );
 }
 
-function SummaryCard({
-  icon,
-  title,
-  value,
-  tone,
-  suffix,
-}: {
-  icon: ReactNode;
-  title: string;
-  value: number;
-  tone: SummaryTone;
-  suffix?: string;
-}) {
+type SummaryTone = 'amber' | 'blue' | 'emerald' | 'purple';
+
+function SummaryCard({ icon, title, value, tone }: { icon: ReactNode; title: string; value: number; tone: SummaryTone }) {
   const toneClasses: Record<SummaryTone, string> = {
     amber: 'text-amber-700 bg-amber-50 border-amber-100',
     blue: 'text-blue-700 bg-blue-50 border-blue-100',
@@ -553,23 +567,28 @@ function SummaryCard({
       </div>
       <div>
         <p className="text-sm text-gray-700">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">
-          {value}
-          {suffix}
-        </p>
+        <p className="text-2xl font-bold text-gray-900">{value}</p>
       </div>
     </div>
   );
 }
 
-function QuickStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
-      <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center">{icon}</div>
-      <div>
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="text-sm font-semibold text-gray-900">{value}</p>
-      </div>
-    </div>
+function StarIcon({ active }: { active: boolean }) {
+  return active ? (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+      <path
+        fillRule="evenodd"
+        d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l1.519 3.652 3.957.342c1.164.101 1.636 1.545.749 2.305l-3.002 2.57.911 3.828c.268 1.125-.964 2.02-1.96 1.43L12 15.986l-3.386 1.35c-.996.59-2.228-.305-1.96-1.43l.912-3.828-3.002-2.57c-.887-.76-.415-2.204.749-2.305l3.957-.342 1.518-3.652Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ) : (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M11.48 3.499a.562.562 0 011.04 0l1.517 3.674a.563.563 0 00.475.345l3.993.342c.499.043.701.663.321.988l-3.04 2.573a.563.563 0 00-.182.557l.908 3.892a.562.562 0 01-.84.61l-3.399-2.04a.563.563 0 00-.586 0l-3.4 2.04a.562.562 0 01-.839-.61l.908-3.892a.563.563 0 00-.182-.557l-3.04-2.572a.563.563 0 01.32-.989l3.994-.341a.563.563 0 00.474-.345l1.518-3.674z"
+      />
+    </svg>
   );
 }
